@@ -147,6 +147,23 @@
     tbody tr:hover td{background:#f8fbff}
     .btn.small{padding:8px 10px;border-radius:10px;font-size:12px;box-shadow:none}
 
+
+    .indicator-modal { display: grid; gap: 14px; }
+    .indicator-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .indicator-code { color: var(--primary); font-size: 13px; font-weight: 700; }
+    .meta-grid { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:10px; }
+    .meta-item { border:1px solid var(--line); border-radius: 12px; padding:12px; background:#fff; }
+    .meta-item b { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:.04em; }
+    .meta-item span { font-weight:700; color:var(--ink); font-size:13px; }
+    .section-title { font-size:18px; margin:4px 0 0; color:var(--ink); }
+    .result-box { border:1px solid #cfeedd; border-left:4px solid var(--success); background:var(--success-bg); border-radius:12px; padding:14px; display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:8px; }
+    .result-box b { display:block; font-size:11px; color:#4d6c5d; text-transform:uppercase; margin-bottom:4px; }
+    .result-box span { font-size:14px; font-weight:700; color:#1d6142; }
+    .result-main { font-size:36px !important; letter-spacing:-.04em; }
+    .history-list { border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff; display:grid; gap:8px; }
+    .history-item { display:grid; grid-template-columns: 88px 1fr auto; align-items:center; gap:10px; }
+    .history-bar { height:8px; background:#e6eef8; border-radius:999px; overflow:hidden; }
+    .history-bar span { display:block; height:100%; background:linear-gradient(90deg, #2b79c2, #58a2eb); }
     .state-success { background: var(--success-bg) !important; border-color: #cfeedd !important; color: var(--success) !important; }
     .state-warning { background: var(--warning-bg) !important; border-color: #f3e2b5 !important; color: var(--warning) !important; }
     .state-error { background: var(--danger-bg) !important; border-color: #f3cccc !important; color: var(--danger) !important; }
@@ -172,7 +189,7 @@
       .drawer-head h3 { font-size: 19px; }
       .topbar { align-items: flex-start; flex-direction: column; }
       .search { width: 100%; }
-      .process-grid, .indicator-grid, .steps { grid-template-columns: 1fr; }
+      .process-grid, .indicator-grid, .steps, .meta-grid, .result-box { grid-template-columns: 1fr; }
       .nav { grid-template-columns: 1fr; }
     }
 </style>
@@ -530,15 +547,45 @@
 
     function showIndicador(ind) {
       const lans = (state.data.lancamentos || []).filter(l => l.ID_INDICADOR === ind.ID_INDICADOR);
+      const ordem = lans.slice().sort((a, b) => String(a.COMPETENCIA || '').localeCompare(String(b.COMPETENCIA || ''), 'pt-BR'));
+      const preenchidos = ordem.filter(l => String(l.VALOR || '').trim() !== '');
+      const ultimo = preenchidos[preenchidos.length - 1] || ordem[ordem.length - 1] || null;
+      const valorAtual = ultimo ? String(ultimo.VALOR || '-') : '-';
+      const status = valorAtual !== '-' ? 'Dentro da meta' : 'Sem lançamento';
+      const periodo = ultimo ? (ultimo.COMPETENCIA || '-') : '-';
+      const historico = ordem.map(l => {
+        const num = Number(String(l.VALOR || '').replace('%', '').replace(',', '.'));
+        const pct = Number.isFinite(num) ? Math.max(0, Math.min(100, num)) : 0;
+        return { comp: l.COMPETENCIA || '-', valor: l.VALOR || '-', pct };
+      });
       ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
-        <div class="steps">
-          ${drawerField('Categoria', ind.CATEGORIA)}
-          ${drawerField('Tipo', ind.TIPO_INDICADOR)}
-          ${drawerField('Meta', ind.META)}
-          ${drawerField('Origem', ind.ABA_ORIGEM + ' · linha ' + ind.LINHA_ORIGEM)}
+        <div class="indicator-modal">
+          <div class="indicator-head">
+            <div>
+              <div class="indicator-code">${escapeHtml(ind.ID_INDICADOR || 'IND')} · ${escapeHtml(ind.PROCESSO || '-')}</div>
+              <h4 class="section-title">${escapeHtml(ind.NOME_INDICADOR || 'Indicador')}</h4>
+            </div>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
+            <div class="meta-item"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
+            <div class="meta-item"><b>Meta</b><span>${escapeHtml(ind.META || '-')}</span></div>
+            <div class="meta-item"><b>Origem</b><span>${escapeHtml(ind.ABA_ORIGEM || '-')}</span></div>
+          </div>
+          <h4 class="section-title">Resultado</h4>
+          <div class="result-box">
+            <div><b>Resultado atual</b><span class="result-main">${escapeHtml(valorAtual)}</span></div>
+            <div><b>Status</b><span>${escapeHtml(status)}</span></div>
+            <div><b>Período referência</b><span>${escapeHtml(periodo)}</span></div>
+            <div><b>Meta</b><span>${escapeHtml(ind.META || '-')}</span></div>
+          </div>
+          <h4 class="section-title">Série histórica</h4>
+          <div class="history-list">
+            ${historico.length ? historico.map(h => `<div class="history-item"><strong>${escapeHtml(h.comp)}</strong><div class="history-bar"><span style="width:${h.pct}%"></span></div><span>${escapeHtml(h.valor)}</span></div>`).join('') : '<div class="empty">Sem histórico disponível.</div>'}
+          </div>
+          <h4 class="section-title">Observações</h4>
+          <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
         </div>
-        <div class="card" style="margin-top:14px"><h4>Resultado esperado</h4><p>${escapeHtml(ind.RESULTADO_ESPERADO || '')}</p></div>
-        <div class="pill-row" style="margin-top:14px">${lans.map(l => `<span class="pill ${l.VALOR ? 'ok' : ''}">${escapeHtml(l.COMPETENCIA)}: ${escapeHtml(l.VALOR || '-')}</span>`).join('')}</div>
       `);
     }
 
