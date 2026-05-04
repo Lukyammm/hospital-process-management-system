@@ -1,1 +1,796 @@
-a
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGEP-HUC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f7f5;
+      --surface: #ffffff;
+      --surface-2: #f8faf9;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #dfe7e3;
+      --green: #006b3f;
+      --green-2: #0f7b4f;
+      --green-3: #e8f5ef;
+      --yellow: #f3c95f;
+      --yellow-bg: #fff6d8;
+      --red: #d86c61;
+      --red-bg: #fde8e5;
+      --purple: #8b5bb7;
+      --purple-bg: #f0e2fa;
+      --gray-bg: #eef2f1;
+      --shadow: 0 20px 48px rgba(15, 23, 42, .08);
+      --radius: 24px;
+      --radius-sm: 14px;
+      --sidebar: 286px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 4%, rgba(0, 107, 63, .12), transparent 28%),
+        radial-gradient(circle at 90% 0%, rgba(15, 123, 79, .10), transparent 30%),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: var(--sidebar) 1fr;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 22px 18px;
+      background: linear-gradient(180deg, #073c2d 0%, #062b22 100%);
+      color: white;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 10px 22px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      margin-bottom: 18px;
+    }
+
+    .mark {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+    }
+
+    .brand h1 { margin: 0; font-size: 18px; line-height: 1.05; }
+    .brand span { color: rgba(255,255,255,.70); font-size: 12px; }
+
+    .nav { display: grid; gap: 8px; }
+
+    .nav button {
+      border: 0;
+      background: transparent;
+      color: rgba(255,255,255,.74);
+      border-radius: 16px;
+      padding: 12px 12px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      cursor: pointer;
+      text-align: left;
+      transition: .18s ease;
+    }
+
+    .nav button:hover, .nav button.active {
+      color: #fff;
+      background: rgba(255,255,255,.12);
+    }
+
+    .nav svg { width: 19px; height: 19px; flex: 0 0 auto; }
+
+    .sidebar-note {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.78);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .main { padding: 26px 30px 46px; min-width: 0; }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .title-kicker { color: var(--green); font-weight: 800; letter-spacing: .08em; font-size: 12px; text-transform: uppercase; }
+    .title h2 { margin: 4px 0 0; font-size: 30px; line-height: 1.1; letter-spacing: -.04em; }
+    .title p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+
+    .actions { display: flex; gap: 10px; align-items: center; }
+
+    .search {
+      width: min(360px, 38vw);
+      position: relative;
+    }
+
+    .search input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.86);
+      padding: 13px 14px 13px 42px;
+      outline: none;
+      box-shadow: 0 10px 24px rgba(15,23,42,.04);
+    }
+
+    .search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 18px; }
+
+    .btn {
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 16px;
+      background: var(--green);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 14px 32px rgba(0,107,63,.18);
+    }
+
+    .btn.secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .hero {
+      border-radius: var(--radius);
+      padding: 24px;
+      background: linear-gradient(135deg, #ffffff 0%, #f4faf7 100%);
+      border: 1px solid rgba(0,107,63,.12);
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+      display: grid;
+      grid-template-columns: 1.4fr .8fr;
+      gap: 18px;
+    }
+
+    .hero h3 { font-size: 22px; margin: 0 0 8px; letter-spacing: -.03em; }
+    .hero p { color: var(--muted); margin: 0; line-height: 1.55; }
+
+    .hero-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 20px;
+      padding: 16px;
+    }
+
+    .progress-line { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin-bottom: 9px; }
+    .bar { height: 11px; background: #e6eee9; border-radius: 999px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--green), #15a06b); border-radius: inherit; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .kpi {
+      background: rgba(255,255,255,.92);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 17px;
+      box-shadow: 0 14px 32px rgba(15,23,42,.05);
+    }
+
+    .kpi .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      background: var(--green-3);
+      color: var(--green);
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+    }
+
+    .kpi strong { display: block; font-size: 28px; letter-spacing: -.04em; }
+    .kpi span { color: var(--muted); font-size: 13px; }
+
+    .panel {
+      background: rgba(255,255,255,.92);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-head h3 { margin: 0; font-size: 17px; }
+    .panel-head span { color: var(--muted); font-size: 13px; }
+
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; }
+    .filters select {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px 12px;
+      outline: none;
+      color: var(--ink);
+    }
+
+    .content-pad { padding: 18px; }
+
+    .process-grid, .indicator-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 20px;
+      padding: 16px;
+      min-width: 0;
+      transition: .18s ease;
+    }
+
+    .card:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(15,23,42,.08); }
+    .card h4 { margin: 0 0 8px; font-size: 15px; line-height: 1.35; letter-spacing: -.02em; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .pill-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--gray-bg);
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .pill.ok { background: var(--green-3); color: var(--green); }
+    .pill.warn { background: var(--yellow-bg); color: #80620c; }
+    .pill.bad { background: var(--red-bg); color: #9f2d25; }
+    .pill.purple { background: var(--purple-bg); color: var(--purple); }
+
+    .acomp-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .unit-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 14px 30px rgba(15,23,42,.05);
+    }
+
+    .unit-top {
+      padding: 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(135deg, #fff 0%, #f7fbf8 100%);
+    }
+
+    .unit-top h4 { margin: 0 0 7px; font-size: 18px; letter-spacing: -.03em; }
+    .unit-top small { color: var(--muted); }
+
+    .ring {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: conic-gradient(var(--green) calc(var(--p) * 1%), #e6eee9 0);
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .ring::after { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
+    .ring span { position: relative; z-index: 1; font-weight: 800; font-size: 14px; }
+
+    .unit-body { padding: 16px 18px 18px; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      background: var(--surface-2);
+    }
+
+    .step b { display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: .04em; margin-bottom: 5px; }
+    .step span { font-size: 12px; font-weight: 700; }
+
+    .timeline { border-left: 2px solid #dde7e1; margin-left: 7px; padding-left: 15px; display: grid; gap: 10px; }
+    .timeline-item { position: relative; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -22px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px #e8f5ef;
+    }
+    .timeline-item .date { font-weight: 800; font-size: 13px; }
+    .timeline-item .status { color: var(--muted); font-size: 12px; text-align: right; }
+
+    .empty, .loading {
+      padding: 36px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .drawer {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.36);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 20px;
+      z-index: 30;
+    }
+    .drawer.active { display: flex; }
+    .drawer-card {
+      width: min(760px, 100%);
+      max-height: 86vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 28px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.22);
+      padding: 22px;
+    }
+    .drawer-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+    .drawer-head h3 { margin: 0; }
+    .close { background: var(--gray-bg); border: 0; width: 38px; height: 38px; border-radius: 14px; cursor: pointer; }
+
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; }
+      .sidebar-note { position: static; margin-top: 18px; }
+      .nav { grid-template-columns: repeat(4, 1fr); }
+      .hero, .kpi-grid, .acomp-grid { grid-template-columns: 1fr; }
+      .process-grid, .indicator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .main { padding: 18px; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .search { width: 100%; }
+      .process-grid, .indicator-grid, .steps { grid-template-columns: 1fr; }
+      .nav { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" stroke="currentColor" stroke-width="1.8"/><path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <div><h1>SIGEP-HUC</h1><span>Gestão de processos e indicadores</span></div>
+      </div>
+      <nav class="nav">
+        <button class="active" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9zm9 7h7V4h-7v16zM4 20h7v-5H4v5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Dashboard</button>
+        <button data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
+        <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Processos</button>
+        <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
+      </nav>
+      <div class="sidebar-note">Base estruturada para o usuário trabalhar pelo sistema. A planilha fica como banco de dados.</div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title">
+          <div class="title-kicker">Hospital Universitário do Ceará</div>
+          <h2 id="pageTitle">Dashboard executivo</h2>
+          <p id="pageSubtitle">Visão consolidada de processos, acompanhamento e indicadores.</p>
+        </div>
+        <div class="actions">
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input id="globalSearch" type="search" placeholder="Pesquisar unidade, processo ou indicador">
+          </div>
+          <button class="btn secondary" id="refreshBtn">Atualizar</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view active">
+        <div class="hero">
+          <div>
+            <h3>Central de gestão do SIGEP-HUC</h3>
+            <p>O acompanhamento respeita a planilha original: cada data de uma unidade vira uma linha própria na base, mantendo os status herdados das células mescladas.</p>
+          </div>
+          <div class="hero-panel">
+            <div class="progress-line"><span>Progresso médio das etapas</span><strong id="heroProgressText">0%</strong></div>
+            <div class="bar"><span id="heroProgressBar" style="width:0%"></span></div>
+          </div>
+        </div>
+        <div class="kpi-grid" id="kpis"></div>
+        <div class="panel">
+          <div class="panel-head"><div><h3>Resumo de acompanhamento</h3><span>Unidades com suas datas/status preservados</span></div></div>
+          <div class="content-pad" id="dashboardAcompanhamento"></div>
+        </div>
+      </section>
+
+      <section id="acompanhamento" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Acompanhamento por unidade</h3><span>Uma unidade pode aparecer com várias datas no mesmo card</span></div>
+            <div class="filters"><select id="filtroStatusAcomp"><option value="">Todos os status</option></select></div>
+          </div>
+          <div class="content-pad"><div class="acomp-grid" id="acompGrid"></div></div>
+        </div>
+      </section>
+
+      <section id="processos" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Processos</h3><span>Modelagem, validação e publicação</span></div>
+            <div class="filters"><select id="filtroTipoProcesso"><option value="">Todos os tipos</option></select></div>
+          </div>
+          <div class="content-pad"><div class="process-grid" id="processGrid"></div></div>
+        </div>
+      </section>
+
+      <section id="indicadores" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Indicadores</h3><span>Finalísticos, apoio e gerenciais</span></div>
+            <div class="filters"><select id="filtroCategoriaIndicador"><option value="">Todas as categorias</option></select></div>
+          </div>
+          <div class="content-pad"><div class="indicator-grid" id="indicatorGrid"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer" id="drawer">
+    <div class="drawer-card">
+      <div class="drawer-head">
+        <div><h3 id="drawerTitle">Detalhes</h3><p id="drawerSubtitle"></p></div>
+        <button class="close" onclick="ui.closeDrawer()">×</button>
+      </div>
+      <div id="drawerContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const icons = {
+      process: '<svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+      unit: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 20V6l8-3 8 3v14" stroke="currentColor" stroke-width="1.8"/><path d="M9 20v-7h6v7" stroke="currentColor" stroke-width="1.8"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3v4M17 3v4M4 9h16M5 5h14v15H5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      chart: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+    };
+
+    const state = {
+      data: null,
+      view: 'dashboard',
+      search: '',
+      filtroStatusAcomp: '',
+      filtroTipoProcesso: '',
+      filtroCategoriaIndicador: ''
+    };
+
+    const ui = {
+      init() {
+        document.querySelectorAll('.nav button').forEach(btn => {
+          btn.addEventListener('click', () => ui.setView(btn.dataset.view));
+        });
+        document.getElementById('refreshBtn').addEventListener('click', loadData);
+        document.getElementById('globalSearch').addEventListener('input', e => {
+          state.search = e.target.value.toLowerCase().trim();
+          render();
+        });
+        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador'].forEach(id => {
+          document.getElementById(id).addEventListener('change', e => {
+            state[id] = e.target.value;
+            render();
+          });
+        });
+        loadData();
+      },
+
+      setView(view) {
+        state.view = view;
+        document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+        document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
+        const titles = {
+          dashboard: ['Dashboard executivo', 'Visão consolidada de processos, acompanhamento e indicadores.'],
+          acompanhamento: ['Acompanhamento', 'Unidades, datas de agenda e evolução das etapas.'],
+          processos: ['Processos', 'Modelagem, revisão, validação e publicação.'],
+          indicadores: ['Indicadores', 'Carteira de indicadores e competências mensais.']
+        };
+        document.getElementById('pageTitle').textContent = titles[view][0];
+        document.getElementById('pageSubtitle').textContent = titles[view][1];
+      },
+
+      openDrawer(title, subtitle, html) {
+        document.getElementById('drawerTitle').textContent = title;
+        document.getElementById('drawerSubtitle').textContent = subtitle || '';
+        document.getElementById('drawerContent').innerHTML = html;
+        document.getElementById('drawer').classList.add('active');
+      },
+
+      closeDrawer() {
+        document.getElementById('drawer').classList.remove('active');
+      }
+    };
+
+    function loadData() {
+      setLoading();
+      google.script.run
+        .withSuccessHandler(payload => {
+          state.data = payload;
+          hydrateFilters();
+          render();
+        })
+        .withFailureHandler(err => {
+          document.querySelector('.main').innerHTML = `<div class="panel"><div class="empty"><strong>Erro ao carregar o SIGEP-HUC</strong><br>${escapeHtml(err.message || err)}</div></div>`;
+        })
+        .getSigepData();
+    }
+
+    function setLoading() {
+      ['kpis', 'dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<div class="loading">Carregando dados do SIGEP-HUC...</div>';
+      });
+    }
+
+    function hydrateFilters() {
+      const data = state.data || {};
+      fillSelect('filtroStatusAcomp', unique((data.acompanhamento || []).map(x => x.STATUS_AGENDAMENTO)), 'Todos os status');
+      fillSelect('filtroTipoProcesso', unique((data.processos || []).map(x => x.TIPO_PROCESSO)), 'Todos os tipos');
+      fillSelect('filtroCategoriaIndicador', unique((data.indicadores || []).map(x => x.CATEGORIA)), 'Todas as categorias');
+    }
+
+    function fillSelect(id, items, first) {
+      const el = document.getElementById(id);
+      const current = el.value;
+      el.innerHTML = `<option value="">${first}</option>` + items.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      el.value = current;
+    }
+
+    function render() {
+      if (!state.data) return;
+      renderDashboard();
+      renderAcompanhamento();
+      renderProcessos();
+      renderIndicadores();
+    }
+
+    function renderDashboard() {
+      const d = state.data.dashboard;
+      document.getElementById('heroProgressText').textContent = `${d.progressoMedio || 0}%`;
+      document.getElementById('heroProgressBar').style.width = `${d.progressoMedio || 0}%`;
+      const kpis = [
+        ['Processos', d.processosTotal, `${d.processosConcluidos} concluídos`, icons.process],
+        ['Unidades', d.unidadesAcompanhadas, `${d.acompanhamentoLinhas} linhas de agenda`, icons.unit],
+        ['Agendamentos', d.agendamentosRealizados, `${d.reagendados} reagendados`, icons.calendar],
+        ['Indicadores', d.indicadoresTotal, `${d.lancamentosPreenchidos} valores preenchidos`, icons.chart]
+      ];
+      document.getElementById('kpis').innerHTML = kpis.map(k => `
+        <div class="kpi"><div class="icon">${k[3]}</div><strong>${k[1]}</strong><span>${k[0]} · ${k[2]}</span></div>
+      `).join('');
+      document.getElementById('dashboardAcompanhamento').innerHTML = renderUnitCards(getGroupedAcompanhamento().slice(0, 4));
+    }
+
+    function renderAcompanhamento() {
+      document.getElementById('acompGrid').innerHTML = renderUnitCards(getGroupedAcompanhamento());
+    }
+
+    function getGroupedAcompanhamento() {
+      let rows = state.data.acompanhamento || [];
+      rows = filterRows(rows, ['UNIDADE', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES']);
+      if (state.filtroStatusAcomp) rows = rows.filter(x => x.STATUS_AGENDAMENTO === state.filtroStatusAcomp);
+      const map = new Map();
+      rows.forEach(row => {
+        if (!map.has(row.UNIDADE)) map.set(row.UNIDADE, []);
+        map.get(row.UNIDADE).push(row);
+      });
+      return Array.from(map.entries()).map(([unidade, items]) => {
+        items.sort((a, b) => Number(a.ORDEM_AGENDAMENTO_UNIDADE || 0) - Number(b.ORDEM_AGENDAMENTO_UNIDADE || 0));
+        const base = items[items.length - 1] || items[0];
+        return { unidade, items, base, progresso: Number(base.PROGRESSO_PERCENTUAL || 0) };
+      }).sort((a, b) => b.progresso - a.progresso || a.unidade.localeCompare(b.unidade));
+    }
+
+    function renderUnitCards(groups) {
+      if (!groups.length) return '<div class="empty">Nenhuma unidade encontrada para os filtros atuais.</div>';
+      return groups.map(group => {
+        const b = group.base;
+        const steps = [
+          ['Introdução', b.INTRODUCAO],
+          ['Perfil', b.PERFIL],
+          ['Fluxo do processo', b.FLUXO_PROCESSO],
+          ['Modelagem', b.MODELAGEM],
+          ['Indicadores', b.INDICADORES],
+          ['Ficha técnica', b.FICHA_TECNICA_INDICADORES]
+        ];
+        return `
+          <article class="unit-card">
+            <div class="unit-top">
+              <div><h4>${escapeHtml(group.unidade)}</h4><small>${group.items.length} data(s) registrada(s) · ${escapeHtml(b.STATUS_GERAL || '')}</small></div>
+              <div class="ring" style="--p:${group.progresso}"><span>${group.progresso}%</span></div>
+            </div>
+            <div class="unit-body">
+              <div class="steps">
+                ${steps.map(s => `<div class="step"><b>${escapeHtml(s[0])}</b><span class="${statusClass(s[1])}">${escapeHtml(s[1] || 'Sem status')}</span></div>`).join('')}
+              </div>
+              <div class="timeline">
+                ${group.items.map(item => `<div class="timeline-item"><div class="date">${escapeHtml(item.DATA_AGENDAMENTO || 'Sem data')}</div><div class="status">${escapeHtml(item.STATUS_AGENDAMENTO || 'Sem status')}</div></div>`).join('')}
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderProcessos() {
+      let rows = state.data.processos || [];
+      rows = filterRows(rows, ['SETOR', 'TIPO_PROCESSO', 'PROCESSO', 'STATUS_GERAL']);
+      if (state.filtroTipoProcesso) rows = rows.filter(x => x.TIPO_PROCESSO === state.filtroTipoProcesso);
+      const html = rows.map(p => `
+        <article class="card" onclick='showProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+          <h4>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h4>
+          <p>${escapeHtml(p.SETOR || '')}</p>
+          <div class="pill-row">
+            <span class="pill">${escapeHtml(p.TIPO_PROCESSO || 'Sem tipo')}</span>
+            <span class="pill ${badgeClass(p.STATUS_GERAL)}">${escapeHtml(p.STATUS_GERAL || 'Sem status')}</span>
+            <span class="pill ${badgeClass(p.MODELAGEM_REALIZADA)}">Modelagem: ${escapeHtml(p.MODELAGEM_REALIZADA || '-')}</span>
+          </div>
+        </article>
+      `).join('');
+      document.getElementById('processGrid').innerHTML = html || '<div class="empty">Nenhum processo encontrado.</div>';
+    }
+
+    function renderIndicadores() {
+      let rows = state.data.indicadores || [];
+      rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO']);
+      if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
+      const lancamentos = state.data.lancamentos || [];
+      const byInd = new Map();
+      lancamentos.forEach(l => {
+        if (!byInd.has(l.ID_INDICADOR)) byInd.set(l.ID_INDICADOR, []);
+        byInd.get(l.ID_INDICADOR).push(l);
+      });
+      const html = rows.map(ind => {
+        const lans = byInd.get(ind.ID_INDICADOR) || [];
+        const filled = lans.filter(l => String(l.VALOR || '').trim() !== '').length;
+        return `
+          <article class="card" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+            <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
+            <p>${escapeHtml(ind.PROCESSO || '')}</p>
+            <div class="pill-row">
+              <span class="pill">${escapeHtml(ind.CATEGORIA || '')}</span>
+              <span class="pill purple">${escapeHtml(ind.TIPO_INDICADOR || 'Sem tipo')}</span>
+              <span class="pill warn">Meta: ${escapeHtml(ind.META || '-')}</span>
+              <span class="pill ok">${filled}/${lans.length} competências</span>
+            </div>
+          </article>
+        `;
+      }).join('');
+      document.getElementById('indicatorGrid').innerHTML = html || '<div class="empty">Nenhum indicador encontrado.</div>';
+    }
+
+    function showProcesso(p) {
+      ui.openDrawer(p.PROCESSO || 'Processo', p.SETOR || '', `
+        <div class="steps">
+          ${drawerField('Tipo', p.TIPO_PROCESSO)}
+          ${drawerField('Modelagem', p.MODELAGEM_REALIZADA)}
+          ${drawerField('Revisão 2027', p.REVISAO_2027_UNIDADE)}
+          ${drawerField('Validação NUGESP', p.VALIDACAO_NUGESP)}
+          ${drawerField('Validação Direção', p.VALIDACAO_DIRECAO)}
+          ${drawerField('Publicação', p.PUBLICACAO)}
+        </div>
+      `);
+    }
+
+    function showIndicador(ind) {
+      const lans = (state.data.lancamentos || []).filter(l => l.ID_INDICADOR === ind.ID_INDICADOR);
+      ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
+        <div class="steps">
+          ${drawerField('Categoria', ind.CATEGORIA)}
+          ${drawerField('Tipo', ind.TIPO_INDICADOR)}
+          ${drawerField('Meta', ind.META)}
+          ${drawerField('Origem', ind.ABA_ORIGEM + ' · linha ' + ind.LINHA_ORIGEM)}
+        </div>
+        <div class="card" style="margin-top:14px"><h4>Resultado esperado</h4><p>${escapeHtml(ind.RESULTADO_ESPERADO || '')}</p></div>
+        <div class="pill-row" style="margin-top:14px">${lans.map(l => `<span class="pill ${l.VALOR ? 'ok' : ''}">${escapeHtml(l.COMPETENCIA)}: ${escapeHtml(l.VALOR || '-')}</span>`).join('')}</div>
+      `);
+    }
+
+    function drawerField(label, value) {
+      return `<div class="step"><b>${escapeHtml(label)}</b><span>${escapeHtml(value || '-')}</span></div>`;
+    }
+
+    function filterRows(rows, fields) {
+      if (!state.search) return rows;
+      return rows.filter(row => fields.some(f => String(row[f] || '').toLowerCase().includes(state.search)));
+    }
+
+    function unique(arr) {
+      return Array.from(new Set(arr.filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }
+
+    function statusClass(v) {
+      const n = normalize(v);
+      if (n.includes('CONCLUIDA') || n.includes('REALIZADA')) return 'pill ok';
+      if (n.includes('NAO INICIADA')) return 'pill bad';
+      if (n.includes('EPIDEMIO')) return 'pill purple';
+      if (n.includes('ANDAMENTO')) return 'pill warn';
+      return '';
+    }
+
+    function badgeClass(v) {
+      const n = normalize(v);
+      if (n === 'SIM' || n.includes('CONCLUID') || n.includes('REALIZADA')) return 'ok';
+      if (n === 'NAO' || n.includes('NAO INICIADA') || n.includes('PENDENTE')) return 'bad';
+      if (n.includes('ANDAMENTO')) return 'warn';
+      return '';
+    }
+
+    function normalize(v) {
+      return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    }
+
+    function escapeHtml(v) {
+      return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    }
+
+    window.ui = ui;
+    ui.init();
+  </script>
+</body>
+</html>
