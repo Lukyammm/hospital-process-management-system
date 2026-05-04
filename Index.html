@@ -170,13 +170,15 @@
     .indicator-list { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:12px; }
     .indicator-row { border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff; cursor:pointer; transition:.18s ease; display:grid; gap:10px; }
     .indicator-row:hover { border-color:var(--line-strong); box-shadow:var(--shadow-sm); }
+    .indicator-row.hit { border-color:#bfe8d0; background:linear-gradient(180deg,#f6fff9 0%,#ffffff 100%); }
+    .indicator-row.miss { border-color:#f1cdcd; background:linear-gradient(180deg,#fff8f8 0%,#ffffff 100%); }
     .indicator-main h4 { margin:0 0 6px; font-size:15px; color:var(--ink); }
     .indicator-main p { margin:0; font-size:12px; color:var(--muted); }
     .indicator-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .indicator-col b { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px; }
     .indicator-col span { font-size:13px; font-weight:700; color:var(--text); }
-    .coverage { height:8px; border-radius:999px; background:#e6eef8; overflow:hidden; margin-top:5px; }
-    .coverage span { display:block; height:100%; background:linear-gradient(90deg,var(--primary),#58a2eb); }
+    .sparkline { width:100%; height:44px; border:1px solid #e2ebf6; border-radius:10px; background:linear-gradient(180deg,#fbfdff 0%,#fff 100%); padding:4px; }
+    .sparkline svg { width:100%; height:100%; display:block; }
 
     .drawer-body { max-height: calc(92vh - 120px); overflow: auto; padding-right: 4px; }
     .indicator-modal { display: grid; gap: 14px; }
@@ -622,24 +624,33 @@
         const lans = byInd.get(ind.ID_INDICADOR) || [];
         return lans.some(l => String(l.VALOR || '').trim() !== '');
       }).length;
-      const cobertura = total ? Math.round((preenchidos / total) * 100) : 0;
+      const modelagens = (state.data.processos || []).filter(p => String(p.MODELAGEM_REALIZADA || '').trim().toUpperCase() === 'SIM');
+      const taxaModelagemFinalizada = (state.data.processos || []).length ? Math.round((modelagens.length / (state.data.processos || []).length) * 100) : 0;
+      const validacaoNugesp = modelagens.filter(p => String(p.VALIDACAO_NUGESP || '').trim().toUpperCase() === 'SIM').length;
+      const validacaoDirecao = modelagens.filter(p => String(p.VALIDACAO_DIRECAO || '').trim().toUpperCase() === 'SIM').length;
       const pendentes = Math.max(total - preenchidos, 0);
       document.getElementById('indicatorSummary').innerHTML = `
         <div class="summary-card"><b>Total de indicadores</b><strong>${total}</strong><span>Registros após filtros e pesquisa</span></div>
         <div class="summary-card"><b>Com lançamento</b><strong>${preenchidos}</strong><span>Indicadores com algum valor preenchido</span></div>
-        <div class="summary-card"><b>Pendentes</b><strong>${pendentes}</strong><span>Sem lançamento no período</span></div>
-        <div class="summary-card"><b>Cobertura mensal</b><strong>${cobertura}%</strong><span>Percentual de indicadores com histórico</span></div>
+        <div class="summary-card"><b>Taxa de modelagens finalizadas</b><strong>${taxaModelagemFinalizada}%</strong><span>${modelagens.length} de ${(state.data.processos || []).length} processos com MODELAGEM_REALIZADA = SIM</span></div>
+        <div class="summary-card"><b>Validações do fluxo</b><strong>${validacaoNugesp + validacaoDirecao}</strong><span>NUGESP: ${validacaoNugesp} · Direção: ${validacaoDirecao} · Pendentes: ${pendentes}</span></div>
       `;
-      document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · cobertura de ${cobertura}%${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''}</p>`;
+      document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · ${pendentes} sem lançamento${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''} · NUGESP ${validacaoNugesp}/${modelagens.length || 0} · Direção ${validacaoDirecao}/${modelagens.length || 0}</p>`;
 
       if (state.processoIndicadorSelecionado) rows = rows.filter(x => x.PROCESSO === state.processoIndicadorSelecionado);
       const html = rows.map(ind => {
         const lans = byInd.get(ind.ID_INDICADOR) || [];
-        const filled = lans.filter(l => String(l.VALOR || '').trim() !== '').length;
-        const coverage = lans.length ? Math.round((filled / lans.length) * 100) : 0;
-        const ultimo = lans.slice().sort((a,b)=>String(a.COMPETENCIA||'').localeCompare(String(b.COMPETENCIA||''),'pt-BR')).reverse().find(l => String(l.VALOR || '').trim() !== '');
+        const historicoOrdenado = lans
+          .slice()
+          .sort((a, b) => parseCompetencia(a.COMPETENCIA) - parseCompetencia(b.COMPETENCIA))
+          .map(l => ({ ...l, numericValue: parseNumericValue(l.VALOR), hasData: Number.isFinite(parseNumericValue(l.VALOR)) }));
+        const ultimo = historicoOrdenado.slice().reverse().find(l => l.hasData);
+        const metaIndicador = parseNumericValue(ind.META);
+        const referenciaStatus = getReferenciaStatus(historicoOrdenado);
+        const statusCard = getStatusIndicador(referenciaStatus, metaIndicador);
+        const sparkline = buildMiniSparkline(historicoOrdenado, metaIndicador);
         return `
-          <article class="indicator-row" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+          <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
             <div class="indicator-main">
               <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
               <p>${escapeHtml(ind.ID_INDICADOR || '-')} · ${escapeHtml(ind.PROCESSO || '-')} · ${escapeHtml(getIndicatorUnit(ind) || '-')}</p>
@@ -650,8 +661,8 @@
               <div class="indicator-col"><b>Meta</b><span>${escapeHtml(ind.META || '-')}</span></div>
               <div class="indicator-col"><b>Último valor</b><span>${escapeHtml(ultimo ? (ultimo.VALOR || '-') : '-')}</span></div>
             </div>
-            <div class="indicator-col"><b>Cobertura mensal</b><span>${filled}/${lans.length} (${coverage}%)</span><div class="coverage"><span style="width:${coverage}%"></span></div></div>
-            <div class="pill-row"><span class="pill ${coverage >= 80 ? 'ok' : coverage >= 50 ? 'warn' : 'bad'}">${coverage >= 80 ? 'Cobertura adequada' : coverage >= 50 ? 'Cobertura parcial' : 'Cobertura crítica'}</span></div>
+            <div class="indicator-col"><b>Miniatura de evolução</b>${sparkline}</div>
+            <div class="pill-row"><span class="pill ${statusCard.className}">${statusCard.label} (${escapeHtml(referenciaStatus?.comp || 'sem competência')})</span></div>
           </article>
         `;
       }).join('');
@@ -795,6 +806,22 @@
     function getVariacaoMensal(hist){ const vals=hist.filter(h=>h.hasData); if(vals.length<2) return 'Sem base comparativa'; const a=vals[vals.length-1].numericValue; const b=vals[vals.length-2].numericValue; const d=a-b; const p=b!==0?((d/Math.abs(b))*100):0; return `${d>=0?'+':''}${d.toFixed(1).replace('.',',')} (${d>=0?'+':''}${p.toFixed(1).replace('.',',')}%)`; }
     function getTendencia(hist){ const vals=hist.filter(h=>h.hasData).map(h=>h.numericValue); if(vals.length<3) return 'Estável'; const d=vals[vals.length-1]-vals[vals.length-3]; if(d>0.5) return 'Melhorando'; if(d<-0.5) return 'Piorando'; return 'Estável'; }
     function getStatusIndicador(item, meta){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return item.numericValue>=meta?{label:'Dentro da meta',className:'ok'}:{label:'Abaixo da meta',className:'bad'}; }
+    function getReferenciaStatus(historico){ const comDados = historico.filter(h => h.hasData); return comDados.length ? comDados[comDados.length - 1] : null; }
+    function buildMiniSparkline(historico, meta){
+      const pontos = historico.filter(h => h.hasData);
+      if (!pontos.length) return '<div class="sparkline"><svg viewBox="0 0 180 36" preserveAspectRatio="none"><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#8da3ba">Sem dados</text></svg></div>';
+      const width = 180, height = 36, pad = 4;
+      const valores = pontos.map(p => p.numericValue);
+      if (Number.isFinite(meta)) valores.push(meta);
+      const min = Math.min(...valores), max = Math.max(...valores), range = max - min || 1;
+      const path = pontos.map((p, i) => {
+        const x = pad + (i * ((width - pad * 2) / Math.max(pontos.length - 1, 1)));
+        const y = height - pad - (((p.numericValue - min) / range) * (height - pad * 2));
+        return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
+      }).join(' ');
+      const metaY = Number.isFinite(meta) ? (height - pad - (((meta - min) / range) * (height - pad * 2))).toFixed(2) : null;
+      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${metaY ? `<line x1="${pad}" y1="${metaY}" x2="${width - pad}" y2="${metaY}" stroke="#b9891d" stroke-width="1.2" stroke-dasharray="4 3"></line>` : ''}<path d="${path}" fill="none" stroke="#2b79c2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>`;
+    }
 
     function abrirEdicaoIndicador(ind) {
       const host = document.getElementById('indicatorEditHost');
