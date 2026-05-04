@@ -190,15 +190,20 @@
     .result-box b { display:block; font-size:11px; color:#4d6c5d; text-transform:uppercase; margin-bottom:4px; }
     .result-box span { font-size:14px; font-weight:700; color:#1d6142; }
     .result-main { font-size:36px !important; letter-spacing:-.04em; }
-    .history-list { border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff; display:grid; gap:8px; }
+     .history-list { border:1px solid var(--line); border-radius:12px; background:#fff; overflow:hidden; }
     .history-chart { border:1px solid var(--line); border-radius:12px; padding:14px; background:#fff; }
-    .history-chart svg { width:100%; height:320px; display:block; }
+    .history-chart svg { width:100%; height:340px; display:block; }
     .history-chart-labels { display:grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
     .btn.icon { display:inline-flex; align-items:center; gap:8px; }
     .btn.icon svg { width:14px; height:14px; }
-    .history-item { display:grid; grid-template-columns: 88px 1fr auto; align-items:center; gap:10px; }
-    .history-bar { height:8px; background:#e6eef8; border-radius:999px; overflow:hidden; }
-    .history-bar span { display:block; height:100%; background:linear-gradient(90deg, #2b79c2, #58a2eb); }
+    .history-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .history-table th, .history-table td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; }
+    .history-table th { background:#f6f9fd; color:#4d6580; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+    .history-table tr.current td { background:#eef6ff; font-weight:600; }
+    .history-status { font-weight:700; }
+    .history-status.ok { color:var(--success); }
+    .history-status.warn { color:var(--warning); }
+    .history-status.bad { color:var(--danger); }
     .state-success { background: var(--success-bg) !important; border-color: #cfeedd !important; color: var(--success) !important; }
     .state-warning { background: var(--warning-bg) !important; border-color: #f3e2b5 !important; color: var(--warning) !important; }
     .state-error { background: var(--danger-bg) !important; border-color: #f3cccc !important; color: var(--danger) !important; }
@@ -662,20 +667,21 @@
 
     function showIndicador(ind) {
       const lans = (state.data.lancamentos || []).filter(l => l.ID_INDICADOR === ind.ID_INDICADOR);
-      const ordem = lans.slice().sort((a, b) => String(a.COMPETENCIA || '').localeCompare(String(b.COMPETENCIA || ''), 'pt-BR'));
-      const preenchidos = ordem.filter(l => String(l.VALOR || '').trim() !== '');
-      const ultimo = preenchidos[preenchidos.length - 1] || ordem[ordem.length - 1] || null;
-      const valorAtual = ultimo ? String(ultimo.VALOR || '-') : '-';
-      const status = valorAtual !== '-' ? 'Dentro da meta' : 'Sem lançamento';
-      const periodo = ultimo ? (ultimo.COMPETENCIA || '-') : '-';
+      const ordem = lans.slice().sort((a, b) => parseCompetencia(a.COMPETENCIA) - parseCompetencia(b.COMPETENCIA));
       const historico = ordem.map(l => {
         const raw = String(l.VALOR || '').trim();
-        const num = Number(raw.replace('%', '').replace(',', '.'));
-        const hasData = raw !== '' && Number.isFinite(num);
-        const pct = hasData ? Math.max(0, Math.min(100, num)) : null;
-        return { comp: l.COMPETENCIA || '-', valor: l.VALOR || '-', pct, hasData };
+        const numericValue = parseNumericValue(raw);
+        return { comp: l.COMPETENCIA || '-', valor: raw || 'Sem registro', numericValue, hasData: Number.isFinite(numericValue), dateKey: parseCompetencia(l.COMPETENCIA) };
       });
-      const svg = buildHistoryChart(historico);
+      const preenchidos = historico.filter(h => h.hasData);
+      const ultimo = preenchidos[preenchidos.length - 1] || historico[historico.length - 1] || null;
+      const valorAtual = ultimo ? ultimo.valor : 'Sem registro';
+      const periodo = ultimo ? (ultimo.comp || '-') : '-';
+      const metaNumerica = parseNumericValue(ind.META || '');
+      const variacao = getVariacaoMensal(historico);
+      const tendencia = getTendencia(historico);
+      const status = getStatusIndicador(ultimo, metaNumerica);
+      const svg = buildHistoryChart(historico, metaNumerica, periodo);
       ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
         <div class="indicator-modal">
           <div class="indicator-head">
@@ -694,14 +700,16 @@
           <h4 class="section-title">Resultado</h4>
           <div class="result-box">
             <div><b>Resultado atual</b><span class="result-main">${escapeHtml(valorAtual)}</span></div>
-            <div><b>Status</b><span>${escapeHtml(status)}</span></div>
+            <div><b>Status</b><span>${escapeHtml(status.label)}</span></div>
             <div><b>Período referência</b><span>${escapeHtml(periodo)}</span></div>
-            <div><b>Meta</b><span>${escapeHtml(ind.META || '-')}</span></div>
+            <div><b>Meta</b><span>${escapeHtml(ind.META || 'Não informada')}</span></div>
+            <div><b>Variação mensal</b><span>${escapeHtml(variacao)}</span></div>
+            <div><b>Tendência</b><span>${escapeHtml(tendencia)}</span></div>
           </div>
           <h4 class="section-title">Série histórica</h4>
           <div class="history-chart">${svg}</div>
           <div class="history-list">
-            ${historico.length ? historico.map(h => `<div class="history-item"><strong>${escapeHtml(h.comp)}</strong><div class="history-bar"><span style="width:${h.pct}%"></span></div><span>${escapeHtml(h.valor)}</span></div>`).join('') : '<div class="empty">Sem histórico disponível.</div>'}
+            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td>${escapeHtml(h.comp)}</td><td>${escapeHtml(h.valor)}</td><td>${escapeHtml(ind.META || 'Não informada')}</td><td><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
@@ -716,26 +724,36 @@
       renderIndicadores();
     }
 
-    function buildHistoryChart(historico) {
-      const pontos = historico.filter(h => h.hasData && Number.isFinite(h.pct));
+    function buildHistoryChart(historico, meta, periodoAtual) {
+      const pontos = historico.filter(h => h.hasData);
       if (!pontos.length) return '<div class="empty">Sem histórico com dados numéricos para exibir.</div>';
-      const w = 1200, h = 320, pX = 34, pY = 30;
-      const step = pontos.length > 1 ? (w - pX * 2) / (pontos.length - 1) : 0;
+      const values = pontos.map(p => p.numericValue);
+      const minV = Math.min(...values, Number.isFinite(meta) ? meta : values[0]);
+      const maxV = Math.max(...values, Number.isFinite(meta) ? meta : values[0]);
+      const pad = Math.max((maxV - minV) * 0.2, 1);
+      const yMin = minV - pad;
+      const yMax = maxV + pad;
+      const w = 1200, h = 340, pX = 70, pY = 28;
       const chartH = h - pY * 2;
-      const mapped = pontos.map((pt, i) => {
-        const x = pX + i * step;
-        const y = h - pY - ((pt.pct / 100) * chartH);
-        return { ...pt, x, y };
-      });
+      const chartW = w - pX * 2;
+      const step = pontos.length > 1 ? chartW / (pontos.length - 1) : 0;
+      const toY = (v) => h - pY - ((v - yMin) / (yMax - yMin || 1)) * chartH;
+      const mapped = pontos.map((pt, i) => ({ ...pt, x: pX + i * step, y: toY(pt.numericValue) }));
       const line = mapped.map(pt => `${pt.x},${pt.y}`).join(' ');
       const area = `${pX},${h - pY} ${line} ${mapped[mapped.length - 1].x},${h - pY}`;
-      const grid = [0, 25, 50, 75, 100].map(v => {
-        const y = h - pY - ((v / 100) * chartH);
-        return `<line x1="${pX}" y1="${y}" x2="${w - pX}" y2="${y}" stroke="#e6eef8" stroke-width="1" stroke-dasharray="4 6"/>`;
-      }).join('');
-      const points = mapped.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="4" fill="#2b79c2" stroke="#fff" stroke-width="2"/>`).join('');
-      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fb6ec" stop-opacity=".45"/><stop offset="100%" stop-color="#7fb6ec" stop-opacity=".05"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h - pY}" x2="${w - pX}" y2="${h - pY}" stroke="#cfdceb" stroke-width="1.2"/><polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="#2b79c2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></polyline>${points}</svg><div class="history-chart-labels">${pontos.map(pt => `<span>${escapeHtml(pt.comp)}: <strong>${escapeHtml(pt.valor)}</strong></span>`).join('')}</div>`;
+      const ticks = 5;
+      let grid = '';
+      for (let i=0;i<ticks;i++) { const ratio=i/(ticks-1); const v = yMin + (yMax-yMin)*(1-ratio); const y = pY + chartH*ratio; grid += `<line x1="${pX}" y1="${y}" x2="${w-pX}" y2="${y}" stroke="#e6eef8" stroke-width="1"/><text x="${pX-10}" y="${y+4}" text-anchor="end" font-size="11" fill="#6d8199">${v.toFixed(1).replace('.',',')}</text>`; }
+      const metaLine = Number.isFinite(meta) ? `<line x1="${pX}" y1="${toY(meta)}" x2="${w-pX}" y2="${toY(meta)}" stroke="#b9891d" stroke-width="2" stroke-dasharray="6 6"/><text x="${w-pX}" y="${toY(meta)-6}" text-anchor="end" font-size="11" fill="#b9891d">Meta ${String(meta).replace('.',',')}</text>` : '';
+      const points = mapped.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="5" fill="${pt.comp===periodoAtual?'#1f6fbd':'#2b79c2'}" stroke="#fff" stroke-width="2"><title>${escapeHtml(pt.comp)}: ${escapeHtml(pt.valor)}</title></circle><text x="${pt.x}" y="${pt.y-10}" text-anchor="middle" font-size="11" fill="#294866">${escapeHtml(pt.valor)}</text><text x="${pt.x}" y="${h-pY+16}" text-anchor="middle" font-size="11" fill="#6d8199">${escapeHtml(pt.comp)}</text>`).join('');
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fb6ec" stop-opacity=".32"/><stop offset="100%" stop-color="#7fb6ec" stop-opacity=".04"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h-pY}" x2="${w-pX}" y2="${h-pY}" stroke="#cfdceb" stroke-width="1.2"/>${metaLine}<polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="#2b79c2" stroke-width="3" stroke-linecap="round"/>${points}</svg>`;
     }
+
+    function parseNumericValue(raw) { const txt=String(raw||'').trim(); if(!txt) return null; const n=Number(txt.replace(/%/g,'').replace('.', '').replace(',', '.')); return Number.isFinite(n)?n:null; }
+    function parseCompetencia(comp) { const txt = String(comp || '').toLowerCase().trim(); const m={jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11}; const mm=txt.match(/(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[\.\-/ ]*(\d{2,4})/); if(mm){const y=Number(mm[2].length===2?'20'+mm[2]:mm[2]); return new Date(y,m[mm[1]],1).getTime();} const iso=Date.parse(txt); return Number.isFinite(iso)?iso:0; }
+    function getVariacaoMensal(hist){ const vals=hist.filter(h=>h.hasData); if(vals.length<2) return 'Sem base comparativa'; const a=vals[vals.length-1].numericValue; const b=vals[vals.length-2].numericValue; const d=a-b; const p=b!==0?((d/Math.abs(b))*100):0; return `${d>=0?'+':''}${d.toFixed(1).replace('.',',')} (${d>=0?'+':''}${p.toFixed(1).replace('.',',')}%)`; }
+    function getTendencia(hist){ const vals=hist.filter(h=>h.hasData).map(h=>h.numericValue); if(vals.length<3) return 'Estável'; const d=vals[vals.length-1]-vals[vals.length-3]; if(d>0.5) return 'Melhorando'; if(d<-0.5) return 'Piorando'; return 'Estável'; }
+    function getStatusIndicador(item, meta){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return item.numericValue>=meta?{label:'Dentro da meta',className:'ok'}:{label:'Abaixo da meta',className:'bad'}; }
 
     function editarIndicador(ind) {
       const NOME_INDICADOR = prompt('Nome do indicador:', ind.NOME_INDICADOR || '');
