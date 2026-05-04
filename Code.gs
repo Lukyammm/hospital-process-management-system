@@ -63,6 +63,26 @@ function salvarUsuario(payload) {
   return app.admin.salvarUsuario(payload);
 }
 
+function excluirUsuario(email) {
+  const app = new SigepApplication();
+  return app.admin.excluirUsuario(email);
+}
+
+function alterarSenhaUsuario(payload) {
+  const app = new SigepApplication();
+  return app.admin.alterarSenhaUsuario(payload);
+}
+
+function salvarSetor(payload) {
+  const app = new SigepApplication();
+  return app.admin.salvarSetor(payload);
+}
+
+function excluirSetor(setorId) {
+  const app = new SigepApplication();
+  return app.admin.excluirSetor(setorId);
+}
+
 class SigepApplication {
   constructor() {
     this.repo = new SheetRepository();
@@ -137,6 +157,22 @@ class SheetRepository {
 
   append(sheetName, row) {
     this.getSheet(sheetName).appendRow(row);
+  }
+
+  getHeaders(sheetName) {
+    return this.getSheet(sheetName).getDataRange().getValues()[0] || [];
+  }
+
+  deleteById(sheetName, idColumn, id) {
+    const sh = this.getSheet(sheetName);
+    const values = sh.getDataRange().getValues();
+    const headers = values[0];
+    const idIndex = headers.indexOf(idColumn);
+    if (idIndex === -1) throw new Error('Coluna ID não encontrada: ' + idColumn);
+    const rowIndex = values.findIndex((row, i) => i > 0 && String(row[idIndex]) === String(id));
+    if (rowIndex === -1) throw new Error('Registro não encontrado: ' + id);
+    sh.deleteRow(rowIndex + 1);
+    return { ok: true };
   }
 }
 
@@ -274,13 +310,70 @@ class AdminService {
   }
 
   getAdminData() {
+    const usuarios = this.repo.getObjects(SIGEP.sheets.usuarios);
+    const unidades = this.repo.getObjects(SIGEP.sheets.unidades);
     return {
       ok: true,
-      usuarios: this.repo.getObjects(SIGEP.sheets.usuarios),
+      usuarios,
       status: this.repo.getObjects('CONFIG_STATUS'),
       tiposProcesso: this.repo.getObjects('CONFIG_TIPOS_PROCESSO'),
-      unidades: this.repo.getObjects(SIGEP.sheets.unidades)
+      unidades,
+      setores: unidades.map(x => ({
+        ID_SETOR: x.ID_SETOR || x.ID_UNIDADE || x.UNIDADE,
+        NOME_SETOR: x.NOME_SETOR || x.UNIDADE || '',
+        SIGLA: x.SIGLA || ''
+      }))
     };
+  }
+
+  salvarUsuario(payload) {
+    if (!payload || !payload.EMAIL) throw new Error('EMAIL obrigatório.');
+    const patch = {
+      EMAIL: String(payload.EMAIL || '').trim().toLowerCase(),
+      NOME: payload.NOME || '',
+      PERFIL: payload.PERFIL || 'LEITOR',
+      UNIDADE: payload.UNIDADE || '',
+      ATIVO: payload.ATIVO || 'SIM'
+    };
+    const users = this.repo.getObjects(SIGEP.sheets.usuarios);
+    const exists = users.find(u => String(u.EMAIL).toLowerCase() === patch.EMAIL);
+    let data;
+    if (exists) {
+      data = this.repo.updateById(SIGEP.sheets.usuarios, 'EMAIL', patch.EMAIL, patch);
+      this.audit.log('ATUALIZAR_USUARIO', 'USUARIOS', patch.EMAIL, JSON.stringify(patch));
+    } else {
+      const headers = this.repo.getHeaders(SIGEP.sheets.usuarios);
+      const row = headers.map(h => patch[h] || '');
+      this.repo.append(SIGEP.sheets.usuarios, row);
+      data = patch;
+      this.audit.log('CRIAR_USUARIO', 'USUARIOS', patch.EMAIL, JSON.stringify(patch));
+    }
+    return { ok: true, data };
+  }
+
+  excluirUsuario(email) {
+    if (!email) throw new Error('Email obrigatório para exclusão.');
+    this.repo.deleteById(SIGEP.sheets.usuarios, 'EMAIL', String(email).toLowerCase());
+    this.audit.log('EXCLUIR_USUARIO', 'USUARIOS', email, 'Exclusão de usuário');
+    return { ok: true };
+  }
+
+  alterarSenhaUsuario(payload) {
+    if (!payload || !payload.EMAIL || !payload.NOVA_SENHA) throw new Error('EMAIL e NOVA_SENHA são obrigatórios.');
+    const updated = this.repo.updateById(SIGEP.sheets.usuarios, 'EMAIL', String(payload.EMAIL).toLowerCase(), { SENHA_TEMPORARIA: payload.NOVA_SENHA });
+    this.audit.log('ALTERAR_SENHA_USUARIO', 'USUARIOS', payload.EMAIL, 'Senha alterada');
+    return { ok: true, data: updated };
+  }
+
+  salvarSetor(payload) {
+    return this.salvarConfiguracao({ sheetName: SIGEP.sheets.unidades, data: payload, idColumn: payload.idColumn || 'ID_UNIDADE' });
+  }
+
+  excluirSetor(setorId) {
+    if (!setorId) throw new Error('ID do setor é obrigatório.');
+    this.repo.deleteById(SIGEP.sheets.unidades, 'ID_UNIDADE', setorId);
+    this.audit.log('EXCLUIR_SETOR', SIGEP.sheets.unidades, setorId, 'Exclusão de setor');
+    return { ok: true };
   }
 
   salvarConfiguracao(payload) {
@@ -300,7 +393,7 @@ class AdminService {
       registro = this.repo.updateById(payload.sheetName, idColumn, idValue, payload.data);
       this.audit.log('ATUALIZAR_CONFIG', payload.sheetName, idValue, JSON.stringify(payload.data));
     } else {
-      const headers = this.repo.getSheet(payload.sheetName).getDataRange().getValues()[0];
+      const headers = this.repo.getHeaders(payload.sheetName);
       const row = headers.map(h => payload.data[h] || '');
       this.repo.append(payload.sheetName, row);
       registro = payload.data;
@@ -308,29 +401,6 @@ class AdminService {
     }
 
     return { ok: true, data: registro };
-  }
-
-  salvarUsuario(payload) {
-    if (!payload || !payload.EMAIL) throw new Error('EMAIL obrigatório.');
-    const patch = {
-      EMAIL: String(payload.EMAIL || '').trim().toLowerCase(),
-      NOME: payload.NOME || '',
-      PERFIL: payload.PERFIL || 'LEITOR',
-      UNIDADE: payload.UNIDADE || '',
-      ATIVO: payload.ATIVO || 'SIM'
-    };
-    const users = this.repo.getObjects(SIGEP.sheets.usuarios);
-    const exists = users.find(u => String(u.EMAIL).toLowerCase() === patch.EMAIL);
-    let data;
-    if (exists) {
-      data = this.repo.updateById(SIGEP.sheets.usuarios, 'EMAIL', patch.EMAIL, patch);
-      this.audit.log('ATUALIZAR_USUARIO', 'USUARIOS', patch.EMAIL, JSON.stringify(patch));
-    } else {
-      this.repo.append(SIGEP.sheets.usuarios, [patch.EMAIL, patch.NOME, patch.PERFIL, patch.UNIDADE, patch.ATIVO]);
-      data = patch;
-      this.audit.log('CRIAR_USUARIO', 'USUARIOS', patch.EMAIL, JSON.stringify(patch));
-    }
-    return { ok: true, data };
   }
 }
 
