@@ -770,9 +770,11 @@
       const w = 1200, h = 340, pX = 120, pY = 30;
       const chartH = h - pY * 2;
       const chartW = w - pX * 2;
-      const step = pontos.length > 1 ? chartW / (pontos.length - 1) : 0;
+      const edgeInset = pontos.length > 1 ? Math.min(40, chartW * 0.05) : chartW / 2;
+      const usableW = pontos.length > 1 ? chartW - edgeInset * 2 : 0;
+      const step = pontos.length > 1 ? usableW / (pontos.length - 1) : 0;
       const toY = (v) => h - pY - ((v - yMin) / (yMax - yMin || 1)) * chartH;
-      const mapped = pontos.map((pt, i) => ({ ...pt, x: pX + i * step, y: toY(pt.numericValue) }));
+      const mapped = pontos.map((pt, i) => ({ ...pt, x: pX + edgeInset + i * step, y: toY(pt.numericValue) }));
       const line = mapped.map(pt => `${pt.x},${pt.y}`).join(' ');
       const area = `${pX},${h - pY} ${line} ${mapped[mapped.length - 1].x},${h - pY}`;
       const ticks = 5;
