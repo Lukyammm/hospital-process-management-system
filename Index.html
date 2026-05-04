@@ -336,7 +336,10 @@
             <div><h3>Processos</h3><span>Modelagem, validação e publicação</span></div>
             <div class="filters"><select id="filtroTipoProcesso"><option value="">Todos os tipos</option></select></div>
           </div>
-          <div class="content-pad"><div class="process-grid" id="processGrid"></div></div>
+          <div class="content-pad">
+            <div id="processSummary" class="indicator-summary"></div>
+            <div class="process-grid" id="processGrid"></div>
+          </div>
         </div>
       </section>
 
@@ -650,18 +653,12 @@
         const lans = byInd.get(ind.ID_INDICADOR) || [];
         return lans.some(l => String(l.VALOR || '').trim() !== '');
       }).length;
-      const modelagens = (state.data.processos || []).filter(p => String(p.MODELAGEM_REALIZADA || '').trim().toUpperCase() === 'SIM');
-      const taxaModelagemFinalizada = (state.data.processos || []).length ? Math.round((modelagens.length / (state.data.processos || []).length) * 100) : 0;
-      const validacaoNugesp = modelagens.filter(p => String(p.VALIDACAO_NUGESP || '').trim().toUpperCase() === 'SIM').length;
-      const validacaoDirecao = modelagens.filter(p => String(p.VALIDACAO_DIRECAO || '').trim().toUpperCase() === 'SIM').length;
       const pendentes = Math.max(total - preenchidos, 0);
       document.getElementById('indicatorSummary').innerHTML = `
         <div class="summary-card"><b>Total de indicadores</b><strong>${total}</strong><span>Registros após filtros e pesquisa</span></div>
         <div class="summary-card"><b>Com lançamento</b><strong>${preenchidos}</strong><span>Indicadores com algum valor preenchido</span></div>
-        <div class="summary-card"><b>Taxa de modelagens finalizadas</b><strong>${taxaModelagemFinalizada}%</strong><span>${modelagens.length} de ${(state.data.processos || []).length} processos com MODELAGEM_REALIZADA = SIM</span></div>
-        <div class="summary-card"><b>Validações do fluxo</b><strong>${validacaoNugesp + validacaoDirecao}</strong><span>NUGESP: ${validacaoNugesp} · Direção: ${validacaoDirecao} · Pendentes: ${pendentes}</span></div>
       `;
-      document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · ${pendentes} sem lançamento${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''} · NUGESP ${validacaoNugesp}/${modelagens.length || 0} · Direção ${validacaoDirecao}/${modelagens.length || 0}</p>`;
+      document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · ${pendentes} sem lançamento${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''}</p>`;
 
       if (state.processoIndicadorSelecionado) rows = rows.filter(x => x.PROCESSO === state.processoIndicadorSelecionado);
       const html = rows.map(ind => {
