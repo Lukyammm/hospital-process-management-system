@@ -47,6 +47,22 @@ function atualizarIndicador(payload) {
   return app.indicadores.update(payload);
 }
 
+
+function getAdminData() {
+  const app = new SigepApplication();
+  return app.admin.getAdminData();
+}
+
+function salvarConfiguracao(payload) {
+  const app = new SigepApplication();
+  return app.admin.salvarConfiguracao(payload);
+}
+
+function salvarUsuario(payload) {
+  const app = new SigepApplication();
+  return app.admin.salvarUsuario(payload);
+}
+
 class SigepApplication {
   constructor() {
     this.repo = new SheetRepository();
@@ -55,6 +71,7 @@ class SigepApplication {
     this.acompanhamento = new AcompanhamentoService(this.repo, this.audit);
     this.indicadores = new IndicadorService(this.repo, this.audit);
     this.dashboard = new DashboardService();
+    this.admin = new AdminService(this.repo, this.audit);
   }
 
   getInitialData() {
@@ -246,6 +263,74 @@ class DashboardService {
 
   norm(v) {
     return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  }
+}
+
+
+class AdminService {
+  constructor(repo, audit) {
+    this.repo = repo;
+    this.audit = audit;
+  }
+
+  getAdminData() {
+    return {
+      ok: true,
+      usuarios: this.repo.getObjects(SIGEP.sheets.usuarios),
+      status: this.repo.getObjects('CONFIG_STATUS'),
+      tiposProcesso: this.repo.getObjects('CONFIG_TIPOS_PROCESSO'),
+      unidades: this.repo.getObjects(SIGEP.sheets.unidades)
+    };
+  }
+
+  salvarConfiguracao(payload) {
+    if (!payload || !payload.sheetName || !payload.data) throw new Error('Payload inválido para configuração.');
+    const allowedSheets = ['CONFIG_STATUS', 'CONFIG_TIPOS_PROCESSO', 'BASE_UNIDADES'];
+    if (!allowedSheets.includes(payload.sheetName)) throw new Error('Aba não permitida para alteração.');
+
+    const idColumn = payload.idColumn || Object.keys(payload.data)[0];
+    const idValue = payload.data[idColumn];
+    if (!idValue) throw new Error('Identificador é obrigatório.');
+
+    const objects = this.repo.getObjects(payload.sheetName);
+    const found = objects.find(x => String(x[idColumn]) === String(idValue));
+
+    let registro;
+    if (found) {
+      registro = this.repo.updateById(payload.sheetName, idColumn, idValue, payload.data);
+      this.audit.log('ATUALIZAR_CONFIG', payload.sheetName, idValue, JSON.stringify(payload.data));
+    } else {
+      const headers = this.repo.getSheet(payload.sheetName).getDataRange().getValues()[0];
+      const row = headers.map(h => payload.data[h] || '');
+      this.repo.append(payload.sheetName, row);
+      registro = payload.data;
+      this.audit.log('CRIAR_CONFIG', payload.sheetName, idValue, JSON.stringify(payload.data));
+    }
+
+    return { ok: true, data: registro };
+  }
+
+  salvarUsuario(payload) {
+    if (!payload || !payload.EMAIL) throw new Error('EMAIL obrigatório.');
+    const patch = {
+      EMAIL: String(payload.EMAIL || '').trim().toLowerCase(),
+      NOME: payload.NOME || '',
+      PERFIL: payload.PERFIL || 'LEITOR',
+      UNIDADE: payload.UNIDADE || '',
+      ATIVO: payload.ATIVO || 'SIM'
+    };
+    const users = this.repo.getObjects(SIGEP.sheets.usuarios);
+    const exists = users.find(u => String(u.EMAIL).toLowerCase() === patch.EMAIL);
+    let data;
+    if (exists) {
+      data = this.repo.updateById(SIGEP.sheets.usuarios, 'EMAIL', patch.EMAIL, patch);
+      this.audit.log('ATUALIZAR_USUARIO', 'USUARIOS', patch.EMAIL, JSON.stringify(patch));
+    } else {
+      this.repo.append(SIGEP.sheets.usuarios, [patch.EMAIL, patch.NOME, patch.PERFIL, patch.UNIDADE, patch.ATIVO]);
+      data = patch;
+      this.audit.log('CRIAR_USUARIO', 'USUARIOS', patch.EMAIL, JSON.stringify(patch));
+    }
+    return { ok: true, data };
   }
 }
 
