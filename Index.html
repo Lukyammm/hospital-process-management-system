@@ -132,7 +132,7 @@
 
     .drawer { position: fixed; inset: 0; background: rgba(14, 31, 53, .42); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 30; }
     .drawer.active { display: flex; }
-    .drawer-card { width: min(1180px, 100%); max-height: min(92vh, 980px); overflow: hidden; background: #fff; border-radius: 22px; border: 1px solid var(--line); box-shadow: var(--shadow-md); padding: 22px; }
+    .drawer-card { width: min(1680px, calc(100vw - 32px)); max-height: min(95vh, 1100px); overflow: hidden; background: #fff; border-radius: 22px; border: 1px solid var(--line); box-shadow: var(--shadow-md); padding: 22px; }
     .drawer-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin: -22px -22px 16px; padding: 16px 22px 14px; background: #fff; border-bottom: 1px solid var(--line); }
     .drawer-head h3 { margin: 0; font-size: 22px; letter-spacing: -.02em; color: var(--ink); }
     #drawerSubtitle { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
@@ -192,7 +192,7 @@
     .result-main { font-size:36px !important; letter-spacing:-.04em; }
     .history-list { border:1px solid var(--line); border-radius:12px; padding:12px; background:#fff; display:grid; gap:8px; }
     .history-chart { border:1px solid var(--line); border-radius:12px; padding:14px; background:#fff; }
-    .history-chart svg { width:100%; height:260px; display:block; }
+    .history-chart svg { width:100%; height:320px; display:block; }
     .history-chart-labels { display:grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
     .btn.icon { display:inline-flex; align-items:center; gap:8px; }
     .btn.icon svg { width:14px; height:14px; }
@@ -669,9 +669,11 @@
       const status = valorAtual !== '-' ? 'Dentro da meta' : 'Sem lançamento';
       const periodo = ultimo ? (ultimo.COMPETENCIA || '-') : '-';
       const historico = ordem.map(l => {
-        const num = Number(String(l.VALOR || '').replace('%', '').replace(',', '.'));
-        const pct = Number.isFinite(num) ? Math.max(0, Math.min(100, num)) : 0;
-        return { comp: l.COMPETENCIA || '-', valor: l.VALOR || '-', pct };
+        const raw = String(l.VALOR || '').trim();
+        const num = Number(raw.replace('%', '').replace(',', '.'));
+        const hasData = raw !== '' && Number.isFinite(num);
+        const pct = hasData ? Math.max(0, Math.min(100, num)) : null;
+        return { comp: l.COMPETENCIA || '-', valor: l.VALOR || '-', pct, hasData };
       });
       const svg = buildHistoryChart(historico);
       ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
@@ -715,16 +717,24 @@
     }
 
     function buildHistoryChart(historico) {
-      const pontos = historico.filter(h => Number.isFinite(h.pct));
-      if (!pontos.length) return '<div class="empty">Sem histórico disponível.</div>';
-      const w = 1000, h = 260, p = 28;
-      const step = pontos.length > 1 ? (w - p * 2) / (pontos.length - 1) : 0;
-      const pts = pontos.map((pt, i) => {
-        const x = p + i * step;
-        const y = h - p - ((pt.pct / 100) * (h - p * 2));
-        return `${x},${y}`;
-      }).join(' ');
-      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="${p}" y1="${h - p}" x2="${w - p}" y2="${h - p}" stroke="#dbe6f2" stroke-width="1" /><polyline points="${pts}" fill="none" stroke="#2b79c2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline></svg><div class="history-chart-labels">${pontos.map(pt => `<span>${escapeHtml(pt.comp)}: <strong>${escapeHtml(pt.valor)}</strong></span>`).join('')}</div>`;
+      const pontos = historico.filter(h => h.hasData && Number.isFinite(h.pct));
+      if (!pontos.length) return '<div class="empty">Sem histórico com dados numéricos para exibir.</div>';
+      const w = 1200, h = 320, pX = 34, pY = 30;
+      const step = pontos.length > 1 ? (w - pX * 2) / (pontos.length - 1) : 0;
+      const chartH = h - pY * 2;
+      const mapped = pontos.map((pt, i) => {
+        const x = pX + i * step;
+        const y = h - pY - ((pt.pct / 100) * chartH);
+        return { ...pt, x, y };
+      });
+      const line = mapped.map(pt => `${pt.x},${pt.y}`).join(' ');
+      const area = `${pX},${h - pY} ${line} ${mapped[mapped.length - 1].x},${h - pY}`;
+      const grid = [0, 25, 50, 75, 100].map(v => {
+        const y = h - pY - ((v / 100) * chartH);
+        return `<line x1="${pX}" y1="${y}" x2="${w - pX}" y2="${y}" stroke="#e6eef8" stroke-width="1" stroke-dasharray="4 6"/>`;
+      }).join('');
+      const points = mapped.map(pt => `<circle cx="${pt.x}" cy="${pt.y}" r="4" fill="#2b79c2" stroke="#fff" stroke-width="2"/>`).join('');
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7fb6ec" stop-opacity=".45"/><stop offset="100%" stop-color="#7fb6ec" stop-opacity=".05"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h - pY}" x2="${w - pX}" y2="${h - pY}" stroke="#cfdceb" stroke-width="1.2"/><polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="#2b79c2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></polyline>${points}</svg><div class="history-chart-labels">${pontos.map(pt => `<span>${escapeHtml(pt.comp)}: <strong>${escapeHtml(pt.valor)}</strong></span>`).join('')}</div>`;
     }
 
     function editarIndicador(ind) {
