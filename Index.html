@@ -46,7 +46,8 @@
       border-right: 1px solid var(--line); color: var(--text);
     }
     .brand { display: flex; gap: 12px; align-items: center; padding: 12px 10px 22px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-    .mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: var(--primary-2); border: 1px solid var(--primary-3); color: var(--primary); }
+    .mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: var(--primary-2); border: 1px solid var(--primary-3); color: var(--primary); overflow: hidden; }
+    .mark img { width: 100%; height: 100%; object-fit: contain; }
     .brand h1 { margin: 0; font-size: 18px; line-height: 1.05; color: var(--ink); }
     .brand span { color: var(--muted); font-size: 12px; }
     .nav { display: grid; gap: 8px; }
@@ -259,7 +260,7 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" stroke="currentColor" stroke-width="1.8"/><path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <div class="mark" aria-hidden="true"><img src="https://i.ibb.co/tTGkBCXj/oie-transparent.png" alt="Logo do sistema"></div>
         <div><h1>SIGEP-HUC</h1><span>Gestão de processos e indicadores</span></div>
       </div>
       <nav class="nav">
@@ -269,7 +270,6 @@
         <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
         <button data-view="admin"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.5 4.8.7-3.5 3.4.8 4.8L12 14.8 7.7 16.4l.8-4.8L5 8.2l4.8-.7L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>Administração</button>
       </nav>
-      <div class="sidebar-note">Base estruturada para o usuário trabalhar pelo sistema. A planilha fica como banco de dados.</div>
     </aside>
 
     <main class="main">
@@ -292,7 +292,6 @@
         <div class="hero">
           <div>
             <h3>Central de gestão do SIGEP-HUC</h3>
-            <p>O acompanhamento respeita a planilha original: cada data de uma unidade vira uma linha própria na base, mantendo os status herdados das células mescladas.</p>
           </div>
           <div class="hero-panel">
             <div class="progress-line"><span>Progresso médio das etapas</span><strong id="heroProgressText">0%</strong></div>
