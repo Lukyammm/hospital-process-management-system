@@ -258,6 +258,30 @@
       gap: 14px;
     }
 
+    .indicator-board { display: grid; gap: 14px; }
+    .sector-group {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #f7fbf9 0%, #fff 100%);
+      padding: 14px;
+    }
+    .sector-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .sector-head h4 { margin: 0; font-size: 16px; }
+    .type-group { margin-top: 10px; }
+    .type-group h5 {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
     .card {
       border: 1px solid var(--line);
       background: #fff;
@@ -747,29 +771,49 @@
       let rows = state.data.indicadores || [];
       rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO']);
       if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
+
       const lancamentos = state.data.lancamentos || [];
       const byInd = new Map();
       lancamentos.forEach(l => {
         if (!byInd.has(l.ID_INDICADOR)) byInd.set(l.ID_INDICADOR, []);
         byInd.get(l.ID_INDICADOR).push(l);
       });
-      const html = rows.map(ind => {
-        const lans = byInd.get(ind.ID_INDICADOR) || [];
-        const filled = lans.filter(l => String(l.VALOR || '').trim() !== '').length;
-        return `
-          <article class="card" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
-            <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
-            <p>${escapeHtml(ind.PROCESSO || '')}</p>
-            <div class="pill-row">
-              <span class="pill">${escapeHtml(ind.CATEGORIA || '')}</span>
-              <span class="pill purple">${escapeHtml(ind.TIPO_INDICADOR || 'Sem tipo')}</span>
-              <span class="pill warn">Meta: ${escapeHtml(ind.META || '-')}</span>
-              <span class="pill ok">${filled}/${lans.length} competências</span>
-            </div>
-          </article>
-        `;
+
+      const groups = new Map();
+      rows.forEach(ind => {
+        const setor = ind.SETOR || ind.UNIDADE || ind.CATEGORIA || 'Sem setor';
+        const tipo = ind.TIPO_PROCESSO || ind.TIPO || ind.CLASSIFICACAO || 'Sem classificação';
+        if (!groups.has(setor)) groups.set(setor, new Map());
+        if (!groups.get(setor).has(tipo)) groups.get(setor).set(tipo, []);
+        groups.get(setor).get(tipo).push(ind);
+      });
+
+      const html = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([setor, tipos]) => {
+        const totalSetor = Array.from(tipos.values()).reduce((acc, cur) => acc + cur.length, 0);
+        const tiposHtml = Array.from(tipos.entries()).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([tipo, inds]) => {
+          const cards = inds.map(ind => {
+            const lans = byInd.get(ind.ID_INDICADOR) || [];
+            const filled = lans.filter(l => String(l.VALOR || '').trim() !== '').length;
+            return `
+              <article class="card" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+                <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
+                <p>${escapeHtml(ind.PROCESSO || '')}</p>
+                <div class="pill-row">
+                  <span class="pill">${escapeHtml(ind.CATEGORIA || '')}</span>
+                  <span class="pill purple">${escapeHtml(ind.TIPO_INDICADOR || 'Sem tipo')}</span>
+                  <span class="pill warn">Meta: ${escapeHtml(ind.META || '-')}</span>
+                  <span class="pill ok">${filled}/${lans.length} competências</span>
+                </div>
+              </article>
+            `;
+          }).join('');
+          return `<div class="type-group"><h5>${escapeHtml(tipo)}</h5><div class="indicator-grid">${cards}</div></div>`;
+        }).join('');
+
+        return `<section class="sector-group"><div class="sector-head"><h4>${escapeHtml(setor)}</h4><span class="pill ok">${totalSetor} indicador(es)</span></div>${tiposHtml}</section>`;
       }).join('');
-      document.getElementById('indicatorGrid').innerHTML = html || '<div class="empty">Nenhum indicador encontrado.</div>';
+
+      document.getElementById('indicatorGrid').innerHTML = html ? `<div class="indicator-board">${html}</div>` : '<div class="empty">Nenhum indicador encontrado.</div>';
     }
 
     function showProcesso(p) {
