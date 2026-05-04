@@ -425,6 +425,7 @@
         <button data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
         <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Processos</button>
         <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
+        <button data-view="admin"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.5 4.8.7-3.5 3.4.8 4.8L12 14.8 7.7 16.4l.8-4.8L5 8.2l4.8-.7L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>Administração</button>
       </nav>
       <div class="sidebar-note">Base estruturada para o usuário trabalhar pelo sistema. A planilha fica como banco de dados.</div>
     </aside>
@@ -519,7 +520,8 @@
       search: '',
       filtroStatusAcomp: '',
       filtroTipoProcesso: '',
-      filtroCategoriaIndicador: ''
+      filtroCategoriaIndicador: '',
+      adminData: null
     };
 
     const ui = {
@@ -549,7 +551,8 @@
           dashboard: ['Dashboard executivo', 'Visão consolidada de processos, acompanhamento e indicadores.'],
           acompanhamento: ['Acompanhamento', 'Unidades, datas de agenda e evolução das etapas.'],
           processos: ['Processos', 'Modelagem, revisão, validação e publicação.'],
-          indicadores: ['Indicadores', 'Carteira de indicadores e competências mensais.']
+          indicadores: ['Indicadores', 'Carteira de indicadores e competências mensais.'],
+          admin: ['Administração', 'Usuários, permissões e configurações de apoio.']
         };
         document.getElementById('pageTitle').textContent = titles[view][0];
         document.getElementById('pageSubtitle').textContent = titles[view][1];
@@ -582,7 +585,7 @@
     }
 
     function setLoading() {
-      ['kpis', 'dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid'].forEach(id => {
+      ['kpis', 'dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid', 'adminGrid'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '<div class="loading">Carregando dados do SIGEP-HUC...</div>';
       });
@@ -608,6 +611,7 @@
       renderAcompanhamento();
       renderProcessos();
       renderIndicadores();
+      renderAdmin();
     }
 
     function renderDashboard() {
@@ -789,6 +793,51 @@
       return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     }
 
+
+
+    function loadAdminData() {
+      google.script.run
+        .withSuccessHandler(payload => {
+          state.adminData = payload;
+          renderAdmin();
+        })
+        .withFailureHandler(err => alert('Erro ao carregar administração: ' + (err.message || err)))
+        .getAdminData();
+    }
+
+    function renderAdmin() {
+      const el = document.getElementById('adminGrid');
+      if (!el) return;
+      const a = state.adminData;
+      if (!a) {
+        el.innerHTML = '<div class="empty">Clique em "Atualizar administração" para carregar usuários e configurações.</div>';
+        return;
+      }
+      el.innerHTML = `
+        <article class="card" onclick="showAdminUsers()"><h4>Usuários</h4><p>${(a.usuarios||[]).length} cadastrados</p></article>
+        <article class="card" onclick="showAdminStatus()"><h4>Status</h4><p>${(a.status||[]).length} opções configuradas</p></article>
+        <article class="card" onclick="showAdminTipos()"><h4>Tipos de processo</h4><p>${(a.tiposProcesso||[]).length} tipos ativos</p></article>
+      `;
+    }
+
+    function showAdminUsers() {
+      const users = (state.adminData && state.adminData.usuarios) || [];
+      ui.openDrawer('Usuários do sistema', 'Cadastro e edição para perfis administrativos.', `
+        <div class="steps">${users.map(u => `<div class="step"><b>${escapeHtml(u.EMAIL)}</b><span>${escapeHtml((u.NOME||'-') + ' · ' + (u.PERFIL||'-') + ' · ' + (u.ATIVO||'-'))}</span></div>`).join('')}</div>
+      `);
+    }
+    function showAdminStatus() {
+      const rows = (state.adminData && state.adminData.status) || [];
+      ui.openDrawer('Configuração de status', 'Status disponíveis para operação.', `
+        <div class="steps">${rows.map(r => `<div class="step"><b>${escapeHtml(r.STATUS||'-')}</b><span>${escapeHtml((r.TIPO||'-') + ' · ordem ' + (r.ORDEM||'-'))}</span></div>`).join('')}</div>
+      `);
+    }
+    function showAdminTipos() {
+      const rows = (state.adminData && state.adminData.tiposProcesso) || [];
+      ui.openDrawer('Tipos de processo', 'Lista de tipos para processos.', `
+        <div class="steps">${rows.map(r => `<div class="step"><b>${escapeHtml(r.TIPO_PROCESSO||'-')}</b><span>${escapeHtml(r.DESCRICAO||'-')}</span></div>`).join('')}</div>
+      `);
+    }
     window.ui = ui;
     ui.init();
   </script>
