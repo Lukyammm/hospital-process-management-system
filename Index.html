@@ -323,7 +323,10 @@
             <div><h3>Processos</h3><span>Modelagem, validação e publicação</span></div>
             <div class="filters"><select id="filtroTipoProcesso"><option value="">Todos os tipos</option></select></div>
           </div>
-          <div class="content-pad"><div class="process-grid" id="processGrid"></div></div>
+          <div class="content-pad">
+            <div id="processSummary" class="indicator-summary"></div>
+            <div class="process-grid" id="processGrid"></div>
+          </div>
         </div>
       </section>
 
@@ -349,8 +352,7 @@
               </div>
             </aside>
             <div class="indicator-main-area">
-              <div id="indicatorSummary" class="indicator-summary"></div>
-              <div id="indicatorContext" class="indicator-context"></div>
+                            <div id="indicatorContext" class="indicator-context"></div>
               <div id="indicatorProcessTabs" class="pill-row indicator-process-tabs"></div>
               <div id="indicatorGrid" class="indicator-list"></div>
             </div>
@@ -629,7 +631,7 @@
       const validacaoNugesp = modelagens.filter(p => String(p.VALIDACAO_NUGESP || '').trim().toUpperCase() === 'SIM').length;
       const validacaoDirecao = modelagens.filter(p => String(p.VALIDACAO_DIRECAO || '').trim().toUpperCase() === 'SIM').length;
       const pendentes = Math.max(total - preenchidos, 0);
-      document.getElementById('indicatorSummary').innerHTML = `
+      document.getElementById('processSummary').innerHTML = `
         <div class="summary-card"><b>Total de indicadores</b><strong>${total}</strong><span>Registros após filtros e pesquisa</span></div>
         <div class="summary-card"><b>Com lançamento</b><strong>${preenchidos}</strong><span>Indicadores com algum valor preenchido</span></div>
         <div class="summary-card"><b>Taxa de modelagens finalizadas</b><strong>${taxaModelagemFinalizada}%</strong><span>${modelagens.length} de ${(state.data.processos || []).length} processos com MODELAGEM_REALIZADA = SIM</span></div>
