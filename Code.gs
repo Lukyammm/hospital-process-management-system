@@ -33,18 +33,24 @@ function getSigepData() {
 }
 
 function atualizarStatusAcompanhamento(payload) {
-  const app = new SigepApplication();
-  return app.acompanhamento.updateStatus(payload);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.acompanhamento.updateStatus(payload);
+  });
 }
 
 function atualizarProcesso(payload) {
-  const app = new SigepApplication();
-  return app.processos.update(payload);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.processos.update(payload);
+  });
 }
 
 function atualizarIndicador(payload) {
-  const app = new SigepApplication();
-  return app.indicadores.update(payload);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.indicadores.update(payload);
+  });
 }
 
 
@@ -54,33 +60,57 @@ function getAdminData() {
 }
 
 function salvarConfiguracao(payload) {
-  const app = new SigepApplication();
-  return app.admin.salvarConfiguracao(payload);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.admin.salvarConfiguracao(payload);
+  });
 }
 
 function salvarUsuario(payload) {
-  const app = new SigepApplication();
-  return app.admin.salvarUsuario(payload);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.admin.salvarUsuario(payload);
+  });
 }
 
 function excluirUsuario(email) {
-  const app = new SigepApplication();
-  return app.admin.excluirUsuario(email);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.admin.excluirUsuario(email);
+  });
 }
 
 function alterarSenhaUsuario(payload) {
-  const app = new SigepApplication();
-  return app.admin.alterarSenhaUsuario(payload);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.admin.alterarSenhaUsuario(payload);
+  });
 }
 
 function salvarSetor(payload) {
-  const app = new SigepApplication();
-  return app.admin.salvarSetor(payload);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.admin.salvarSetor(payload);
+  });
 }
 
 function excluirSetor(setorId) {
-  const app = new SigepApplication();
-  return app.admin.excluirSetor(setorId);
+  return runWithWriteLock_(() => {
+    const app = new SigepApplication();
+    return app.admin.excluirSetor(setorId);
+  });
+}
+
+function runWithWriteLock_(callback) {
+  const lock = LockService.getDocumentLock();
+  if (!lock.tryLock(30000)) {
+    throw new Error('Sistema ocupado no momento. Tente novamente em alguns segundos.');
+  }
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 class SigepApplication {
@@ -148,11 +178,20 @@ class SheetRepository {
     const rowIndex = values.findIndex((row, i) => i > 0 && String(row[idIndex]) === String(id));
     if (rowIndex === -1) throw new Error('Registro não encontrado: ' + id);
 
+    const updatedRow = values[rowIndex].slice();
     Object.keys(patch).forEach(key => {
       const col = headers.indexOf(key);
-      if (col !== -1) sh.getRange(rowIndex + 1, col + 1).setValue(patch[key]);
+      if (col !== -1) updatedRow[col] = patch[key];
     });
+    sh.getRange(rowIndex + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
     return this.getObjects(sheetName).find(obj => String(obj[idColumn]) === String(id));
+  }
+
+  getById(sheetName, idColumn, id) {
+    const rows = this.getObjects(sheetName);
+    const found = rows.find(obj => String(obj[idColumn]) === String(id));
+    if (!found) throw new Error('Registro não encontrado: ' + id);
+    return found;
   }
 
   append(sheetName, row) {
@@ -188,12 +227,14 @@ class ProcessoService {
 
   update(payload) {
     if (!payload || !payload.ID_PROCESSO) throw new Error('ID_PROCESSO obrigatório.');
+    PayloadValidator.validateProcessoUpdate(payload);
     const allowed = ['MODELAGEM_REALIZADA', 'REVISAO_2027_UNIDADE', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
     const patch = {};
     allowed.forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
-    patch.STATUS_GERAL = this.calcularStatus_(patch);
+    const current = this.repo.getById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO);
+    patch.STATUS_GERAL = this.calcularStatus_({ ...current, ...patch });
     const updated = this.repo.updateById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO, patch);
     this.audit.log('ATUALIZAR_PROCESSO', 'PROCESSO', payload.ID_PROCESSO, JSON.stringify(patch));
     return { ok: true, data: updated };
@@ -222,13 +263,15 @@ class AcompanhamentoService {
 
   updateStatus(payload) {
     if (!payload || !payload.ID_ACOMPANHAMENTO) throw new Error('ID_ACOMPANHAMENTO obrigatório.');
+    PayloadValidator.validateAcompanhamentoUpdate(payload);
     const allowed = ['DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'];
     const patch = {};
     allowed.forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
-    const etapas = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'].map(k => patch[k] || '');
-    if (etapas.some(Boolean)) {
+    const current = this.repo.getById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO);
+    const etapas = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'].map(k => (patch[k] !== undefined ? patch[k] : current[k]) || '');
+    if (etapas.some(Boolean) || patch.STATUS_AGENDAMENTO !== undefined || patch.DATA_AGENDAMENTO !== undefined) {
       const concluidas = etapas.filter(v => this.isConcluida_(v)).length;
       const total = etapas.filter(Boolean).length || 6;
       patch.ETAPAS_CONCLUIDAS = concluidas;
@@ -262,6 +305,7 @@ class IndicadorService {
 
   update(payload) {
     if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
+    PayloadValidator.validateIndicadorUpdate(payload);
     const patch = {};
     ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'].forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
@@ -415,5 +459,27 @@ class AuditService {
     } catch (e) {
       console.warn('Falha ao registrar histórico:', e.message);
     }
+  }
+}
+
+class PayloadValidator {
+  static validateProcessoUpdate(payload) {
+    const allowed = ['MODELAGEM_REALIZADA', 'REVISAO_2027_UNIDADE', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
+    this.validateAllowedKeys_(payload, ['ID_PROCESSO'].concat(allowed), 'processo');
+  }
+
+  static validateAcompanhamentoUpdate(payload) {
+    const allowed = ['DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'];
+    this.validateAllowedKeys_(payload, ['ID_ACOMPANHAMENTO'].concat(allowed), 'acompanhamento');
+  }
+
+  static validateIndicadorUpdate(payload) {
+    const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'];
+    this.validateAllowedKeys_(payload, ['ID_INDICADOR'].concat(allowed), 'indicador');
+  }
+
+  static validateAllowedKeys_(payload, allowed, context) {
+    const invalidKeys = Object.keys(payload || {}).filter(k => !allowed.includes(k));
+    if (invalidKeys.length) throw new Error('Campos não permitidos para ' + context + ': ' + invalidKeys.join(', '));
   }
 }
