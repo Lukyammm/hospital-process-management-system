@@ -147,6 +147,22 @@
     tbody tr:hover td{background:#f8fbff}
     .btn.small{padding:8px 10px;border-radius:10px;font-size:12px;box-shadow:none}
 
+    .indicators-layout { display:grid; gap:14px; }
+    .indicator-summary { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:12px; }
+    .summary-card { border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff; }
+    .summary-card b { display:block; color:var(--muted); font-size:12px; margin-bottom:6px; }
+    .summary-card strong { font-size:28px; color:var(--ink); letter-spacing:-.03em; }
+    .summary-card span { display:block; margin-top:4px; color:var(--muted); font-size:12px; }
+    .indicator-process-tabs { margin:0; }
+    .indicator-list { display:grid; gap:10px; }
+    .indicator-row { display:grid; grid-template-columns: minmax(260px,1.2fr) repeat(5,minmax(0,1fr)); gap:10px; align-items:center; padding:14px; border:1px solid var(--line); border-radius:14px; background:#fff; cursor:pointer; transition:.18s ease; }
+    .indicator-row:hover { border-color:var(--line-strong); box-shadow:var(--shadow-sm); }
+    .indicator-main h4 { margin:0 0 6px; font-size:15px; color:var(--ink); }
+    .indicator-main p { margin:0; font-size:12px; color:var(--muted); }
+    .indicator-col b { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px; }
+    .indicator-col span { font-size:13px; font-weight:700; color:var(--text); }
+    .coverage { height:8px; border-radius:999px; background:#e6eef8; overflow:hidden; margin-top:5px; }
+    .coverage span { display:block; height:100%; background:linear-gradient(90deg,var(--primary),#58a2eb); }
 
     .drawer-body { max-height: calc(92vh - 120px); overflow: auto; padding-right: 4px; }
     .indicator-modal { display: grid; gap: 14px; }
@@ -186,6 +202,8 @@
       .nav { grid-template-columns: repeat(4, 1fr); }
       .hero, .kpi-grid, .acomp-grid { grid-template-columns: 1fr; }
       .process-grid, .indicator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .indicator-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .indicator-row { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 760px) {
       .main { padding: 18px; }
@@ -196,6 +214,7 @@
       .topbar { align-items: flex-start; flex-direction: column; }
       .search { width: 100%; }
       .process-grid, .indicator-grid, .steps, .meta-grid, .result-box { grid-template-columns: 1fr; }
+      .indicator-summary, .indicator-row { grid-template-columns: 1fr; }
       .nav { grid-template-columns: 1fr; }
     }
 </style>
@@ -274,10 +293,14 @@
       <section id="indicadores" class="view">
         <div class="panel">
           <div class="panel-head">
-            <div><h3>Indicadores</h3><span>Finalísticos, apoio e gerenciais</span></div>
+            <div><h3>Painel de indicadores</h3><span>Visão analítica por categoria, processo e cobertura mensal</span></div>
             <div class="filters"><select id="filtroCategoriaIndicador"><option value="">Todas as categorias</option></select></div>
           </div>
-          <div class="content-pad"><div id="indicatorProcessTabs" class="pill-row"></div><div class="indicator-grid" id="indicatorGrid"></div></div>
+          <div class="content-pad indicators-layout">
+            <div id="indicatorSummary" class="indicator-summary"></div>
+            <div id="indicatorProcessTabs" class="pill-row indicator-process-tabs"></div>
+            <div id="indicatorGrid" class="indicator-list"></div>
+          </div>
         </div>
       </section>
 
@@ -514,29 +537,48 @@
       let rows = state.data.indicadores || [];
       rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO']);
       if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
-      const processos = unique(rows.map(r => r.PROCESSO).filter(Boolean));
-      if (!state.processoIndicadorSelecionado || !processos.includes(state.processoIndicadorSelecionado)) state.processoIndicadorSelecionado = processos[0] || '';
-      document.getElementById('indicatorProcessTabs').innerHTML = processos.map(p => `<button class="pill ${p === state.processoIndicadorSelecionado ? 'state-selected' : ''}" onclick="setProcessoIndicador('${escapeHtml(p)}')">${escapeHtml(p)}</button>`).join('');
-      if (state.processoIndicadorSelecionado) rows = rows.filter(x => x.PROCESSO === state.processoIndicadorSelecionado);
       const lancamentos = state.data.lancamentos || [];
       const byInd = new Map();
       lancamentos.forEach(l => {
         if (!byInd.has(l.ID_INDICADOR)) byInd.set(l.ID_INDICADOR, []);
         byInd.get(l.ID_INDICADOR).push(l);
       });
+
+      const processos = unique(rows.map(r => r.PROCESSO).filter(Boolean));
+      if (!state.processoIndicadorSelecionado || !processos.includes(state.processoIndicadorSelecionado)) state.processoIndicadorSelecionado = processos[0] || '';
+      document.getElementById('indicatorProcessTabs').innerHTML = processos.map(p => `<button class="pill ${p === state.processoIndicadorSelecionado ? 'state-selected' : ''}" onclick="setProcessoIndicador('${escapeHtml(p)}')">${escapeHtml(p)}</button>`).join('');
+
+      const total = rows.length;
+      const preenchidos = rows.filter(ind => {
+        const lans = byInd.get(ind.ID_INDICADOR) || [];
+        return lans.some(l => String(l.VALOR || '').trim() !== '');
+      }).length;
+      const cobertura = total ? Math.round((preenchidos / total) * 100) : 0;
+      const categorias = unique(rows.map(x => x.CATEGORIA).filter(Boolean)).length;
+      document.getElementById('indicatorSummary').innerHTML = `
+        <div class="summary-card"><b>Total de indicadores</b><strong>${total}</strong><span>Registros após filtros e pesquisa</span></div>
+        <div class="summary-card"><b>Com lançamento</b><strong>${preenchidos}</strong><span>Indicadores com algum valor preenchido</span></div>
+        <div class="summary-card"><b>Cobertura</b><strong>${cobertura}%</strong><span>Percentual de indicadores com histórico</span></div>
+        <div class="summary-card"><b>Categorias ativas</b><strong>${categorias}</strong><span>Categorias presentes no recorte atual</span></div>
+      `;
+
+      if (state.processoIndicadorSelecionado) rows = rows.filter(x => x.PROCESSO === state.processoIndicadorSelecionado);
       const html = rows.map(ind => {
         const lans = byInd.get(ind.ID_INDICADOR) || [];
         const filled = lans.filter(l => String(l.VALOR || '').trim() !== '').length;
+        const coverage = lans.length ? Math.round((filled / lans.length) * 100) : 0;
+        const ultimo = lans.slice().sort((a,b)=>String(a.COMPETENCIA||'').localeCompare(String(b.COMPETENCIA||''),'pt-BR')).reverse().find(l => String(l.VALOR || '').trim() !== '');
         return `
-          <article class="card" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
-            <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
-            <p>${escapeHtml(ind.PROCESSO || '')}</p>
-            <div class="pill-row">
-              <span class="pill">${escapeHtml(ind.CATEGORIA || '')}</span>
-              <span class="pill purple">${escapeHtml(ind.TIPO_INDICADOR || 'Sem tipo')}</span>
-              <span class="pill warn">Meta: ${escapeHtml(ind.META || '-')}</span>
-              <span class="pill ok">${filled}/${lans.length} competências</span>
+          <article class="indicator-row" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+            <div class="indicator-main">
+              <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
+              <p>${escapeHtml(ind.ID_INDICADOR || '-')} · ${escapeHtml(ind.PROCESSO || '-')}</p>
             </div>
+            <div class="indicator-col"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
+            <div class="indicator-col"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
+            <div class="indicator-col"><b>Meta</b><span>${escapeHtml(ind.META || '-')}</span></div>
+            <div class="indicator-col"><b>Último valor</b><span>${escapeHtml(ultimo ? (ultimo.VALOR || '-') : '-')}</span></div>
+            <div class="indicator-col"><b>Cobertura mensal</b><span>${filled}/${lans.length} (${coverage}%)</span><div class="coverage"><span style="width:${coverage}%"></span></div></div>
           </article>
         `;
       }).join('');
