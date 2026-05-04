@@ -258,49 +258,6 @@
       gap: 14px;
     }
 
-    .indicator-board { display: grid; gap: 14px; }
-    .macro-group {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: #fff;
-      overflow: hidden;
-    }
-    .macro-group summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 700;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, #f7fbf9 0%, #fff 100%);
-    }
-    .macro-group summary::-webkit-details-marker { display: none; }
-    .macro-content { padding: 12px; display: grid; gap: 10px; }
-    .sector-group {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: #fff;
-      padding: 14px;
-    }
-    .sector-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .sector-head h4 { margin: 0; font-size: 16px; }
-    .type-group { margin-top: 10px; }
-    .type-group h5 {
-      margin: 0 0 8px;
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-    }
-
     .card {
       border: 1px solid var(--line);
       background: #fff;
@@ -790,57 +747,29 @@
       let rows = state.data.indicadores || [];
       rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO']);
       if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
-
       const lancamentos = state.data.lancamentos || [];
       const byInd = new Map();
       lancamentos.forEach(l => {
         if (!byInd.has(l.ID_INDICADOR)) byInd.set(l.ID_INDICADOR, []);
         byInd.get(l.ID_INDICADOR).push(l);
       });
-
-      const groups = new Map();
-      const inferMacro = (ind) => {
-        const txt = String(ind.MACROGRUPO || ind.GRUPO || ind.EIXO || ind.CATEGORIA || ind.SETOR || ind.UNIDADE || '').toLowerCase();
-        if (txt.includes('apoio')) return 'Apoio';
-        if (txt.includes('final')) return 'Finalístico';
-        if (txt.includes('geren')) return 'Gerência';
-        return 'Outros';
-      };
-      rows.forEach(ind => {
-        const macro = inferMacro(ind);
-        const setor = ind.SETOR || ind.UNIDADE || 'Sem setor';
-        if (!groups.has(macro)) groups.set(macro, new Map());
-        if (!groups.get(macro).has(setor)) groups.get(macro).set(setor, []);
-        groups.get(macro).get(setor).push(ind);
-      });
-
-      const order = { 'Apoio': 1, 'Finalístico': 2, 'Gerência': 3, 'Outros': 4 };
-      const html = Array.from(groups.entries()).sort((a, b) => (order[a[0]] || 99) - (order[b[0]] || 99)).map(([macro, setores], idx) => {
-        const totalMacro = Array.from(setores.values()).reduce((acc, cur) => acc + cur.length, 0);
-        const setoresHtml = Array.from(setores.entries()).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([setor, inds]) => {
-          const cards = inds.map(ind => {
-            const lans = byInd.get(ind.ID_INDICADOR) || [];
-            const filled = lans.filter(l => String(l.VALOR || '').trim() !== '').length;
-            return `
-              <article class="card" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
-                <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
-                <p>${escapeHtml(ind.PROCESSO || '')}</p>
-                <div class="pill-row">
-                  <span class="pill">${escapeHtml(ind.CATEGORIA || macro)}</span>
-                  <span class="pill purple">${escapeHtml(ind.TIPO_INDICADOR || 'Sem tipo')}</span>
-                  <span class="pill warn">Meta: ${escapeHtml(ind.META || '-')}</span>
-                  <span class="pill ok">${filled}/${lans.length} competências</span>
-                </div>
-              </article>
-            `;
-          }).join('');
-          return `<section class="sector-group"><div class="sector-head"><h4>${escapeHtml(setor)}</h4><span class="pill ok">${inds.length} indicador(es)</span></div><div class="indicator-grid">${cards}</div></section>`;
-        }).join('');
-
-        return `<details class="macro-group" ${idx === 0 ? 'open' : ''}><summary><span>${escapeHtml(macro)}</span><span class="pill ok">${totalMacro} indicador(es)</span></summary><div class="macro-content">${setoresHtml}</div></details>`;
+      const html = rows.map(ind => {
+        const lans = byInd.get(ind.ID_INDICADOR) || [];
+        const filled = lans.filter(l => String(l.VALOR || '').trim() !== '').length;
+        return `
+          <article class="card" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+            <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
+            <p>${escapeHtml(ind.PROCESSO || '')}</p>
+            <div class="pill-row">
+              <span class="pill">${escapeHtml(ind.CATEGORIA || '')}</span>
+              <span class="pill purple">${escapeHtml(ind.TIPO_INDICADOR || 'Sem tipo')}</span>
+              <span class="pill warn">Meta: ${escapeHtml(ind.META || '-')}</span>
+              <span class="pill ok">${filled}/${lans.length} competências</span>
+            </div>
+          </article>
+        `;
       }).join('');
-
-      document.getElementById('indicatorGrid').innerHTML = html ? `<div class="indicator-board">${html}</div>` : '<div class="empty">Nenhum indicador encontrado.</div>';
+      document.getElementById('indicatorGrid').innerHTML = html || '<div class="empty">Nenhum indicador encontrado.</div>';
     }
 
     function showProcesso(p) {
