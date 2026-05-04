@@ -45,11 +45,11 @@
       background: linear-gradient(180deg, #f8fcff 0%, #f2f8ff 100%);
       border-right: 1px solid var(--line); color: var(--text);
     }
-    .brand { display: flex; gap: 12px; align-items: center; padding: 12px 10px 22px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-    .mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: var(--primary-2); border: 1px solid var(--primary-3); color: var(--primary); overflow: hidden; }
+    .brand { display: block; padding: 20px 12px 24px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+    .mark { display: none; }
     .mark img { width: 100%; height: 100%; object-fit: contain; }
-    .brand h1 { margin: 0; font-size: 18px; line-height: 1.05; color: var(--ink); }
-    .brand span { color: var(--muted); font-size: 12px; }
+    .brand h1 { margin: 0; font-size: 44px; line-height: 1; letter-spacing: -.04em; color: var(--ink); }
+    .brand span { display: block; margin-top: 10px; color: var(--muted); font-size: 15px; font-weight: 500; }
     .nav { display: grid; gap: 8px; }
     .nav button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 11px; cursor: pointer; text-align: left; transition: .18s ease; }
     .nav button:hover { background: #f3f8ff; color: var(--ink); border-color: var(--line); }
@@ -263,7 +263,7 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="mark" aria-hidden="true"><img src="https://i.ibb.co/tTGkBCXj/oie-transparent.png" alt="Logo do sistema"></div>
-        <div><h1>SIGEP-HUC</h1><span>Gestão de processos e indicadores</span></div>
+        <div><h1>SIGEP</h1><span>Gestão de processos e indicadores</span></div>
       </div>
       <nav class="nav">
         <button class="active" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9zm9 7h7V4h-7v16zM4 20h7v-5H4v5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Dashboard</button>
