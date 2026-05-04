@@ -63,6 +63,10 @@
     .title h2 { margin: 4px 0 0; font-size: 30px; line-height: 1.1; letter-spacing: -.04em; color: var(--ink); }
     .title p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
     .actions { display: flex; gap: 10px; align-items: center; }
+    .work-queue { display:flex; gap:8px; flex-wrap:wrap; margin: 0 0 14px; }
+    .task-chip { border:1px solid var(--line); background:#fff; color:var(--text); border-radius:999px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+    .task-chip.active { border-color:var(--primary); color:var(--primary); background:var(--primary-2); }
+    .ops-alert { border:1px solid var(--line); border-left:4px solid var(--warning); border-radius:12px; background:#fff; padding:10px 12px; color:var(--text); font-size:12px; margin-bottom:12px; }
     .search { width: min(360px, 38vw); position: relative; }
     .search input { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 13px 14px 13px 42px; outline: none; box-shadow: var(--shadow-sm); color: var(--text); }
     .search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 18px; }
@@ -208,6 +212,8 @@
     .history-chart-labels { display:grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
     .btn.icon { display:inline-flex; align-items:center; gap:8px; }
     .btn.icon svg { width:14px; height:14px; }
+    .save-feedback { position: fixed; right: 20px; bottom: 20px; z-index: 60; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text); box-shadow: var(--shadow-sm); font-size: 12px; display:none; }
+    .save-feedback.show { display:block; }
     .history-table { width:100%; border-collapse:collapse; font-size:13px; }
     .history-table th, .history-table td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; }
     .history-table th { background:#f6f9fd; color:#4d6580; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
@@ -255,6 +261,11 @@
       .process-grid, .indicator-grid, .steps, .meta-grid, .result-box { grid-template-columns: 1fr; }
       .indicator-summary, .indicator-meta { grid-template-columns: 1fr; }
       .nav { grid-template-columns: 1fr; }
+      .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap td, .table-wrap tr { display:block; }
+      .table-wrap thead { display:none; }
+      .table-wrap tr { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fff; }
+      .table-wrap td { border-bottom:1px solid var(--line); display:grid; grid-template-columns:120px 1fr; gap:8px; }
+      .table-wrap td::before { content: attr(data-label); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
     }
 </style>
 </head>
@@ -300,6 +311,8 @@
             <div class="bar"><span id="heroProgressBar" style="width:0%"></span></div>
           </div>
         </div>
+        <div class="work-queue" id="workQueue"></div>
+        <div class="ops-alert" id="opsAlert">Carregando priorização operacional...</div>
         <div class="kpi-grid" id="kpis"></div>
         <div class="panel">
           <div class="panel-head"><div><h3>Resumo de acompanhamento</h3><span>Unidades com suas datas/status preservados</span></div></div>
@@ -383,6 +396,7 @@
       <div id="drawerContent" class="drawer-body"></div>
     </div>
   </div>
+  <div class="save-feedback" id="saveFeedback"></div>
 
   <script>
     const icons = {
@@ -403,7 +417,8 @@
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
       indicatorFiltersCollapsed: false,
-      adminData: null
+      adminData: null,
+      taskFilter: 'all'
     };
 
     const ui = {
@@ -526,6 +541,15 @@
       document.getElementById('kpis').innerHTML = kpis.map(k => `
         <div class="kpi"><div class="icon">${k[3]}</div><strong>${k[1]}</strong><span>${k[0]} · ${k[2]}</span></div>
       `).join('');
+      const queue = [
+        ['all', 'Visão geral'],
+        ['critical', 'Pendências críticas'],
+        ['today', 'Vence hoje'],
+        ['risk', 'Em risco'],
+        ['done', 'Concluídos recentes']
+      ];
+      document.getElementById('workQueue').innerHTML = queue.map(q => `<button class="task-chip ${state.taskFilter===q[0]?'active':''}" onclick="setTaskFilter('${q[0]}')">${q[1]}</button>`).join('');
+      document.getElementById('opsAlert').textContent = buildOpsAlert();
       document.getElementById('dashboardAcompanhamento').innerHTML = renderUnitCards(getGroupedAcompanhamento().slice(0, 4));
     }
 
@@ -546,7 +570,7 @@
         items.sort((a, b) => Number(a.ORDEM_AGENDAMENTO_UNIDADE || 0) - Number(b.ORDEM_AGENDAMENTO_UNIDADE || 0));
         const base = items[items.length - 1] || items[0];
         return { unidade, items, base, progresso: Number(base.PROGRESSO_PERCENTUAL || 0) };
-      }).sort((a, b) => b.progresso - a.progresso || a.unidade.localeCompare(b.unidade));
+      }).filter(g => passTaskFilter(g.base, 'acomp')).sort((a, b) => b.progresso - a.progresso || a.unidade.localeCompare(b.unidade));
     }
 
     function renderUnitCards(groups) {
@@ -584,16 +608,7 @@
       let rows = state.data.processos || [];
       rows = filterRows(rows, ['SETOR', 'TIPO_PROCESSO', 'PROCESSO', 'STATUS_GERAL']);
       if (state.filtroTipoProcesso) rows = rows.filter(x => x.TIPO_PROCESSO === state.filtroTipoProcesso);
-      const processosBase = state.data.processos || [];
-      const modelagens = processosBase.filter(p => String(p.MODELAGEM_REALIZADA || '').trim().toUpperCase() === 'SIM');
-      const taxaModelagemFinalizada = processosBase.length ? Math.round((modelagens.length / processosBase.length) * 100) : 0;
-      const validacaoNugesp = modelagens.filter(p => String(p.VALIDACAO_NUGESP || '').trim().toUpperCase() === 'SIM').length;
-      const validacaoDirecao = modelagens.filter(p => String(p.VALIDACAO_DIRECAO || '').trim().toUpperCase() === 'SIM').length;
-      const pendentes = Math.max(processosBase.length - (validacaoNugesp + validacaoDirecao), 0);
-      document.getElementById('processSummary').innerHTML = `
-        <div class="summary-card"><b>Taxa de modelagens finalizadas</b><strong>${taxaModelagemFinalizada}%</strong><span>${modelagens.length} de ${processosBase.length} processos com MODELAGEM_REALIZADA = SIM</span></div>
-        <div class="summary-card"><b>Validações do fluxo</b><strong>${validacaoNugesp + validacaoDirecao}</strong><span>NUGESP: ${validacaoNugesp} · Direção: ${validacaoDirecao} · Pendentes: ${pendentes}</span></div>
-      `;
+      rows = rows.filter(x => passTaskFilter(x, 'proc'));
       const html = rows.map(p => `
         <article class="card" onclick='showProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
           <h4>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h4>
@@ -612,6 +627,7 @@
       let rows = state.data.indicadores || [];
       rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO', 'UNIDADE', 'SETOR']);
       if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
+      rows = rows.filter(x => passTaskFilter(x, 'ind'));
       const lancamentos = state.data.lancamentos || [];
       const byInd = new Map();
       lancamentos.forEach(l => {
@@ -685,6 +701,7 @@
     }
     function setIndicadorUnidade(v) { state.unidadeIndicadorSelecionada = v; renderIndicadores(); }
     function setIndicadorCategoria(v) { state.categoriaIndicadorSelecionada = v; renderIndicadores(); }
+    function setTaskFilter(v) { state.taskFilter = v; render(); }
 
     function showProcesso(p) {
       ui.openDrawer(p.PROCESSO || 'Processo', p.SETOR || '', `
@@ -863,12 +880,14 @@
         META: form.META.value.trim(),
         RESULTADO_ESPERADO: form.RESULTADO_ESPERADO.value.trim()
       };
+      showSaveFeedback('Salvando indicador...');
       google.script.run
         .withSuccessHandler(() => {
+          showSaveFeedback('Indicador salvo com sucesso.', true);
           fecharEdicaoIndicador();
           loadData();
         })
-        .withFailureHandler(err => alert('Erro ao editar indicador: ' + (err.message || err)))
+        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar indicador.'); alert('Erro ao editar indicador: ' + (err.message || err)); })
         .atualizarIndicador(payload);
     }
 
@@ -886,11 +905,10 @@
     }
 
     function statusClass(v) {
-      const n = normalize(v);
-      if (n.includes('CONCLUIDA') || n.includes('REALIZADA')) return 'pill ok';
-      if (n.includes('NAO INICIADA')) return 'pill bad';
-      if (n.includes('EPIDEMIO')) return 'pill purple';
-      if (n.includes('ANDAMENTO')) return 'pill warn';
+      const s = getUnifiedStatus(v);
+      if (s.type === 'ok') return 'pill ok';
+      if (s.type === 'bad') return 'pill bad';
+      if (s.type === 'warn') return 'pill warn';
       return '';
     }
 
@@ -904,6 +922,42 @@
 
     function normalize(v) {
       return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    }
+    function getUnifiedStatus(v){
+      const n = normalize(v);
+      if (n.includes('CONCLUID') || n.includes('REALIZADA') || n === 'SIM') return {label:'Concluído', type:'ok'};
+      if (n.includes('BLOQUE') || n.includes('REAGEND')) return {label:'Bloqueado', type:'bad'};
+      if (n.includes('NAO INICIADA') || n.includes('PENDENTE') || n === 'NAO') return {label:'Atrasado', type:'bad'};
+      if (n.includes('ANDAMENTO') || n.includes('ANALISE')) return {label:'Atenção', type:'warn'};
+      return {label:'No prazo', type:'warn'};
+    }
+    function passTaskFilter(row, kind){
+      if (state.taskFilter === 'all') return true;
+      const s = getUnifiedStatus(row.STATUS_GERAL || row.STATUS_AGENDAMENTO || row.RESULTADO_ESPERADO || '');
+      if (state.taskFilter === 'critical') return s.type === 'bad';
+      if (state.taskFilter === 'risk') return s.type === 'warn';
+      if (state.taskFilter === 'done') return s.type === 'ok';
+      if (state.taskFilter === 'today') {
+        const d = String(row.DATA_AGENDAMENTO || '').trim();
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2,'0');
+        const mm = String(now.getMonth()+1).padStart(2,'0');
+        return d.includes(`${dd}/${mm}`);
+      }
+      return true;
+    }
+    function buildOpsAlert(){
+      const acomps = state.data?.acompanhamento || [];
+      const crit = acomps.filter(r => getUnifiedStatus(r.STATUS_AGENDAMENTO).type === 'bad').length;
+      const warn = acomps.filter(r => getUnifiedStatus(r.STATUS_AGENDAMENTO).type === 'warn').length;
+      return `Fila operacional: ${crit} pendências críticas e ${warn} itens em atenção. Use os filtros por tarefa para atuar primeiro no risco.`;
+    }
+    function showSaveFeedback(message, autoHide){
+      const el = document.getElementById('saveFeedback');
+      if (!el) return;
+      el.textContent = message;
+      el.classList.add('show');
+      if (autoHide) setTimeout(() => el.classList.remove('show'), 2200);
     }
 
     function escapeHtml(v) {
@@ -943,7 +997,7 @@
       ui.openDrawer('Usuários do sistema', 'Cadastrar, editar, excluir e redefinir senha.', `
         <div class="actions" style="justify-content:flex-end;margin-bottom:8px"><button class="btn small" onclick="novoUsuario()">Novo usuário</button></div>
         <div class="table-wrap"><table><thead><tr><th>Email</th><th>Nome</th><th>Perfil</th><th>Unidade</th><th>Ativo</th><th>Ações</th></tr></thead>
-        <tbody>${users.map(u => `<tr><td>${escapeHtml(u.EMAIL)}</td><td>${escapeHtml(u.NOME||'-')}</td><td>${escapeHtml(u.PERFIL||'-')}</td><td>${escapeHtml(u.UNIDADE||'-')}</td><td>${escapeHtml(u.ATIVO||'-')}</td><td><button class="btn secondary small" onclick='editarUsuario(${JSON.stringify(u).replace(/'/g,"&apos;")})'>Editar</button> <button class="btn secondary small" onclick='resetarSenha("${escapeHtml(u.EMAIL)}")'>Senha</button> <button class="btn secondary small" onclick='excluirUsuarioUi("${escapeHtml(u.EMAIL)}")'>Excluir</button></td></tr>`).join('')}</tbody></table></div>
+        <tbody>${users.map(u => `<tr><td data-label="Email">${escapeHtml(u.EMAIL)}</td><td data-label="Nome">${escapeHtml(u.NOME||'-')}</td><td data-label="Perfil">${escapeHtml(u.PERFIL||'-')}</td><td data-label="Unidade">${escapeHtml(u.UNIDADE||'-')}</td><td data-label="Ativo">${escapeHtml(u.ATIVO||'-')}</td><td data-label="Ações"><button class="btn secondary small" onclick='editarUsuario(${JSON.stringify(u).replace(/'/g,"&apos;")})'>Editar</button> <button class="btn secondary small" onclick='resetarSenha("${escapeHtml(u.EMAIL)}")'>Senha</button> <button class="btn secondary small" onclick='excluirUsuarioUi("${escapeHtml(u.EMAIL)}")'>Excluir</button></td></tr>`).join('')}</tbody></table></div>
       `);
     }
     function novoUsuario(){ editarUsuario({}); }
@@ -962,7 +1016,7 @@
       const rows = (state.adminData && state.adminData.setores) || [];
       ui.openDrawer('Setores/Unidades', 'Cadastro de setores do sistema.', `
         <div class="actions" style="justify-content:flex-end;margin-bottom:8px"><button class="btn small" onclick="novoSetor()">Novo setor</button></div>
-        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome</th><th>Sigla</th><th>Ações</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.ID_SETOR||'-')}</td><td>${escapeHtml(r.NOME_SETOR||'-')}</td><td>${escapeHtml(r.SIGLA||'-')}</td><td><button class="btn secondary small" onclick='editarSetor(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Editar</button> <button class="btn secondary small" onclick='excluirSetorUi("${escapeHtml(r.ID_SETOR||'')}")'>Excluir</button></td></tr>`).join('')}</tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome</th><th>Sigla</th><th>Ações</th></tr></thead><tbody>${rows.map(r=>`<tr><td data-label="ID">${escapeHtml(r.ID_SETOR||'-')}</td><td data-label="Nome">${escapeHtml(r.NOME_SETOR||'-')}</td><td data-label="Sigla">${escapeHtml(r.SIGLA||'-')}</td><td data-label="Ações"><button class="btn secondary small" onclick='editarSetor(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Editar</button> <button class="btn secondary small" onclick='excluirSetorUi("${escapeHtml(r.ID_SETOR||'')}")'>Excluir</button></td></tr>`).join('')}</tbody></table></div>
       `);
     }
     function novoSetor(){ editarSetor({}); }
