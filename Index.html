@@ -493,6 +493,17 @@
           <div class="content-pad"><div class="indicator-grid" id="indicatorGrid"></div></div>
         </div>
       </section>
+
+
+      <section id="admin" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Administração</h3><span>Usuários, permissões e configurações de apoio</span></div>
+            <button class="btn secondary" onclick="loadAdminData()">Atualizar administração</button>
+          </div>
+          <div class="content-pad"><div class="process-grid" id="adminGrid"></div></div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -556,6 +567,7 @@
         };
         document.getElementById('pageTitle').textContent = titles[view][0];
         document.getElementById('pageSubtitle').textContent = titles[view][1];
+        if (view === 'admin' && !state.adminData) loadAdminData();
       },
 
       openDrawer(title, subtitle, html) {
