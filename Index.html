@@ -207,7 +207,15 @@
     .state-success { background: var(--success-bg) !important; border-color: #cfeedd !important; color: var(--success) !important; }
     .state-warning { background: var(--warning-bg) !important; border-color: #f3e2b5 !important; color: var(--warning) !important; }
     .state-error { background: var(--danger-bg) !important; border-color: #f3cccc !important; color: var(--danger) !important; }
-    .state-selected { border-color: var(--primary) !important; background: var(--primary-2) !important; }
+    .state-selected { border-color: var(--primary) !important; background: var(--primary-2) !important; color: var(--primary) !important; font-weight: 800 !important; box-shadow: inset 0 0 0 1px var(--primary-3); }
+    .indicator-process-tabs .pill { border:1px solid var(--line); background:#fff; cursor:pointer; }
+    .indicator-process-tabs .pill.state-selected { box-shadow: 0 0 0 2px rgba(31,111,189,.15), inset 0 0 0 1px var(--primary-3); }
+    .edit-form { border:1px solid var(--line); border-radius:12px; background:#fff; padding:14px; display:grid; gap:10px; }
+    .edit-form h5 { margin:0; font-size:14px; color:var(--ink); }
+    .edit-form label { display:grid; gap:6px; font-size:12px; color:var(--muted); }
+    .edit-form input, .edit-form textarea { width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 11px; color:var(--text); background:#fff; }
+    .edit-form textarea { min-height:88px; resize:vertical; }
+    .edit-form-actions { display:flex; gap:8px; justify-content:flex-end; }
     .result-soft { background: var(--success-bg); border: 1px solid #cfeedd; border-radius: 12px; padding: 12px; }
     .note-soft { background: var(--primary-2); border: 1px solid var(--primary-3); border-radius: 12px; padding: 12px; }
 
@@ -689,7 +697,7 @@
               <div class="indicator-code">${escapeHtml(ind.ID_INDICADOR || 'IND')} · ${escapeHtml(ind.PROCESSO || '-')}</div>
               <h4 class="section-title">${escapeHtml(ind.NOME_INDICADOR || 'Indicador')}</h4>
             </div>
-            <button class="btn secondary icon" onclick='editarIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+            <button class="btn secondary icon" onclick='abrirEdicaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
           </div>
           <div class="meta-grid">
             <div class="meta-item"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
@@ -713,6 +721,7 @@
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
+          <div id="indicatorEditHost"></div>
         </div>
       `);
     }
@@ -733,7 +742,7 @@
       const pad = Math.max((maxV - minV) * 0.2, 1);
       const yMin = minV - pad;
       const yMax = maxV + pad;
-      const w = 1200, h = 340, pX = 70, pY = 28;
+      const w = 1200, h = 340, pX = 92, pY = 28;
       const chartH = h - pY * 2;
       const chartW = w - pX * 2;
       const step = pontos.length > 1 ? chartW / (pontos.length - 1) : 0;
@@ -755,16 +764,46 @@
     function getTendencia(hist){ const vals=hist.filter(h=>h.hasData).map(h=>h.numericValue); if(vals.length<3) return 'Estável'; const d=vals[vals.length-1]-vals[vals.length-3]; if(d>0.5) return 'Melhorando'; if(d<-0.5) return 'Piorando'; return 'Estável'; }
     function getStatusIndicador(item, meta){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return item.numericValue>=meta?{label:'Dentro da meta',className:'ok'}:{label:'Abaixo da meta',className:'bad'}; }
 
-    function editarIndicador(ind) {
-      const NOME_INDICADOR = prompt('Nome do indicador:', ind.NOME_INDICADOR || '');
-      if (NOME_INDICADOR === null) return;
-      const TIPO_INDICADOR = prompt('Tipo do indicador:', ind.TIPO_INDICADOR || '');
-      if (TIPO_INDICADOR === null) return;
-      const META = prompt('Meta:', ind.META || '');
-      if (META === null) return;
-      const RESULTADO_ESPERADO = prompt('Observações/resultado esperado:', ind.RESULTADO_ESPERADO || '');
-      if (RESULTADO_ESPERADO === null) return;
-      google.script.run.withSuccessHandler(() => loadData()).withFailureHandler(err => alert('Erro ao editar indicador: ' + (err.message || err))).atualizarIndicador({ ID_INDICADOR: ind.ID_INDICADOR, NOME_INDICADOR, TIPO_INDICADOR, META, RESULTADO_ESPERADO });
+    function abrirEdicaoIndicador(ind) {
+      const host = document.getElementById('indicatorEditHost');
+      if (!host) return;
+      host.innerHTML = `
+        <form class="edit-form" onsubmit="salvarEdicaoIndicador(event, '${escapeHtml(ind.ID_INDICADOR || '')}')">
+          <h5>Editar indicador</h5>
+          <label>Nome do indicador<input name="NOME_INDICADOR" value="${escapeHtml(ind.NOME_INDICADOR || '')}" required></label>
+          <label>Tipo do indicador<input name="TIPO_INDICADOR" value="${escapeHtml(ind.TIPO_INDICADOR || '')}" required></label>
+          <label>Meta<input name="META" value="${escapeHtml(ind.META || '')}"></label>
+          <label>Observações/resultado esperado<textarea name="RESULTADO_ESPERADO">${escapeHtml(ind.RESULTADO_ESPERADO || '')}</textarea></label>
+          <div class="edit-form-actions">
+            <button type="button" class="btn secondary" onclick="fecharEdicaoIndicador()">Cancelar</button>
+            <button type="submit" class="btn">Salvar</button>
+          </div>
+        </form>`;
+      host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function fecharEdicaoIndicador() {
+      const host = document.getElementById('indicatorEditHost');
+      if (host) host.innerHTML = '';
+    }
+
+    function salvarEdicaoIndicador(event, idIndicador) {
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        ID_INDICADOR: idIndicador,
+        NOME_INDICADOR: form.NOME_INDICADOR.value.trim(),
+        TIPO_INDICADOR: form.TIPO_INDICADOR.value.trim(),
+        META: form.META.value.trim(),
+        RESULTADO_ESPERADO: form.RESULTADO_ESPERADO.value.trim()
+      };
+      google.script.run
+        .withSuccessHandler(() => {
+          fecharEdicaoIndicador();
+          loadData();
+        })
+        .withFailureHandler(err => alert('Erro ao editar indicador: ' + (err.message || err)))
+        .atualizarIndicador(payload);
     }
 
     function drawerField(label, value) {
