@@ -123,6 +123,7 @@
     }
 
 
+
     .panel { overflow: hidden; }
     .panel-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 12px; position: sticky; top: 0; background: #fff; z-index: 3; }
     .panel-head h3 { margin: 0; font-size: 17px; color: var(--ink); }
@@ -227,6 +228,30 @@
     .summary-card b { display:block; color:var(--muted); font-size:12px; margin-bottom:6px; }
     .summary-card strong { font-size:28px; color:var(--ink); letter-spacing:-.03em; }
     .summary-card span { display:block; margin-top:4px; color:var(--muted); font-size:12px; }
+    #processSummary { margin-bottom: 18px; }
+    #processSummary .summary-card.featured {
+      border-color:#b8d8f7;
+      background:linear-gradient(180deg,#f6fbff 0%,#ffffff 100%);
+      box-shadow:0 14px 28px rgba(31,111,189,.12);
+      position:relative;
+    }
+    #processSummary .summary-card.featured::before {
+      content:'Destaque';
+      position:absolute;
+      top:-10px;
+      left:14px;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      color:var(--primary);
+      background:#fff;
+      border:1px solid #cfe4ff;
+      border-radius:999px;
+      padding:4px 8px;
+    }
+    #processSummary .summary-card.featured b { color: var(--primary); }
+
     .indicator-context { border:1px solid var(--line); background:var(--surface-soft); border-radius:14px; padding:14px; }
     .indicator-context h4 { margin:0 0 6px; font-size:17px; color:var(--ink); }
     .indicator-context p { margin:0; color:var(--muted); font-size:13px; }
@@ -678,9 +703,10 @@
       const emModelagem = rows.filter(p => normalizeStatus(p.MODELAGEM_REALIZADA) === 'SIM').length;
       const emValidacao = rows.filter(p => normalizeStatus(p.VALIDACAO_NUGESP) === 'SIM' || normalizeStatus(p.VALIDACAO_DIRECAO) === 'SIM').length;
       const publicados = rows.filter(p => normalizeStatus(p.PUBLICACAO) === 'SIM').length;
+      const taxaModelagensRealizadas = total ? Math.round((emModelagem / total) * 100) : 0;
       document.getElementById('processSummary').innerHTML = `
+        <div class="summary-card featured"><b>Taxa de modelagens realizadas</b><strong>${taxaModelagensRealizadas}%</strong><span>${emModelagem} de ${total} processos com modelagem marcada como SIM</span></div>
         <div class="summary-card"><b>Total mapeado</b><strong>${total}</strong><span>Processos dentro dos filtros atuais</span></div>
-        <div class="summary-card"><b>Em modelagem</b><strong>${emModelagem}</strong><span>Etapa de modelagem marcada como SIM</span></div>
         <div class="summary-card"><b>Em validação</b><strong>${emValidacao}</strong><span>Validação NUGESP ou Direção em andamento</span></div>
         <div class="summary-card"><b>Publicados</b><strong>${publicados}</strong><span>Publicação concluída</span></div>
       `;
