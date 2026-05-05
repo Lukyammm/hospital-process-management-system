@@ -114,6 +114,13 @@
     .card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-sm); }
     .card h4 { margin: 0 0 8px; font-size: 15px; line-height: 1.35; letter-spacing: -.02em; color: var(--ink); }
     .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .process-card-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; margin-bottom:8px; }
+    .process-card-head h4 { margin:0; }
+    .process-sector { font-size:12px; color:var(--muted); margin-bottom:10px; }
+    .process-meta-grid { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+    .process-meta-item { border:1px solid var(--line); border-radius:10px; background:var(--surface-soft); padding:8px; }
+    .process-meta-item b { display:block; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+    .process-meta-item span { font-size:12px; font-weight:700; color:var(--ink); }
 
     .pill-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
     .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 700; background: #eef3f9; color: #324c67; white-space: nowrap; }
@@ -633,12 +640,20 @@
 
       const html = rows.map(p => `
         <article class="card" onclick='showProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
-          <h4>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h4>
-          <p>${escapeHtml(p.SETOR || '')}</p>
-          <div class="pill-row">
-            <span class="pill">${escapeHtml(p.TIPO_PROCESSO || 'Sem tipo')}</span>
+          <div class="process-card-head">
+            <h4>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h4>
             <span class="pill ${badgeClass(p.STATUS_GERAL)}">${escapeHtml(p.STATUS_GERAL || 'Sem status')}</span>
-            <span class="pill ${badgeClass(p.MODELAGEM_REALIZADA)}">Modelagem: ${escapeHtml(p.MODELAGEM_REALIZADA || '-')}</span>
+          </div>
+          <p class="process-sector">${escapeHtml(p.SETOR || 'Setor não informado')}</p>
+          <div class="process-meta-grid">
+            <div class="process-meta-item"><b>Tipo de processo</b><span>${escapeHtml(p.TIPO_PROCESSO || '-')}</span></div>
+            <div class="process-meta-item"><b>Revisão 2027</b><span>${escapeHtml(p.REVISAO_2027_UNIDADE || '-')}</span></div>
+          </div>
+          <div class="pill-row">
+            <span class="pill ${badgeClass(p.MODELAGEM_REALIZADA)}">Modelagem ${escapeHtml(p.MODELAGEM_REALIZADA || '-')}</span>
+            <span class="pill ${badgeClass(p.VALIDACAO_NUGESP)}">NUGESP ${escapeHtml(p.VALIDACAO_NUGESP || '-')}</span>
+            <span class="pill ${badgeClass(p.VALIDACAO_DIRECAO)}">Direção ${escapeHtml(p.VALIDACAO_DIRECAO || '-')}</span>
+            <span class="pill ${badgeClass(p.PUBLICACAO)}">Publicação ${escapeHtml(p.PUBLICACAO || '-')}</span>
           </div>
         </article>
       `).join('');
