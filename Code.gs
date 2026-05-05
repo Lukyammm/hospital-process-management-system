@@ -228,7 +228,7 @@ class ProcessoService {
   update(payload) {
     if (!payload || !payload.ID_PROCESSO) throw new Error('ID_PROCESSO obrigatório.');
     PayloadValidator.validateProcessoUpdate(payload);
-    const allowed = ['MODELAGEM_REALIZADA', 'REVISAO_2027_UNIDADE', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
+    const allowed = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
     const patch = {};
     allowed.forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
@@ -241,11 +241,11 @@ class ProcessoService {
   }
 
   calcularStatus_(p) {
-    const campos = ['MODELAGEM_REALIZADA', 'REVISAO_2027_UNIDADE', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO']
+    const campos = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO']
       .map(k => String(p[k] || '').toUpperCase().trim())
       .filter(Boolean);
     const sim = campos.filter(v => v === 'SIM').length;
-    if (campos.length >= 5 && sim === campos.length) return 'Concluído';
+    if (campos.length >= 4 && sim === campos.length) return 'Concluído';
     if (sim > 0) return 'Em andamento';
     return 'Pendente';
   }
@@ -464,7 +464,7 @@ class AuditService {
 
 class PayloadValidator {
   static validateProcessoUpdate(payload) {
-    const allowed = ['MODELAGEM_REALIZADA', 'REVISAO_2027_UNIDADE', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
+    const allowed = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
     this.validateAllowedKeys_(payload, ['ID_PROCESSO'].concat(allowed), 'processo');
   }
 
