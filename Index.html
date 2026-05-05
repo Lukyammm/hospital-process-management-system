@@ -290,7 +290,7 @@
       <nav class="nav">
         <button class="active" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9zm9 7h7V4h-7v16zM4 20h7v-5H4v5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Dashboard</button>
         <button data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
-        <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Processos</button>
+        <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Modelagem de Processos</button>
         <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
         <button data-view="admin"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.5 4.8.7-3.5 3.4.8 4.8L12 14.8 7.7 16.4l.8-4.8L5 8.2l4.8-.7L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>Administração</button>
       </nav>
@@ -344,7 +344,7 @@
       <section id="processos" class="view">
         <div class="panel">
           <div class="panel-head">
-            <div><h3>Processos</h3><span>Modelagem, validação e publicação</span></div>
+            <div><h3>Modelagem de Processos</h3><span>Pipeline de modelagem, validação e publicação</span></div>
             <div class="filters"><select id="filtroTipoProcesso"><option value="">Todos os tipos</option></select></div>
           </div>
           <div class="content-pad">
@@ -470,7 +470,7 @@
         const titles = {
           dashboard: ['Dashboard executivo', 'Visão consolidada de processos, acompanhamento e indicadores.'],
           acompanhamento: ['Acompanhamento', 'Unidades, datas de agenda e evolução das etapas.'],
-          processos: ['Processos', 'Modelagem, revisão, validação e publicação.'],
+          processos: ['Modelagem de Processos', 'Pipeline de modelagem, validação e publicação.'],
           indicadores: ['Indicadores', 'Carteira de indicadores e competências mensais.'],
           admin: ['Administração', 'Usuários, permissões e configurações de apoio.']
         };
@@ -544,7 +544,7 @@
       document.getElementById('heroProgressText').textContent = `${d.progressoMedio || 0}%`;
       document.getElementById('heroProgressBar').style.width = `${d.progressoMedio || 0}%`;
       const kpis = [
-        ['Processos', d.processosTotal, `${d.processosConcluidos} concluídos`, icons.process],
+        ['Modelagem de Processos', d.processosTotal, `${d.processosConcluidos} publicados`, icons.process],
         ['Unidades', d.unidadesAcompanhadas, `${d.acompanhamentoLinhas} linhas de agenda`, icons.unit],
         ['Agendamentos', d.agendamentosRealizados, `${d.reagendados} reagendados`, icons.calendar],
         ['Indicadores', d.indicadoresTotal, `${d.lancamentosPreenchidos} valores preenchidos`, icons.chart]
@@ -620,6 +620,17 @@
       rows = filterRows(rows, ['SETOR', 'TIPO_PROCESSO', 'PROCESSO', 'STATUS_GERAL']);
       if (state.filtroTipoProcesso) rows = rows.filter(x => x.TIPO_PROCESSO === state.filtroTipoProcesso);
       rows = rows.filter(x => passTaskFilter(x, 'proc'));
+      const total = rows.length;
+      const emModelagem = rows.filter(p => normalizeStatus(p.MODELAGEM_REALIZADA) === 'SIM').length;
+      const emValidacao = rows.filter(p => normalizeStatus(p.VALIDACAO_NUGESP) === 'SIM' || normalizeStatus(p.VALIDACAO_DIRECAO) === 'SIM').length;
+      const publicados = rows.filter(p => normalizeStatus(p.PUBLICACAO) === 'SIM').length;
+      document.getElementById('processSummary').innerHTML = `
+        <div class="summary-card"><b>Total mapeado</b><strong>${total}</strong><span>Processos dentro dos filtros atuais</span></div>
+        <div class="summary-card"><b>Em modelagem</b><strong>${emModelagem}</strong><span>Etapa de modelagem marcada como SIM</span></div>
+        <div class="summary-card"><b>Em validação</b><strong>${emValidacao}</strong><span>Validação NUGESP ou Direção em andamento</span></div>
+        <div class="summary-card"><b>Publicados</b><strong>${publicados}</strong><span>Publicação concluída</span></div>
+      `;
+
       const html = rows.map(p => `
         <article class="card" onclick='showProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
           <h4>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h4>
@@ -921,6 +932,11 @@
       if (s.type === 'bad') return 'pill bad';
       if (s.type === 'warn') return 'pill warn';
       return '';
+    }
+
+
+    function normalizeStatus(value) {
+      return String(value || '').trim().toUpperCase();
     }
 
     function badgeClass(v) {
