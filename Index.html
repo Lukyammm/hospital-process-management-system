@@ -647,7 +647,6 @@
           <p class="process-sector">${escapeHtml(p.SETOR || 'Setor não informado')}</p>
           <div class="process-meta-grid">
             <div class="process-meta-item"><b>Tipo de processo</b><span>${escapeHtml(p.TIPO_PROCESSO || '-')}</span></div>
-            <div class="process-meta-item"><b>Revisão 2027</b><span>${escapeHtml(p.REVISAO_2027_UNIDADE || '-')}</span></div>
           </div>
           <div class="pill-row">
             <span class="pill ${badgeClass(p.MODELAGEM_REALIZADA)}">Modelagem ${escapeHtml(p.MODELAGEM_REALIZADA || '-')}</span>
@@ -745,7 +744,6 @@
         <div class="steps">
           ${drawerField('Tipo', p.TIPO_PROCESSO)}
           ${drawerField('Modelagem', p.MODELAGEM_REALIZADA)}
-          ${drawerField('Revisão 2027', p.REVISAO_2027_UNIDADE)}
           ${drawerField('Validação NUGESP', p.VALIDACAO_NUGESP)}
           ${drawerField('Validação Direção', p.VALIDACAO_DIRECAO)}
           ${drawerField('Publicação', p.PUBLICACAO)}
