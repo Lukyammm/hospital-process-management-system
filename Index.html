@@ -318,6 +318,14 @@
     .state-selected { border-color: var(--primary) !important; background: var(--primary-2) !important; color: var(--primary) !important; font-weight: 800 !important; box-shadow: inset 0 0 0 1px var(--primary-3); }
     .indicator-process-tabs .pill { border:1px solid var(--line); background:#fff; cursor:pointer; }
     .indicator-process-tabs .pill.state-selected { box-shadow: 0 0 0 2px rgba(31,111,189,.15), inset 0 0 0 1px var(--primary-3); }
+    .indicator-process-shell { border:1px solid var(--line); border-radius:14px; background:#fff; overflow:hidden; }
+    .indicator-process-head { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:12px 14px; background:linear-gradient(180deg,#fbfdff 0%,#f5f9ff 100%); border-bottom:1px solid var(--line); }
+    .indicator-process-head b { font-size:13px; color:var(--ink); }
+    .indicator-process-head span { font-size:12px; color:var(--muted); }
+    .indicator-process-tabs { display:flex; gap:8px; padding:10px 12px; flex-wrap:wrap; overflow-x:auto; }
+    .indicator-process-tabs .pill { border:1px solid var(--line); background:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; white-space:nowrap; border-radius:999px; }
+    .indicator-process-tabs .pill-count { display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 6px; border-radius:999px; background:#eef4fb; color:#355679; font-size:11px; font-weight:700; }
+    .indicator-process-tabs .pill.state-selected .pill-count { background:var(--primary); color:#fff; }
     .edit-form { border:1px solid var(--line); border-radius:12px; background:#fff; padding:14px; display:grid; gap:10px; }
     .edit-form h5 { margin:0; font-size:14px; color:var(--ink); }
     .edit-form label { display:grid; gap:6px; font-size:12px; color:var(--muted); }
@@ -466,7 +474,7 @@
             <div class="indicator-main-area">
               <div id="indicatorSummary" class="indicator-summary"></div>
               <div id="indicatorContext" class="indicator-context"></div>
-              <div id="indicatorProcessTabs" class="pill-row indicator-process-tabs"></div>
+              <div id="indicatorProcessTabsShell" class="indicator-process-shell"></div>
               <div id="indicatorGrid" class="indicator-list"></div>
             </div>
           </div>
@@ -779,7 +787,21 @@
 
       const processos = unique(rows.map(r => r.PROCESSO).filter(Boolean));
       if (!state.processoIndicadorSelecionado || !processos.includes(state.processoIndicadorSelecionado)) state.processoIndicadorSelecionado = processos[0] || '';
-      document.getElementById('indicatorProcessTabs').innerHTML = processos.map(p => `<button class="pill ${p === state.processoIndicadorSelecionado ? 'state-selected' : ''}" onclick="setProcessoIndicador('${escapeHtml(p)}')">${escapeHtml(p)}</button>`).join('');
+      const processoCounts = rows.reduce((acc, item) => {
+        const key = item.PROCESSO || 'Sem processo';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const processTabsHtml = processos.length
+        ? processos.map(p => `<button class="pill ${p === state.processoIndicadorSelecionado ? 'state-selected' : ''}" onclick="setProcessoIndicador('${escapeHtml(p)}')">${escapeHtml(p)} <span class="pill-count">${processoCounts[p] || 0}</span></button>`).join('')
+        : '<span class="pill">Sem processos para os filtros atuais</span>';
+      document.getElementById('indicatorProcessTabsShell').innerHTML = `
+        <div class="indicator-process-head">
+          <div><b>Processos</b><span>Selecione um processo para focar os indicadores</span></div>
+          <span>${processos.length} processo(s)</span>
+        </div>
+        <div class="indicator-process-tabs">${processTabsHtml}</div>
+      `;
 
       const total = rows.length;
       const preenchidos = rows.filter(ind => {
