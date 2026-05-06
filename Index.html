@@ -270,7 +270,7 @@
     .indicator-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .indicator-col b { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px; }
     .indicator-col span { font-size:13px; font-weight:700; color:var(--text); }
-    .sparkline { width:100%; height:44px; border:1px solid #e2ebf6; border-radius:10px; background:linear-gradient(180deg,#fbfdff 0%,#fff 100%); padding:4px; }
+    .sparkline { width:100%; height:74px; border:1px solid #dbe8f7; border-radius:10px; background:linear-gradient(180deg,#fbfdff 0%,#fff 100%); padding:4px; }
     .sparkline svg { width:100%; height:100%; display:block; }
 
     .drawer-body { max-height: calc(92vh - 120px); overflow: auto; padding-right: 4px; }
@@ -989,18 +989,58 @@
     function getReferenciaStatus(historico){ const comDados = historico.filter(h => h.hasData); return comDados.length ? comDados[comDados.length - 1] : null; }
     function buildMiniSparkline(historico, meta){
       const pontos = historico.filter(h => h.hasData);
-      if (!pontos.length) return '<div class="sparkline"><svg viewBox="0 0 180 36" preserveAspectRatio="none"><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#8da3ba">Sem dados</text></svg></div>';
-      const width = 180, height = 36, pad = 4;
+      if (!pontos.length) {
+        return '<div class="sparkline"><svg viewBox="0 0 240 74" preserveAspectRatio="none"><rect x="34" y="10" width="194" height="50" fill="none" stroke="#e6eef8"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#8da3ba">Sem dados</text></svg></div>';
+      }
+      const width = 240, height = 74;
+      const pad = { top: 10, right: 12, bottom: 14, left: 34 };
+      const chartW = width - pad.left - pad.right;
+      const chartH = height - pad.top - pad.bottom;
+
       const valores = pontos.map(p => p.numericValue);
       if (Number.isFinite(meta)) valores.push(meta);
-      const min = Math.min(...valores), max = Math.max(...valores), range = max - min || 1;
+      let min = Math.min(...valores);
+      let max = Math.max(...valores);
+      if (min === max) {
+        min -= 1;
+        max += 1;
+      }
+      const range = max - min;
+      const yMin = Math.floor((min - range * 0.08) * 10) / 10;
+      const yMax = Math.ceil((max + range * 0.08) * 10) / 10;
+      const yRange = yMax - yMin || 1;
+
+      const toX = (idx) => pad.left + (idx * (chartW / Math.max(pontos.length - 1, 1)));
+      const toY = (v) => pad.top + ((yMax - v) / yRange) * chartH;
+
+      const axisYTicks = 4;
+      let grid = '';
+      for (let i = 0; i < axisYTicks; i++) {
+        const ratio = i / (axisYTicks - 1);
+        const y = pad.top + chartH * ratio;
+        const tickValue = yMax - yRange * ratio;
+        grid += `<line x1="${pad.left}" y1="${y.toFixed(2)}" x2="${width - pad.right}" y2="${y.toFixed(2)}" stroke="#e8f0fa" stroke-width="1"/>`;
+        grid += `<text x="${pad.left - 6}" y="${(y + 3.5).toFixed(2)}" text-anchor="end" font-size="8.5" fill="#6d8199">${formatNumberBR(tickValue)}</text>`;
+      }
+
       const path = pontos.map((p, i) => {
-        const x = pad + (i * ((width - pad * 2) / Math.max(pontos.length - 1, 1)));
-        const y = height - pad - (((p.numericValue - min) / range) * (height - pad * 2));
+        const x = toX(i);
+        const y = toY(p.numericValue);
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
       }).join(' ');
-      const metaY = Number.isFinite(meta) ? (height - pad - (((meta - min) / range) * (height - pad * 2))).toFixed(2) : null;
-      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${metaY ? `<line x1="${pad}" y1="${metaY}" x2="${width - pad}" y2="${metaY}" stroke="#b9891d" stroke-width="1.2" stroke-dasharray="4 3"></line>` : ''}<path d="${path}" fill="none" stroke="#2b79c2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>`;
+
+      const points = pontos.map((p, i) => {
+        const x = toX(i);
+        const y = toY(p.numericValue);
+        const isLast = i === pontos.length - 1;
+        return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${isLast ? '2.8' : '2.2'}" fill="${isLast ? '#1f6fbd' : '#2b79c2'}" stroke="#fff" stroke-width="1"><title>${escapeHtml(p.comp || '')}: ${escapeHtml(p.valor || '')}</title></circle>`;
+      }).join('');
+
+      const metaLine = Number.isFinite(meta)
+        ? `<line x1="${pad.left}" y1="${toY(meta).toFixed(2)}" x2="${width - pad.right}" y2="${toY(meta).toFixed(2)}" stroke="#b9891d" stroke-width="1.1" stroke-dasharray="3 3"/>`
+        : '';
+
+      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${grid}<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#cfdeee" stroke-width="1.1"/><line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#cfdeee" stroke-width="1.1"/>${metaLine}<path d="${path}" fill="none" stroke="#2b79c2" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path>${points}</svg></div>`;
     }
 
     function abrirEdicaoIndicador(ind) {
