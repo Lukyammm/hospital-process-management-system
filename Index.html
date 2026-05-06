@@ -364,8 +364,7 @@
         <div><h1>SIGEP</h1><span>Gestão de processos e indicadores</span></div>
       </div>
       <nav class="nav">
-        <button class="active" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9zm9 7h7V4h-7v16zM4 20h7v-5H4v5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Dashboard</button>
-        <button data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
+        <button class="active" data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
         <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Modelagem de Processos</button>
         <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
         <button data-view="admin"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.5 4.8.7-3.5 3.4.8 4.8L12 14.8 7.7 16.4l.8-4.8L5 8.2l4.8-.7L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>Administração</button>
@@ -376,8 +375,8 @@
       <header class="topbar">
         <div class="title">
           <div class="title-kicker">Hospital Universitário do Ceará</div>
-          <h2 id="pageTitle">Dashboard executivo</h2>
-          <p id="pageSubtitle">Visão consolidada de processos, acompanhamento e indicadores.</p>
+          <h2 id="pageTitle">Acompanhamento por unidade</h2>
+          <p id="pageSubtitle">Evolução operacional das etapas por unidade e período.</p>
         </div>
         <div class="actions">
           <div class="search">
@@ -388,7 +387,7 @@
         </div>
       </header>
 
-      <section id="dashboard" class="view active">
+      <section id="dashboard" class="view">
         <div class="hero">
           <div>
             <h3>Central de gestão do SIGEP-HUC</h3>
@@ -407,7 +406,7 @@
         </div>
       </section>
 
-      <section id="acompanhamento" class="view">
+      <section id="acompanhamento" class="view active">
         <div class="panel">
           <div class="panel-head">
             <div><h3>Acompanhamento por unidade</h3><span>Uma unidade pode aparecer com várias datas no mesmo card</span></div>
@@ -495,7 +494,7 @@
 
     const state = {
       data: null,
-      view: 'dashboard',
+      view: 'acompanhamento',
       search: '',
       filtroStatusAcomp: '',
       filtroTipoProcesso: '',
