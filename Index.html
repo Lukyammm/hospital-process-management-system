@@ -1032,6 +1032,7 @@
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
       }).join(' ');
 
+      const xStep = Math.max(1, Math.ceil(pontos.length / 5));
       const points = pontos.map((p, i) => {
         const x = toX(i);
         const y = toY(p.numericValue);
