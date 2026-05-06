@@ -217,6 +217,11 @@
     .indicator-filter-panel.collapsed .indicator-filter-group { display:none; }
     .filter-panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
     .filter-panel-head h4 { margin:0; color:var(--ink); font-size:14px; }
+
+    .indicator-filter-search { position:relative; margin-bottom:10px; }
+    .indicator-filter-search input { width:100%; border:1px solid var(--line); border-radius:10px; padding:9px 10px 9px 34px; font-size:12px; color:var(--text); background:#fff; }
+    .indicator-filter-search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; color:var(--muted); }
+
     .indicator-filter-group { margin-bottom:12px; }
     .indicator-filter-group b { display:block; font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.05em; }
     .filter-chip-list { display:grid; gap:7px; max-height:340px; overflow:auto; padding-right:4px; }
@@ -443,10 +448,18 @@
               </div>
               <div class="indicator-filter-group">
                 <b>Unidades</b>
+                <div class="indicator-filter-search">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  <input id="indicatorUnitSearch" type="search" placeholder="Buscar unidade">
+                </div>
                 <div id="indicatorUnitFilters" class="filter-chip-list"></div>
               </div>
               <div class="indicator-filter-group">
                 <b>Categoria</b>
+                <div class="indicator-filter-search">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  <input id="indicatorCategorySearch" type="search" placeholder="Buscar categoria">
+                </div>
                 <div id="indicatorCategoryFilters" class="filter-chip-list"></div>
               </div>
             </aside>
@@ -502,6 +515,8 @@
       processoIndicadorSelecionado: '',
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
+      indicadorFiltroBuscaUnidade: '',
+      indicadorFiltroBuscaCategoria: '',
       indicatorFiltersCollapsed: false,
       adminData: null,
       taskFilter: 'all'
@@ -521,6 +536,14 @@
           state.indicatorFiltersCollapsed = !state.indicatorFiltersCollapsed;
           document.querySelector('.indicator-filter-panel').classList.toggle('collapsed', state.indicatorFiltersCollapsed);
           document.getElementById('toggleIndicatorFilters').textContent = state.indicatorFiltersCollapsed ? 'Expandir' : 'Recolher';
+        });
+        document.getElementById('indicatorUnitSearch').addEventListener('input', e => {
+          state.indicadorFiltroBuscaUnidade = e.target.value.toLowerCase().trim();
+          renderIndicadores();
+        });
+        document.getElementById('indicatorCategorySearch').addEventListener('input', e => {
+          state.indicadorFiltroBuscaCategoria = e.target.value.toLowerCase().trim();
+          renderIndicadores();
         });
         ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador'].forEach(id => {
           document.getElementById(id).addEventListener('change', e => {
@@ -745,10 +768,12 @@
 
       const unidades = unique(rows.map(r => getIndicatorUnit(r)).filter(Boolean));
       const categoriasFiltros = unique(rows.map(r => r.CATEGORIA).filter(Boolean));
+      const unidadesFiltradas = unidades.filter(u => !state.indicadorFiltroBuscaUnidade || u.toLowerCase().includes(state.indicadorFiltroBuscaUnidade));
+      const categoriasFiltradas = categoriasFiltros.filter(c => !state.indicadorFiltroBuscaCategoria || c.toLowerCase().includes(state.indicadorFiltroBuscaCategoria));
       if (state.unidadeIndicadorSelecionada && !unidades.includes(state.unidadeIndicadorSelecionada)) state.unidadeIndicadorSelecionada = '';
       if (state.categoriaIndicadorSelecionada && !categoriasFiltros.includes(state.categoriaIndicadorSelecionada)) state.categoriaIndicadorSelecionada = '';
-      document.getElementById('indicatorUnitFilters').innerHTML = renderFilterList('Todas as unidades', unidades, state.unidadeIndicadorSelecionada, 'setIndicadorUnidade');
-      document.getElementById('indicatorCategoryFilters').innerHTML = renderFilterList('Todas as categorias', categoriasFiltros, state.categoriaIndicadorSelecionada, 'setIndicadorCategoria');
+      document.getElementById('indicatorUnitFilters').innerHTML = renderFilterList('Todas as unidades', unidadesFiltradas, state.unidadeIndicadorSelecionada, 'setIndicadorUnidade');
+      document.getElementById('indicatorCategoryFilters').innerHTML = renderFilterList('Todas as categorias', categoriasFiltradas, state.categoriaIndicadorSelecionada, 'setIndicadorCategoria');
       if (state.unidadeIndicadorSelecionada) rows = rows.filter(x => getIndicatorUnit(x) === state.unidadeIndicadorSelecionada);
       if (state.categoriaIndicadorSelecionada) rows = rows.filter(x => x.CATEGORIA === state.categoriaIndicadorSelecionada);
 
@@ -804,8 +829,10 @@
       return ind.UNIDADE || ind.SETOR || ind.AREA || '';
     }
     function renderFilterList(labelAll, items, selected, handler) {
-      return [`<button class="filter-chip ${!selected ? 'active' : ''}" onclick="${handler}('')">${labelAll}</button>`]
-        .concat(items.map(item => `<button class="filter-chip ${item === selected ? 'active' : ''}" onclick="${handler}('${escapeHtml(item)}')">${escapeHtml(item)}</button>`)).join('');
+      const controls = [`<button class="filter-chip ${!selected ? 'active' : ''}" onclick="${handler}('')">${labelAll}</button>`]
+        .concat(items.map(item => `<button class="filter-chip ${item === selected ? 'active' : ''}" onclick="${handler}('${escapeHtml(item)}')">${escapeHtml(item)}</button>`));
+      if (items.length === 0) controls.push('<span class="pill">Nenhum filtro encontrado</span>');
+      return controls.join('');
     }
     function setIndicadorUnidade(v) { state.unidadeIndicadorSelecionada = v; renderIndicadores(); }
     function setIndicadorCategoria(v) { state.categoriaIndicadorSelecionada = v; renderIndicadores(); }
