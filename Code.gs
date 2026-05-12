@@ -11,6 +11,9 @@ const SIGEP = {
     ttlSeconds: 90,
     version: 'v1'
   },
+  timezones: {
+    operational: 'America/Fortaleza'
+  },
   schema: {
     required: {
       BASE_PROCESSOS: ['ID_PROCESSO'],
@@ -33,7 +36,8 @@ const SIGEP = {
     lancamentos: 'BASE_LANCAMENTOS_INDICADORES',
     unidades: 'BASE_UNIDADES',
     usuarios: 'USUARIOS',
-    historico: 'HISTORICO'
+    historico: 'HISTORICO',
+    dashboardBase: 'DASHBOARD_BASE'
   }
 };
 
@@ -75,6 +79,16 @@ function getSigepData() {
 function getDashboardData() {
   const app = new SigepApplication();
   return app.getDashboardData();
+}
+
+function runDashboardSnapshotJob() {
+  const app = new SigepApplication();
+  return app.dashboard.refreshAnalyticalSnapshot(app.repo, app.audit);
+}
+
+function runBasesHealthCheckJob() {
+  const app = new SigepApplication();
+  return app.runBasesHealthCheck();
 }
 
 function getProcessosPage(payload) {
@@ -201,8 +215,10 @@ class SigepApplication {
   }
 
   getDashboardData() {
+    const snapshot = this.dashboard.getLatestSnapshot(this.repo);
+    if (snapshot) return { ok: true, ...snapshot, source: 'DASHBOARD_BASE' };
     const data = this.getInitialData();
-    return { ok: true, dashboard: data.dashboard, generatedAt: data.generatedAt, generatedAtLocal: data.generatedAtLocal };
+    return { ok: true, dashboard: data.dashboard, generatedAt: data.generatedAt, generatedAtLocal: data.generatedAtLocal, source: 'REALTIME' };
   }
 
   getProcessosPage(payload) {
@@ -218,6 +234,11 @@ class SigepApplication {
   getIndicadoresPage(payload) {
     if (!this.repo.getFeatureFlag('INDICADORES')) return { ok: true, data: [], page: 1, pageSize: 50, total: 0, totalPages: 1 };
     return this.repo.paginate(this.indicadores.list(), payload);
+  }
+
+  runBasesHealthCheck() {
+    const checker = new BaseHealthService(this.repo, this.audit);
+    return checker.run();
   }
 }
 
@@ -386,6 +407,10 @@ class SheetRepository {
     return Utilities.formatDate(date, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
   }
 
+  formatDateOperational(date) {
+    return Utilities.formatDate(date, SIGEP.timezones.operational, "dd/MM/yyyy HH:mm:ss");
+  }
+
   paginate(items, payload) {
     const page = Math.max(1, Number(payload && payload.page || 1));
     const pageSize = Math.min(200, Math.max(10, Number(payload && payload.pageSize || 50)));
@@ -542,6 +567,100 @@ class DashboardService {
 
   norm(v) {
     return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  }
+
+  refreshAnalyticalSnapshot(repo, audit) {
+    const processos = repo.getObjects(SIGEP.sheets.processos).map(DomainNormalizer.processo.bind(DomainNormalizer));
+    const acompanhamento = repo.getObjects(SIGEP.sheets.acompanhamento).map(DomainNormalizer.acompanhamento.bind(DomainNormalizer));
+    const indicadores = repo.getObjects(SIGEP.sheets.indicadores).map(DomainNormalizer.indicador.bind(DomainNormalizer));
+    const lancamentos = repo.getObjects(SIGEP.sheets.lancamentos);
+    const now = new Date();
+    const payload = {
+      dashboard: this.build(processos, acompanhamento, indicadores, lancamentos),
+      generatedAt: now.toISOString(),
+      generatedAtLocal: repo.formatDateOperational(now)
+    };
+    const sh = repo.getSheet(SIGEP.sheets.dashboardBase);
+    sh.clearContents();
+    sh.getRange(1, 1, 1, 2).setValues([['CHAVE', 'VALOR_JSON']]);
+    sh.getRange(2, 1, 1, 2).setValues([['LATEST', JSON.stringify(payload)]]);
+    if (audit) audit.log('SNAPSHOT_DASHBOARD', 'DASHBOARD_BASE', 'LATEST', 'Snapshot analítico atualizado');
+    return { ok: true, ...payload };
+  }
+
+  getLatestSnapshot(repo) {
+    try {
+      const rows = repo.getObjects(SIGEP.sheets.dashboardBase);
+      const row = rows.find(r => String(r.CHAVE || '') === 'LATEST');
+      if (!row || !row.VALOR_JSON) return null;
+      return JSON.parse(row.VALOR_JSON);
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+class BaseHealthService {
+  constructor(repo, audit) {
+    this.repo = repo;
+    this.audit = audit;
+  }
+
+  run() {
+    const findings = [];
+    findings.push(...this.checkDuplicateIds_('BASE_PROCESSOS', 'ID_PROCESSO'));
+    findings.push(...this.checkDuplicateIds_('BASE_ACOMPANHAMENTO', 'ID_ACOMPANHAMENTO'));
+    findings.push(...this.checkDuplicateIds_('BASE_INDICADORES', 'ID_INDICADOR'));
+    findings.push(...this.checkMissingHeaders_());
+    findings.push(...this.checkInvalidDates_('BASE_ACOMPANHAMENTO', 'DATA_AGENDAMENTO'));
+    findings.push(...this.checkOrphanRows_());
+    findings.push(...this.checkCrossSheetInconsistency_());
+    const severity = findings.length ? 'ALERTA' : 'OK';
+    const details = JSON.stringify({ severity, findings });
+    this.audit.log('HEALTHCHECK_BASES', 'BASES', severity, details);
+    if (findings.length) {
+      this.audit.log('ALERTA_ADMIN', 'BASES', 'HEALTHCHECK', 'Foram encontradas inconsistências nas bases');
+    }
+    return { ok: true, severity, findings };
+  }
+
+  checkDuplicateIds_(sheet, idColumn) {
+    const rows = this.repo.getObjects(sheet);
+    const seen = new Set();
+    const dup = new Set();
+    rows.forEach(r => {
+      const id = String(r[idColumn] || '').trim();
+      if (!id) return;
+      if (seen.has(id)) dup.add(id);
+      seen.add(id);
+    });
+    return [...dup].map(id => ({ type: 'DUPLICATE_ID', sheet, idColumn, id }));
+  }
+  checkMissingHeaders_() {
+    const out = [];
+    Object.keys(SIGEP.schema.required || {}).forEach(sheet => {
+      const headers = this.repo.getHeaders(sheet).map(h => String(h).trim());
+      (SIGEP.schema.required[sheet] || []).forEach(req => {
+        if (!headers.includes(req)) out.push({ type: 'MISSING_HEADER', sheet, header: req });
+      });
+    });
+    return out;
+  }
+  checkInvalidDates_(sheet, col) {
+    return this.repo.getObjects(sheet)
+      .filter(r => String(r[col] || '').trim() && isNaN(new Date(r[col]).getTime()))
+      .map(r => ({ type: 'INVALID_DATE', sheet, col, row: r._rowNumber, value: r[col] }));
+  }
+  checkOrphanRows_() {
+    return this.repo.getObjects('BASE_ACOMPANHAMENTO')
+      .filter(r => !String(r.ID_ACOMPANHAMENTO || '').trim())
+      .map(r => ({ type: 'ORPHAN_ROW', sheet: 'BASE_ACOMPANHAMENTO', row: r._rowNumber }));
+  }
+  checkCrossSheetInconsistency_() {
+    const unidades = new Set(this.repo.getObjects('BASE_UNIDADES').map(x => String(x.UNIDADE || x.NOME_SETOR || '').trim()).filter(Boolean));
+    return this.repo.getObjects('BASE_ACOMPANHAMENTO')
+      .filter(r => String(r.UNIDADE || '').trim() && !unidades.has(String(r.UNIDADE || '').trim()))
+      .map(r => ({ type: 'INCONSISTENT_REFERENCE', sheet: 'BASE_ACOMPANHAMENTO', row: r._rowNumber, unidade: r.UNIDADE }));
   }
 }
 
