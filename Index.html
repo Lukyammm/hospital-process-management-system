@@ -194,6 +194,10 @@
     .timeline-item .status { color: var(--muted); font-size: 12px; text-align: right; }
 
     .empty, .loading { padding: 36px; text-align: center; color: var(--muted); border-radius: 12px; background: #fff; border: 1px dashed var(--line-strong); }
+    .skeleton { position: relative; overflow: hidden; background: #eef3f8; border-radius: 12px; min-height: 16px; }
+    .skeleton::after { content:''; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation:shimmer 1.25s infinite; }
+    .skeleton-card { border:1px solid var(--line); border-radius: 14px; padding:14px; background:#fff; display:grid; gap:10px; }
+    @keyframes shimmer { 100% { transform: translateX(100%); } }
 
     .drawer { position: fixed; inset: 0; background: rgba(14, 31, 53, .42); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 30; }
     .drawer.active { display: flex; }
@@ -534,7 +538,13 @@
     const ui = {
       init() {
         document.querySelectorAll('.nav button').forEach(btn => {
+          btn.setAttribute('role', 'tab');
+          btn.setAttribute('aria-selected', btn.classList.contains('active') ? 'true' : 'false');
+          btn.tabIndex = btn.classList.contains('active') ? 0 : -1;
           btn.addEventListener('click', () => ui.setView(btn.dataset.view));
+          btn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ui.setView(btn.dataset.view); }
+          });
         });
         document.getElementById('refreshBtn').addEventListener('click', loadData);
         document.getElementById('globalSearch').addEventListener('input', e => {
@@ -572,7 +582,12 @@
 
       setView(view) {
         state.view = view;
-        document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+        document.querySelectorAll('.nav button').forEach(b => {
+          const active = b.dataset.view === view;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-selected', active ? 'true' : 'false');
+          b.tabIndex = active ? 0 : -1;
+        });
         document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
         const titles = {
           dashboard: ['Dashboard executivo', 'Visão consolidada de processos, acompanhamento e indicadores.'],
@@ -602,8 +617,22 @@
       }
     };
 
+    function showSectionSkeletons() {
+      const skeletonCard = `
+        <div class="skeleton-card">
+          <div class="skeleton" style="height:18px;width:62%"></div>
+          <div class="skeleton" style="height:14px;width:96%"></div>
+          <div class="skeleton" style="height:14px;width:80%"></div>
+        </div>`;
+      ['dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = skeletonCard.repeat(id === 'dashboardAcompanhamento' ? 2 : 3);
+      });
+    }
+
     function loadData() {
       setLoading();
+      showSectionSkeletons();
       google.script.run
         .withSuccessHandler(payload => {
           state.data = payload;
@@ -695,7 +724,7 @@
     }
 
     function renderUnitCards(groups) {
-      if (!groups.length) return '<div class="empty">Nenhuma unidade encontrada para os filtros atuais.</div>';
+      if (!groups.length) return '<div class="empty"><strong>Nenhum acompanhamento encontrado.</strong><br>Ajuste os filtros ou confirme se há dados migrados para esta visão.</div>';
       return groups.map(group => {
         const b = group.base;
         const steps = [
