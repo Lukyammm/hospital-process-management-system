@@ -4,6 +4,22 @@
  */
 
 const SIGEP = {
+  security: {
+    allowEmbedding: false
+  },
+  cache: {
+    ttlSeconds: 90,
+    version: 'v1'
+  },
+  schema: {
+    required: {
+      BASE_PROCESSOS: ['ID_PROCESSO'],
+      BASE_ACOMPANHAMENTO: ['ID_ACOMPANHAMENTO'],
+      BASE_INDICADORES: ['ID_INDICADOR'],
+      BASE_LANCAMENTOS_INDICADORES: ['ID_INDICADOR'],
+      BASE_UNIDADES: ['ID_UNIDADE']
+    }
+  },
   sheets: {
     processos: 'BASE_PROCESSOS',
     acompanhamento: 'BASE_ACOMPANHAMENTO',
@@ -16,11 +32,16 @@ const SIGEP = {
 };
 
 function doGet() {
-  return HtmlService
+  const output = HtmlService
     .createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('SIGEP-HUC')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    .setTitle('SIGEP-HUC');
+
+  if (SIGEP.security.allowEmbedding) {
+    output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  return output;
 }
 
 function include(filename) {
@@ -30,6 +51,27 @@ function include(filename) {
 function getSigepData() {
   const app = new SigepApplication();
   return app.getInitialData();
+}
+
+
+function getDashboardData() {
+  const app = new SigepApplication();
+  return app.getDashboardData();
+}
+
+function getProcessosPage(payload) {
+  const app = new SigepApplication();
+  return app.getProcessosPage(payload);
+}
+
+function getAcompanhamentoPage(payload) {
+  const app = new SigepApplication();
+  return app.getAcompanhamentoPage(payload);
+}
+
+function getIndicadoresPage(payload) {
+  const app = new SigepApplication();
+  return app.getIndicadoresPage(payload);
 }
 
 function atualizarStatusAcompanhamento(payload) {
@@ -125,14 +167,21 @@ class SigepApplication {
   }
 
   getInitialData() {
+    this.repo.validateSchemas();
+    const cacheKey = this.repo.getCacheKey('initial_data');
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const processos = this.processos.list();
     const acompanhamento = this.acompanhamento.list();
     const indicadores = this.indicadores.list();
     const lancamentos = this.indicadores.listLancamentos();
     const unidades = this.repo.getObjects(SIGEP.sheets.unidades);
-    return {
+    const result = {
       ok: true,
       generatedAt: new Date().toISOString(),
+      generatedAtLocal: this.repo.formatDatePtBr(new Date()),
       user: Session.getActiveUser().getEmail() || '',
       dashboard: this.dashboard.build(processos, acompanhamento, indicadores, lancamentos),
       processos,
@@ -141,8 +190,29 @@ class SigepApplication {
       lancamentos,
       unidades
     };
+
+    cache.put(cacheKey, JSON.stringify(result), SIGEP.cache.ttlSeconds);
+    return result;
+  }
+
+  getDashboardData() {
+    const data = this.getInitialData();
+    return { ok: true, dashboard: data.dashboard, generatedAt: data.generatedAt, generatedAtLocal: data.generatedAtLocal };
+  }
+
+  getProcessosPage(payload) {
+    return this.repo.paginate(this.processos.list(), payload);
+  }
+
+  getAcompanhamentoPage(payload) {
+    return this.repo.paginate(this.acompanhamento.list(), payload);
+  }
+
+  getIndicadoresPage(payload) {
+    return this.repo.paginate(this.indicadores.list(), payload);
   }
 }
+
 
 class SheetRepository {
   constructor() {
@@ -200,6 +270,45 @@ class SheetRepository {
 
   getHeaders(sheetName) {
     return this.getSheet(sheetName).getDataRange().getValues()[0] || [];
+  }
+
+  validateSchemas() {
+    const requiredBySheet = SIGEP.schema.required || {};
+    Object.keys(requiredBySheet).forEach(sheetName => {
+      const requiredHeaders = requiredBySheet[sheetName] || [];
+      if (!requiredHeaders.length) return;
+      const headers = this.getHeaders(sheetName).map(h => String(h).trim());
+      const missing = requiredHeaders.filter(h => !headers.includes(h));
+      if (missing.length) {
+        throw new Error('Schema inválido na aba ' + sheetName + '. Cabeçalhos faltando: ' + missing.join(', '));
+      }
+    });
+  }
+
+  getCacheKey(prefix) {
+    return ['sigep', SIGEP.cache.version, prefix].join(':');
+  }
+
+  clearCache() {
+    CacheService.getScriptCache().remove(this.getCacheKey('initial_data'));
+  }
+
+  formatDatePtBr(date) {
+    return Utilities.formatDate(date, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+  }
+
+  paginate(items, payload) {
+    const page = Math.max(1, Number(payload && payload.page || 1));
+    const pageSize = Math.min(200, Math.max(10, Number(payload && payload.pageSize || 50)));
+    const start = (page - 1) * pageSize;
+    const data = items.slice(start, start + pageSize);
+    return { ok: true, data, page, pageSize, total: items.length, totalPages: Math.ceil(items.length / pageSize) || 1 };
+  }
+
+  appendRows(sheetName, rows) {
+    if (!rows || !rows.length) return;
+    const sh = this.getSheet(sheetName);
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   }
 
   deleteById(sheetName, idColumn, id) {
@@ -388,7 +497,7 @@ class AdminService {
     } else {
       const headers = this.repo.getHeaders(SIGEP.sheets.usuarios);
       const row = headers.map(h => patch[h] || '');
-      this.repo.append(SIGEP.sheets.usuarios, row);
+      this.repo.appendRows(SIGEP.sheets.usuarios, [row]);
       data = patch;
       this.audit.log('CRIAR_USUARIO', 'USUARIOS', patch.EMAIL, JSON.stringify(patch));
     }
