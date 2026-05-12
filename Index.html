@@ -41,6 +41,17 @@
       --space-6: 32px;
       --focus-ring: #0b63ce;
       --radius-lg: 22px;
+      --ease: .2s ease;
+    }
+
+    :where(button, input, select, textarea) {
+      font: inherit;
+      color: inherit;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
     }
 
     * { box-sizing: border-box; }
@@ -60,7 +71,7 @@
     .brand h1 { margin: 0; font-size: 42px; line-height: 1; letter-spacing: -.03em; color: var(--ink); }
     .brand span { display: block; margin-top: 10px; color: var(--muted); font-size: 14px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
     .nav { display: grid; gap: 8px; }
-    .nav button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 11px; cursor: pointer; text-align: left; transition: .18s ease; }
+    .nav button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 11px; cursor: pointer; text-align: left; transition: var(--ease); }
     .nav button:hover { background: #f3f8ff; color: var(--ink); border-color: var(--line); }
     .nav button.active { background: var(--primary-2); color: var(--primary); border-color: var(--primary-3); font-weight: 700; box-shadow: inset 0 0 0 1px rgba(31,78,121,.08); }
     .nav svg { width: 19px; height: 19px; flex: 0 0 auto; }
@@ -147,7 +158,7 @@
       border-radius: 18px;
       padding: 22px;
       min-width: 0;
-      transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+      transition: border-color var(--ease), box-shadow var(--ease), transform var(--ease);
       box-shadow: 0 4px 14px rgba(15,39,68,.06);
       isolation: isolate;
     }
@@ -207,6 +218,15 @@
     .skeleton::after { content:''; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation:shimmer 1.25s infinite; }
     .skeleton-card { border:1px solid var(--line); border-radius: 14px; padding:14px; background:#fff; display:grid; gap:10px; }
     @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
 
     .drawer { position: fixed; inset: 0; background: rgba(14, 31, 53, .42); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 30; }
     .drawer.active { display: flex; }
