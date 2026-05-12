@@ -32,11 +32,28 @@ const SIGEP = {
 };
 
 function doGet() {
-  return HtmlService
+  const output = HtmlService
     .createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('SIGEP-HUC')
-    .setXFrameOptionsMode(SIGEP.security.frameOptionsMode);
+    .setTitle('SIGEP-HUC');
+
+  const frameMode = getFrameOptionsMode_();
+  if (frameMode) {
+    output.setXFrameOptionsMode(frameMode);
+  }
+
+  return output;
+}
+
+function getFrameOptionsMode_() {
+  if (
+    HtmlService
+    && HtmlService.XFrameOptionsMode
+    && HtmlService.XFrameOptionsMode.SAMEORIGIN
+  ) {
+    return HtmlService.XFrameOptionsMode.SAMEORIGIN;
+  }
+  return null;
 }
 
 function include(filename) {
