@@ -327,6 +327,18 @@ class SheetRepository {
       });
   }
 
+  getObjectsSafe(sheetName, fallback) {
+    try {
+      return this.getObjects(sheetName);
+    } catch (err) {
+      const message = String(err && err.message || '');
+      if (message.indexOf('Aba não encontrada: ') === 0) {
+        return Array.isArray(fallback) ? fallback : [];
+      }
+      throw err;
+    }
+  }
+
   updateById(sheetName, idColumn, id, patch) {
     const sh = this.getSheet(sheetName);
     const values = sh.getDataRange().getValues();
@@ -679,7 +691,7 @@ class AdminService {
       usuarios,
       status: this.repo.getObjects('CONFIG_STATUS'),
       tiposProcesso: this.repo.getObjects('CONFIG_TIPOS_PROCESSO'),
-      featureFlags: this.repo.getObjects('CONFIG_FEATURE_FLAGS'),
+      featureFlags: this.repo.getObjectsSafe('CONFIG_FEATURE_FLAGS', []),
       unidades,
       setores: unidades.map(x => ({
         ID_SETOR: x.ID_SETOR || x.ID_UNIDADE || x.UNIDADE,
