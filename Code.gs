@@ -191,7 +191,7 @@ class SigepApplication {
       unidades
     };
 
-    cache.put(cacheKey, JSON.stringify(result), SIGEP.cache.ttlSeconds);
+    this.repo.cachePutSafe(cacheKey, result, SIGEP.cache.ttlSeconds);
     return result;
   }
 
@@ -217,6 +217,17 @@ class SigepApplication {
 class SheetRepository {
   constructor() {
     this.ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+
+  cachePutSafe(key, value, ttlSeconds) {
+    const cache = CacheService.getScriptCache();
+    const serialized = JSON.stringify(value);
+    const maxCacheEntryBytes = 95 * 1024;
+    if (serialized.length > maxCacheEntryBytes) {
+      return false;
+    }
+    cache.put(key, serialized, ttlSeconds);
+    return true;
   }
 
   getSheet(name) {
