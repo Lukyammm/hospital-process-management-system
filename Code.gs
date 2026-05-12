@@ -5,7 +5,7 @@
 
 const SIGEP = {
   security: {
-    allowEmbedding: false
+    frameOptionsMode: HtmlService.XFrameOptionsMode.SAMEORIGIN
   },
   cache: {
     ttlSeconds: 90,
@@ -32,16 +32,11 @@ const SIGEP = {
 };
 
 function doGet() {
-  const output = HtmlService
+  return HtmlService
     .createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('SIGEP-HUC');
-
-  if (SIGEP.security.allowEmbedding) {
-    output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
-  return output;
+    .setTitle('SIGEP-HUC')
+    .setXFrameOptionsMode(SIGEP.security.frameOptionsMode);
 }
 
 function include(filename) {
@@ -74,73 +69,57 @@ function getIndicadoresPage(payload) {
   return app.getIndicadoresPage(payload);
 }
 
+function withWritePermission_(screenName, callback) {
+  const app = new SigepApplication();
+  app.auth.assertCanWrite(screenName || 'GERAL');
+  return callback(app);
+}
+
+function withAdminPermission_(screenName, callback) {
+  const app = new SigepApplication();
+  app.auth.assertIsAdmin(screenName || 'ADMIN');
+  return callback(app);
+}
+
 function atualizarStatusAcompanhamento(payload) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.acompanhamento.updateStatus(payload);
-  });
+  return runWithWriteLock_(() => withWritePermission_('ACOMPANHAMENTO', app => app.acompanhamento.updateStatus(payload)));
 }
 
 function atualizarProcesso(payload) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.processos.update(payload);
-  });
+  return runWithWriteLock_(() => withWritePermission_('PROCESSOS', app => app.processos.update(payload)));
 }
 
 function atualizarIndicador(payload) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.indicadores.update(payload);
-  });
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.update(payload)));
 }
 
 
 function getAdminData() {
-  const app = new SigepApplication();
-  return app.admin.getAdminData();
+  return withAdminPermission_('ADMIN', app => app.admin.getAdminData());
 }
 
 function salvarConfiguracao(payload) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.admin.salvarConfiguracao(payload);
-  });
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.salvarConfiguracao(payload)));
 }
 
 function salvarUsuario(payload) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.admin.salvarUsuario(payload);
-  });
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.salvarUsuario(payload)));
 }
 
 function excluirUsuario(email) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.admin.excluirUsuario(email);
-  });
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.excluirUsuario(email)));
 }
 
 function alterarSenhaUsuario(payload) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.admin.alterarSenhaUsuario(payload);
-  });
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.alterarSenhaUsuario(payload)));
 }
 
 function salvarSetor(payload) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.admin.salvarSetor(payload);
-  });
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.salvarSetor(payload)));
 }
 
 function excluirSetor(setorId) {
-  return runWithWriteLock_(() => {
-    const app = new SigepApplication();
-    return app.admin.excluirSetor(setorId);
-  });
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.excluirSetor(setorId)));
 }
 
 function runWithWriteLock_(callback) {
@@ -158,7 +137,8 @@ function runWithWriteLock_(callback) {
 class SigepApplication {
   constructor() {
     this.repo = new SheetRepository();
-    this.audit = new AuditService(this.repo);
+    this.auth = new AuthorizationService(this.repo);
+    this.audit = new AuditService(this.repo, this.auth);
     this.processos = new ProcessoService(this.repo, this.audit);
     this.acompanhamento = new AcompanhamentoService(this.repo, this.audit);
     this.indicadores = new IndicadorService(this.repo, this.audit);
@@ -356,7 +336,7 @@ class ProcessoService {
     const current = this.repo.getById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO);
     patch.STATUS_GERAL = this.calcularStatus_({ ...current, ...patch });
     const updated = this.repo.updateById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO, patch);
-    this.audit.log('ATUALIZAR_PROCESSO', 'PROCESSO', payload.ID_PROCESSO, JSON.stringify(patch));
+    this.audit.logChange({ acao: 'ATUALIZAR_PROCESSO', entidade: 'PROCESSO', id: payload.ID_PROCESSO, before: current, after: updated, patch, origem: 'PROCESSOS', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
   }
 
@@ -400,7 +380,7 @@ class AcompanhamentoService {
       patch.STATUS_GERAL = concluidas === total ? 'Concluída' : concluidas === 0 ? 'Não iniciada' : 'Em andamento';
     }
     const updated = this.repo.updateById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO, patch);
-    this.audit.log('ATUALIZAR_ACOMPANHAMENTO', 'ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO, JSON.stringify(patch));
+    this.audit.logChange({ acao: 'ATUALIZAR_ACOMPANHAMENTO', entidade: 'ACOMPANHAMENTO', id: payload.ID_ACOMPANHAMENTO, before: current, after: updated, patch, origem: 'ACOMPANHAMENTO', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
   }
 
@@ -430,8 +410,9 @@ class IndicadorService {
     ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'].forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
+    const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
     const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch);
-    this.audit.log('ATUALIZAR_INDICADOR', 'INDICADOR', payload.ID_INDICADOR, JSON.stringify(patch));
+    this.audit.logChange({ acao: 'ATUALIZAR_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
   }
 }
@@ -568,34 +549,102 @@ class AdminService {
   }
 }
 
-class AuditService {
+class AuthorizationService {
   constructor(repo) {
     this.repo = repo;
   }
 
+  getCurrentUser() {
+    const email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase();
+    if (!email) throw new Error('Não foi possível identificar o usuário autenticado.');
+    const user = this.repo.getObjects(SIGEP.sheets.usuarios).find(u => String(u.EMAIL || '').trim().toLowerCase() === email);
+    if (!user) throw new Error('Usuário sem cadastro na aba USUARIOS.');
+    return {
+      email,
+      nome: user.NOME || '',
+      perfil: this.normalizeRole_(user.PERFIL),
+      ativo: String(user.ATIVO || 'SIM').toUpperCase() !== 'NAO'
+    };
+  }
+
+  assertCanWrite(origem) {
+    const user = this.getCurrentUser();
+    if (!user.ativo) throw new Error('Usuário inativo para alteração.');
+    const allowed = ['ADMIN', 'ADMINISTRADOR', 'GESTOR', 'EDITOR'];
+    if (!allowed.includes(user.perfil)) throw new Error('Sem permissão de escrita para ' + origem + '.');
+    return user;
+  }
+
+  assertIsAdmin(origem) {
+    const user = this.getCurrentUser();
+    if (!user.ativo) throw new Error('Usuário inativo para alteração.');
+    if (!['ADMIN', 'ADMINISTRADOR'].includes(user.perfil)) throw new Error('Acesso restrito ao perfil ADMIN em ' + origem + '.');
+    return user;
+  }
+
+  normalizeRole_(role) {
+    return String(role || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+  }
+}
+
+class AuditService {
+  constructor(repo, auth) {
+    this.repo = repo;
+    this.auth = auth;
+  }
+
   log(acao, entidade, id, detalhes) {
+    this.logChange({ acao, entidade, id, detalhes, origem: 'N/A' });
+  }
+
+  logChange(payload) {
     try {
-      this.repo.append(SIGEP.sheets.historico, [new Date(), Session.getActiveUser().getEmail() || '', acao, entidade, id, detalhes]);
+      const now = new Date();
+      const user = this.auth.getCurrentUser();
+      const contexto = {
+        origem: payload.origem || 'N/A',
+        motivo: payload.motivo || '',
+        perfil: user.perfil,
+        usuario: user.email,
+        timestampIso: now.toISOString(),
+        timestampLocal: this.repo.formatDatePtBr(now),
+        antes: this.compact_(payload.before),
+        depois: this.compact_(payload.after),
+        alteracoes: payload.patch || null,
+        detalhes: payload.detalhes || ''
+      };
+      this.repo.append(SIGEP.sheets.historico, [now, user.email, payload.acao, payload.entidade, payload.id, JSON.stringify(contexto)]);
     } catch (e) {
       console.warn('Falha ao registrar histórico:', e.message);
     }
+  }
+
+  compact_(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    const out = {};
+    Object.keys(obj).forEach(key => {
+      if (key === '_rowNumber') return;
+      const value = obj[key];
+      if (value !== '' && value !== null && value !== undefined) out[key] = value;
+    });
+    return out;
   }
 }
 
 class PayloadValidator {
   static validateProcessoUpdate(payload) {
     const allowed = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
-    this.validateAllowedKeys_(payload, ['ID_PROCESSO'].concat(allowed), 'processo');
+    this.validateAllowedKeys_(payload, ['ID_PROCESSO', 'MOTIVO_ALTERACAO'].concat(allowed), 'processo');
   }
 
   static validateAcompanhamentoUpdate(payload) {
     const allowed = ['DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'];
-    this.validateAllowedKeys_(payload, ['ID_ACOMPANHAMENTO'].concat(allowed), 'acompanhamento');
+    this.validateAllowedKeys_(payload, ['ID_ACOMPANHAMENTO', 'MOTIVO_ALTERACAO'].concat(allowed), 'acompanhamento');
   }
 
   static validateIndicadorUpdate(payload) {
     const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'];
-    this.validateAllowedKeys_(payload, ['ID_INDICADOR'].concat(allowed), 'indicador');
+    this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed), 'indicador');
   }
 
   static validateAllowedKeys_(payload, allowed, context) {
