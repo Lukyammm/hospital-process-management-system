@@ -773,8 +773,7 @@ class AuthorizationService {
   }
 
   getCurrentUser() {
-    const email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase();
-    if (!email) throw new Error('Não foi possível identificar o usuário autenticado.');
+    const email = this.resolveAuthenticatedEmail_();
     const user = this.repo.getObjects(SIGEP.sheets.usuarios).find(u => String(u.EMAIL || '').trim().toLowerCase() === email);
     if (!user) throw new Error('Usuário sem cadastro na aba USUARIOS.');
     return {
@@ -783,6 +782,26 @@ class AuthorizationService {
       perfil: this.normalizeRole_(user.PERFIL),
       ativo: String(user.ATIVO || 'SIM').toUpperCase() !== 'NAO'
     };
+  }
+
+
+  resolveAuthenticatedEmail_() {
+    const candidates = [
+      Session.getActiveUser && Session.getActiveUser(),
+      Session.getEffectiveUser && Session.getEffectiveUser()
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const user = candidates[i];
+      if (!user || typeof user.getEmail !== 'function') continue;
+      const email = String(user.getEmail() || '').trim().toLowerCase();
+      if (email) return email;
+    }
+
+    throw new Error(
+      'Não foi possível identificar o usuário autenticado. ' +
+      'Verifique se o Web App está publicado para usuários autenticados e com execução em nome do usuário acessando.'
+    );
   }
 
   assertCanWrite(origem) {
