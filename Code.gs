@@ -20,6 +20,12 @@ const SIGEP = {
       BASE_UNIDADES: ['ID_UNIDADE']
     }
   },
+  featureFlags: {
+    PROCESSOS: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_PROCESSOS', defaultValue: true },
+    INDICADORES: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_INDICADORES', defaultValue: true },
+    ACOMPANHAMENTO: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_ACOMPANHAMENTO', defaultValue: true },
+    FILTROS_AVANCADOS: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'FILTROS_AVANCADOS', defaultValue: true }
+  },
   sheets: {
     processos: 'BASE_PROCESSOS',
     acompanhamento: 'BASE_ACOMPANHAMENTO',
@@ -170,10 +176,11 @@ class SigepApplication {
     const cached = cache.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    const processos = this.processos.list();
-    const acompanhamento = this.acompanhamento.list();
-    const indicadores = this.indicadores.list();
-    const lancamentos = this.indicadores.listLancamentos();
+    const featureFlags = this.repo.getFeatureFlags();
+    const processos = featureFlags.PROCESSOS ? this.processos.list() : [];
+    const acompanhamento = featureFlags.ACOMPANHAMENTO ? this.acompanhamento.list() : [];
+    const indicadores = featureFlags.INDICADORES ? this.indicadores.list() : [];
+    const lancamentos = featureFlags.INDICADORES ? this.indicadores.listLancamentos() : [];
     const unidades = this.repo.getObjects(SIGEP.sheets.unidades);
     const result = {
       ok: true,
@@ -185,7 +192,8 @@ class SigepApplication {
       acompanhamento,
       indicadores,
       lancamentos,
-      unidades
+      unidades,
+      featureFlags
     };
 
     this.repo.cachePutSafe(cacheKey, result, SIGEP.cache.ttlSeconds);
@@ -198,15 +206,66 @@ class SigepApplication {
   }
 
   getProcessosPage(payload) {
+    if (!this.repo.getFeatureFlag('PROCESSOS')) return { ok: true, data: [], page: 1, pageSize: 50, total: 0, totalPages: 1 };
     return this.repo.paginate(this.processos.list(), payload);
   }
 
   getAcompanhamentoPage(payload) {
+    if (!this.repo.getFeatureFlag('ACOMPANHAMENTO')) return { ok: true, data: [], page: 1, pageSize: 50, total: 0, totalPages: 1 };
     return this.repo.paginate(this.acompanhamento.list(), payload);
   }
 
   getIndicadoresPage(payload) {
+    if (!this.repo.getFeatureFlag('INDICADORES')) return { ok: true, data: [], page: 1, pageSize: 50, total: 0, totalPages: 1 };
     return this.repo.paginate(this.indicadores.list(), payload);
+  }
+}
+
+
+class DomainNormalizer {
+  static processo(raw) {
+    return {
+      ...raw,
+      ID_PROCESSO: this.asText(raw.ID_PROCESSO),
+      NOME_PROCESSO: this.asText(raw.NOME_PROCESSO),
+      STATUS_GERAL: this.asText(raw.STATUS_GERAL),
+      MODELAGEM_REALIZADA: this.asText(raw.MODELAGEM_REALIZADA),
+      VALIDACAO_NUGESP: this.asText(raw.VALIDACAO_NUGESP),
+      VALIDACAO_DIRECAO: this.asText(raw.VALIDACAO_DIRECAO),
+      PUBLICACAO: this.asText(raw.PUBLICACAO)
+    };
+  }
+
+  static acompanhamento(raw) {
+    return {
+      ...raw,
+      ID_ACOMPANHAMENTO: this.asText(raw.ID_ACOMPANHAMENTO),
+      UNIDADE: this.asText(raw.UNIDADE),
+      DATA_AGENDAMENTO: this.asText(raw.DATA_AGENDAMENTO),
+      STATUS_AGENDAMENTO: this.asText(raw.STATUS_AGENDAMENTO),
+      STATUS_GERAL: this.asText(raw.STATUS_GERAL),
+      ETAPAS_CONCLUIDAS: this.asNumber(raw.ETAPAS_CONCLUIDAS),
+      ETAPAS_TOTAL: this.asNumber(raw.ETAPAS_TOTAL),
+      PROGRESSO_PERCENTUAL: this.asNumber(raw.PROGRESSO_PERCENTUAL)
+    };
+  }
+
+  static indicador(raw) {
+    return {
+      ...raw,
+      ID_INDICADOR: this.asText(raw.ID_INDICADOR),
+      NOME_INDICADOR: this.asText(raw.NOME_INDICADOR),
+      TIPO_INDICADOR: this.asText(raw.TIPO_INDICADOR),
+      META: this.asText(raw.META),
+      RESULTADO_ESPERADO: this.asText(raw.RESULTADO_ESPERADO)
+    };
+  }
+
+  static asText(v) { return String(v || '').trim(); }
+  static asNumber(v) {
+    if (v === '' || v === null || v === undefined) return 0;
+    const n = Number(String(v).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
   }
 }
 
@@ -297,6 +356,28 @@ class SheetRepository {
     return ['sigep', SIGEP.cache.version, prefix].join(':');
   }
 
+  getFeatureFlags() {
+    const flags = {};
+    Object.keys(SIGEP.featureFlags || {}).forEach(name => {
+      flags[name] = this.getFeatureFlag(name);
+    });
+    return flags;
+  }
+
+  getFeatureFlag(name) {
+    const cfg = (SIGEP.featureFlags || {})[name];
+    if (!cfg) return false;
+    try {
+      const rows = this.getObjects(cfg.sheet);
+      const hit = rows.find(r => String(r.CHAVE || '').trim().toUpperCase() === String(cfg.key || '').trim().toUpperCase());
+      if (!hit) return !!cfg.defaultValue;
+      const value = String(hit.VALOR || '').trim().toUpperCase();
+      return ['1', 'TRUE', 'SIM', 'ATIVO', 'ON'].includes(value);
+    } catch (err) {
+      return !!cfg.defaultValue;
+    }
+  }
+
   clearCache() {
     CacheService.getScriptCache().remove(this.getCacheKey('initial_data'));
   }
@@ -339,7 +420,7 @@ class ProcessoService {
   }
 
   list() {
-    return this.repo.getObjects(SIGEP.sheets.processos);
+    return this.repo.getObjects(SIGEP.sheets.processos).map(DomainNormalizer.processo.bind(DomainNormalizer));
   }
 
   update(payload) {
@@ -375,7 +456,7 @@ class AcompanhamentoService {
   }
 
   list() {
-    return this.repo.getObjects(SIGEP.sheets.acompanhamento);
+    return this.repo.getObjects(SIGEP.sheets.acompanhamento).map(DomainNormalizer.acompanhamento.bind(DomainNormalizer));
   }
 
   updateStatus(payload) {
@@ -413,7 +494,7 @@ class IndicadorService {
   }
 
   list() {
-    return this.repo.getObjects(SIGEP.sheets.indicadores);
+    return this.repo.getObjects(SIGEP.sheets.indicadores).map(DomainNormalizer.indicador.bind(DomainNormalizer));
   }
 
   listLancamentos() {
@@ -479,6 +560,7 @@ class AdminService {
       usuarios,
       status: this.repo.getObjects('CONFIG_STATUS'),
       tiposProcesso: this.repo.getObjects('CONFIG_TIPOS_PROCESSO'),
+      featureFlags: this.repo.getObjects('CONFIG_FEATURE_FLAGS'),
       unidades,
       setores: unidades.map(x => ({
         ID_SETOR: x.ID_SETOR || x.ID_UNIDADE || x.UNIDADE,
@@ -540,7 +622,7 @@ class AdminService {
 
   salvarConfiguracao(payload) {
     if (!payload || !payload.sheetName || !payload.data) throw new Error('Payload inválido para configuração.');
-    const allowedSheets = ['CONFIG_STATUS', 'CONFIG_TIPOS_PROCESSO', 'BASE_UNIDADES'];
+    const allowedSheets = ['CONFIG_STATUS', 'CONFIG_TIPOS_PROCESSO', 'CONFIG_FEATURE_FLAGS', 'BASE_UNIDADES'];
     if (!allowedSheets.includes(payload.sheetName)) throw new Error('Aba não permitida para alteração.');
 
     const idColumn = payload.idColumn || Object.keys(payload.data)[0];

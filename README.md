@@ -894,3 +894,14 @@ Depois de rodar `criarBasesSigepHuc()`, conferir:
 
 Fim do README técnico.
 
+
+## Evolução de backend (DTO/normalização + feature flags)
+
+- `getObjects` continua como leitura genérica por cabeçalho, mas os domínios agora passam por normalizadores dedicados (`DomainNormalizer.processo`, `DomainNormalizer.acompanhamento`, `DomainNormalizer.indicador`) para padronizar tipos e campos-chave no backend.
+- Foram adicionadas feature flags por configuração em `CONFIG_FEATURE_FLAGS`, permitindo ativar/desativar módulos sem novo deploy.
+- Chaves previstas:
+  - `MODULO_PROCESSOS`
+  - `MODULO_ACOMPANHAMENTO`
+  - `MODULO_INDICADORES`
+  - `FILTROS_AVANCADOS`
+- Valores aceitos como ativo: `1`, `TRUE`, `SIM`, `ATIVO`, `ON`.
