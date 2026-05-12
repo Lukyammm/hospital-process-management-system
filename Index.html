@@ -39,6 +39,7 @@
       --space-4: 16px;
       --space-5: 24px;
       --space-6: 32px;
+      --focus-ring: #0b63ce;
     }
 
     * { box-sizing: border-box; }
@@ -340,11 +341,16 @@
     .result-soft { background: var(--success-bg); border: 1px solid #cfeedd; border-radius: 12px; padding: 12px; }
     .note-soft { background: var(--primary-2); border: 1px solid var(--primary-3); border-radius: 12px; padding: 12px; }
 
-    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .mobile-menu-btn { display:none; border:1px solid var(--line-strong); background:#fff; color:var(--ink); border-radius:12px; padding:10px 12px; font-weight:700; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(10,25,44,.45); z-index:15; }
+    .block-skeleton { display:grid; gap:12px; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .card:focus-visible, .indicator-row:focus-visible, .filter-chip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
     @media (max-width: 1100px) {
+      .mobile-menu-btn { display:inline-flex; align-items:center; gap:8px; }
       .app { grid-template-columns: 1fr; }
       .sidebar { position: relative; height: auto; }
+      .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .sidebar-note { position: static; margin-top: 18px; }
       .nav { grid-template-columns: repeat(4, 1fr); }
       .hero, .kpi-grid, .acomp-grid { grid-template-columns: 1fr; }
@@ -354,6 +360,10 @@
       .indicator-list { grid-template-columns: 1fr; }
     }
     @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: fixed; left:0; top:0; height:100vh; width:min(84vw,320px); transform:translateX(-100%); transition:transform .22s ease; z-index:20; box-shadow: var(--shadow-md); }
+      .app.sidebar-open .sidebar { transform:translateX(0); }
+      .app.sidebar-open .sidebar-overlay { display:block; }
       .main { padding: 16px; }
       .kpi, .summary-card, .card { padding: 14px; }
       .drawer { padding: 10px; }
@@ -366,6 +376,7 @@
       .process-grid, .indicator-grid, .steps, .meta-grid, .result-box { grid-template-columns: 1fr; }
       .indicator-summary, .indicator-meta { grid-template-columns: 1fr; }
       .nav { grid-template-columns: 1fr; }
+      .kpi-grid, .admin-grid { grid-template-columns: 1fr; }
       .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap td, .table-wrap tr { display:block; }
       .table-wrap thead { display:none; }
       .table-wrap tr { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fff; }
@@ -375,13 +386,14 @@
 </style>
 </head>
 <body>
-  <div class="app">
+  <div class="app" id="appRoot">
+    <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
     <aside class="sidebar">
       <div class="brand">
         <div class="mark" aria-hidden="true"><img src="https://i.ibb.co/tTGkBCXj/oie-transparent.png" alt="Logo do sistema"></div>
         <div><h1>SIGEP</h1><span>Gestão de processos e indicadores</span></div>
       </div>
-      <nav class="nav">
+      <nav class="nav" id="sidebarNav" aria-label="Navegação principal">
         <button class="active" data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
         <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Modelagem de Processos</button>
         <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
@@ -397,6 +409,7 @@
           <p id="pageSubtitle">Evolução operacional das etapas por unidade e período.</p>
         </div>
         <div class="actions">
+          <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu lateral" aria-controls="sidebarNav" aria-expanded="false">☰ Menu</button>
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <input id="globalSearch" type="search" placeholder="Pesquisar unidade, processo ou indicador">
@@ -428,7 +441,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Acompanhamento por unidade</h3><span>Uma unidade pode aparecer com várias datas no mesmo card</span></div>
-            <div class="filters"><select id="filtroStatusAcomp"><option value="">Todos os status</option></select></div>
+            <div class="filters"><select id="filtroStatusAcomp" aria-label="Filtrar acompanhamento por status"><option value="">Todos os status</option></select></div>
           </div>
           <div class="content-pad"><div class="acomp-grid" id="acompGrid"></div></div>
         </div>
@@ -438,7 +451,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Modelagem de Processos</h3><span>Pipeline de modelagem, validação e publicação</span></div>
-            <div class="filters"><select id="filtroTipoProcesso"><option value="">Todos os tipos</option></select></div>
+            <div class="filters"><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select></div>
           </div>
           <div class="content-pad">
             <div id="processSummary" class="indicator-summary"></div>
@@ -451,7 +464,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Painel de indicadores</h3><span>Visão analítica por categoria, processo e cobertura mensal</span></div>
-            <div class="filters"><select id="filtroCategoriaIndicador"><option value="">Todas as categorias</option></select></div>
+            <div class="filters"><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></div>
           </div>
           <div class="content-pad indicators-layout">
             <aside class="indicator-filter-panel">
@@ -547,6 +560,16 @@
           });
         });
         document.getElementById('refreshBtn').addEventListener('click', loadData);
+        const menuBtn = document.getElementById('mobileMenuBtn');
+        const appRoot = document.getElementById('appRoot');
+        const overlay = document.getElementById('sidebarOverlay');
+        const toggleSidebar = (open) => {
+          const willOpen = typeof open === 'boolean' ? open : !appRoot.classList.contains('sidebar-open');
+          appRoot.classList.toggle('sidebar-open', willOpen);
+          menuBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        };
+        menuBtn.addEventListener('click', () => toggleSidebar());
+        overlay.addEventListener('click', () => toggleSidebar(false));
         document.getElementById('globalSearch').addEventListener('input', e => {
           state.search = e.target.value.toLowerCase().trim();
           render();
@@ -599,6 +622,8 @@
         document.getElementById('pageTitle').textContent = titles[view][0];
         document.getElementById('pageSubtitle').textContent = titles[view][1];
         if (view === 'admin' && !state.adminData) loadAdminData();
+        document.getElementById('appRoot').classList.remove('sidebar-open');
+        document.getElementById('mobileMenuBtn').setAttribute('aria-expanded', 'false');
       },
 
       openDrawer(title, subtitle, html) {
@@ -626,7 +651,7 @@
         </div>`;
       ['dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = skeletonCard.repeat(id === 'dashboardAcompanhamento' ? 2 : 3);
+        if (el) el.innerHTML = `<div class="block-skeleton">${skeletonCard.repeat(id === 'dashboardAcompanhamento' ? 2 : 3)}</div>`;
       });
     }
 
@@ -772,7 +797,7 @@
       `;
 
       const html = rows.map(p => `
-        <article class="card" onclick='showProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+        <article class="card" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
           <div class="process-card-head">
             <h4>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h4>
             <span class="pill ${badgeClass(p.STATUS_GERAL)}">${escapeHtml(p.STATUS_GERAL || 'Sem status')}</span>
@@ -858,7 +883,7 @@
         const statusCard = getStatusIndicador(referenciaStatus, metaIndicador);
         const sparkline = buildMiniSparkline(historicoOrdenado, metaIndicador);
         return `
-          <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+          <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
             <div class="indicator-main">
               <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
               <p>${escapeHtml(ind.ID_INDICADOR || '-')} · ${escapeHtml(ind.PROCESSO || '-')} · ${escapeHtml(getIndicatorUnit(ind) || '-')}</p>
