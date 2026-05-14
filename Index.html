@@ -370,16 +370,31 @@
     .state-warning { background: var(--warning-bg) !important; border-color: #f3e2b5 !important; color: var(--warning) !important; }
     .state-error { background: var(--danger-bg) !important; border-color: #f3cccc !important; color: var(--danger) !important; }
     .state-selected { border-color: var(--primary) !important; background: var(--primary-2) !important; color: var(--primary) !important; font-weight: 800 !important; box-shadow: inset 0 0 0 1px var(--primary-3); }
-    .indicator-process-tabs .pill { border:1px solid var(--line); background:#fff; cursor:pointer; }
-    .indicator-process-tabs .pill.state-selected { box-shadow: 0 0 0 2px rgba(31,111,189,.15), inset 0 0 0 1px var(--primary-3); }
-    .indicator-process-shell { border:1px solid var(--line); border-radius:14px; background:#fff; overflow:hidden; }
-    .indicator-process-head { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:12px 14px; background:linear-gradient(180deg,#fbfdff 0%,#f5f9ff 100%); border-bottom:1px solid var(--line); }
-    .indicator-process-head b { font-size:13px; color:var(--ink); }
-    .indicator-process-head span { font-size:12px; color:var(--muted); }
-    .indicator-process-tabs { display:flex; gap:8px; padding:10px 12px; flex-wrap:wrap; overflow-x:auto; }
-    .indicator-process-tabs .pill { border:1px solid var(--line); background:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; white-space:nowrap; border-radius:999px; }
-    .indicator-process-tabs .pill-count { display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 6px; border-radius:999px; background:#eef4fb; color:#355679; font-size:11px; font-weight:700; }
-    .indicator-process-tabs .pill.state-selected .pill-count { background:var(--primary); color:#fff; }
+    .indicator-process-shell { border:1px solid #d8e4f2; border-radius:18px; background:linear-gradient(180deg,#fbfdff 0%,#f6faff 100%); padding:20px; display:grid; gap:16px; }
+    .indicator-process-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .indicator-process-title-wrap { display:flex; gap:12px; align-items:flex-start; }
+    .indicator-process-icon { width:44px; height:44px; border-radius:14px; border:1px solid #cfe0f2; background:#eef5fe; color:#2f74bd; display:grid; place-items:center; flex:0 0 auto; }
+    .indicator-process-icon svg { width:22px; height:22px; }
+    .indicator-process-head h4 { margin:0; font-size:38px; line-height:1.02; letter-spacing:-.03em; color:var(--ink); }
+    .indicator-process-head p { margin:4px 0 0; color:var(--muted); font-size:15px; }
+    .indicator-process-count { display:inline-flex; align-items:center; gap:9px; border:1px solid #d3e0ef; border-radius:12px; background:#fff; color:#4d6684; padding:10px 14px; font-size:16px; font-weight:600; white-space:nowrap; }
+    .indicator-process-count svg { width:18px; height:18px; }
+    .indicator-process-search { position:relative; }
+    .indicator-process-search input { width:100%; border:1px solid #d1deed; border-radius:14px; padding:12px 14px 12px 42px; background:#fff; color:var(--text); transition:border-color var(--ease), box-shadow var(--ease); }
+    .indicator-process-search input:focus { outline:none; border-color:#8db4dc; box-shadow:0 0 0 3px rgba(31,111,189,.14); }
+    .indicator-process-search svg { position:absolute; left:13px; top:50%; transform:translateY(-50%); width:18px; color:#70849d; }
+    .indicator-selected { border:1px solid #d6e4f3; border-radius:14px; background:#fff; padding:12px; display:grid; gap:10px; }
+    .indicator-selected-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .indicator-selected-head b { font-size:18px; color:var(--ink); }
+    .indicator-clear-btn { border:1px solid #d4dfec; background:#fff; border-radius:10px; color:#5b6f88; font-size:13px; font-weight:600; padding:8px 12px; cursor:pointer; }
+    .indicator-clear-btn:hover { border-color:#b9ccdf; color:#2b4867; }
+    .indicator-process-tabs { display:flex; gap:10px; flex-wrap:wrap; }
+    .indicator-chip { border:1px solid #ccd9e8; background:#fbfdff; color:#203b57; cursor:pointer; display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:13px; min-height:44px; transition:all .18s ease; max-width:100%; }
+    .indicator-chip:hover { background:#f4f8fe; border-color:#b7cce3; }
+    .indicator-chip-label { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .indicator-chip-count { display:inline-grid; place-items:center; min-width:24px; height:24px; padding:0 8px; border-radius:999px; background:#e9f0f8; color:#36557a; font-size:12px; font-weight:700; }
+    .indicator-chip.state-selected { background:#eaf4ff; border-color:#7eaee0; color:#17436f; }
+    .indicator-chip.state-selected .indicator-chip-count { background:#2c73bb; color:#fff; }
     .edit-form { border:1px solid #cdddf0; border-radius:16px; background:linear-gradient(180deg,#ffffff 0%,#f9fcff 100%); padding:18px; display:grid; gap:16px; box-shadow:0 12px 22px rgba(16,49,82,.08); }
     .edit-form-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; padding-bottom:12px; border-bottom:1px solid #dfebf8; }
     .edit-form-head h5 { margin:0; font-size:16px; color:var(--ink); letter-spacing:-.01em; }
@@ -585,6 +600,7 @@
       filtroTipoProcesso: '',
       filtroCategoriaIndicador: '',
       processoIndicadorSelecionado: '',
+      processoIndicadorBusca: '',
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
       adminData: null,
@@ -873,14 +889,24 @@
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
-      const processTabsHtml = processos.length
-        ? processos.map(p => `<button class="pill ${p === state.processoIndicadorSelecionado ? 'state-selected' : ''}" onclick="setProcessoIndicador('${escapeHtml(p)}')">${escapeHtml(p)} <span class="pill-count">${processoCounts[p] || 0}</span></button>`).join('')
+      const termoBuscaProcesso = (state.processoIndicadorBusca || '').toLowerCase().trim();
+      const processosFiltrados = termoBuscaProcesso ? processos.filter(p => p.toLowerCase().includes(termoBuscaProcesso)) : processos;
+      const selecionados = state.processoIndicadorSelecionado ? [state.processoIndicadorSelecionado] : [];
+      const selectedHtml = selecionados.length ? `
+        <div class="indicator-selected">
+          <div class="indicator-selected-head"><b>Selecionados (${selecionados.length})</b><button class="indicator-clear-btn" onclick="clearProcessoIndicador()">Limpar seleção</button></div>
+          <div class="indicator-process-tabs">${selecionados.map(p => `<button class="indicator-chip state-selected" onclick="setProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')}</div>
+        </div>` : '';
+      const processTabsHtml = processosFiltrados.length
+        ? processosFiltrados.map(p => `<button class="indicator-chip ${p === state.processoIndicadorSelecionado ? 'state-selected' : ''}" onclick="setProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')
         : '<span class="pill">Sem processos para os filtros atuais</span>';
       document.getElementById('indicatorProcessTabsShell').innerHTML = `
         <div class="indicator-process-head">
-          <div><b>Processos</b><span>Selecione um processo para focar os indicadores</span></div>
-          <span>${processos.length} processo(s)</span>
+          <div class="indicator-process-title-wrap"><div class="indicator-process-icon">${icons.process}</div><div><h4>Processos</h4><p>Selecione um ou mais processos para focar os indicadores</p></div></div>
+          <span class="indicator-process-count"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" stroke="currentColor" stroke-width="1.6"/></svg>${processos.length} processos encontrados</span>
         </div>
+        <label class="indicator-process-search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" placeholder="Buscar processo..." value="${escapeHtml(state.processoIndicadorBusca || '')}" oninput="setProcessoIndicadorBusca(this.value)"></label>
+        ${selectedHtml}
         <div class="indicator-process-tabs">${processTabsHtml}</div>
       `;
 
@@ -1226,6 +1252,8 @@
       state.processoIndicadorSelecionado = processo;
       renderIndicadores();
     }
+    function clearProcessoIndicador() { state.processoIndicadorSelecionado = ''; renderIndicadores(); }
+    function setProcessoIndicadorBusca(value) { state.processoIndicadorBusca = value || ''; renderIndicadores(); }
 
     function buildHistoryChart(historico, meta, periodoAtual) {
       const pontos = historico.filter(h => h.hasData);
