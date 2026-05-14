@@ -100,7 +100,7 @@
     .view.active { display: block; }
 
     .hero, .panel, .unit-card, .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
-    .panel, .unit-card, .table-wrap, .summary-card, .indicator-filter-panel, .hero-panel {
+    .panel, .unit-card, .table-wrap, .summary-card, .hero-panel {
       backdrop-filter: blur(4px);
     }
     .hero { padding: 24px; margin-bottom: 30px; display: grid; grid-template-columns: 1.4fr .8fr; gap: 18px; }
@@ -270,11 +270,7 @@
     tbody tr:hover td{background:#ecf3fb}
     .btn.small{padding:8px 10px;border-radius:10px;font-size:12px;box-shadow:none}
 
-    .indicators-layout { display:grid; grid-template-columns: 280px 1fr; gap:16px; }
-    .indicator-filter-panel { border:1px solid var(--line); border-radius:16px; background:#fff; padding:14px; box-shadow:var(--shadow-sm); align-self:start; }
-    .indicator-filter-panel.collapsed .indicator-filter-group { display:none; }
-    .filter-panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-    .filter-panel-head h4 { margin:0; color:var(--ink); font-size:14px; }
+    .indicators-layout { display:grid; grid-template-columns: 1fr; gap:16px; }
 
     .indicator-filter-search { position:relative; margin-bottom:10px; }
     .indicator-filter-search input { width:100%; border:1px solid var(--line); border-radius:10px; padding:9px 10px 9px 34px; font-size:12px; color:var(--text); background:#fff; }
@@ -539,28 +535,6 @@
             <div class="filters"><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></div>
           </div>
           <div class="content-pad indicators-layout">
-            <aside class="indicator-filter-panel">
-              <div class="filter-panel-head">
-                <h4>Filtros de unidade</h4>
-                <button class="btn small secondary" id="toggleIndicatorFilters">Recolher</button>
-              </div>
-              <div class="indicator-filter-group">
-                <b>Unidades</b>
-                <div class="indicator-filter-search">
-                  <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                  <input id="indicatorUnitSearch" type="search" placeholder="Buscar unidade">
-                </div>
-                <div id="indicatorUnitFilters" class="filter-chip-list"></div>
-              </div>
-              <div class="indicator-filter-group">
-                <b>Categoria</b>
-                <div class="indicator-filter-search">
-                  <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                  <input id="indicatorCategorySearch" type="search" placeholder="Buscar categoria">
-                </div>
-                <div id="indicatorCategoryFilters" class="filter-chip-list"></div>
-              </div>
-            </aside>
             <div class="indicator-main-area">
               <div id="indicatorSummary" class="indicator-summary"></div>
               <div id="indicatorContext" class="indicator-context"></div>
@@ -613,9 +587,6 @@
       processoIndicadorSelecionado: '',
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
-      indicadorFiltroBuscaUnidade: '',
-      indicadorFiltroBuscaCategoria: '',
-      indicatorFiltersCollapsed: false,
       adminData: null,
       taskFilter: 'all'
     };
@@ -645,19 +616,6 @@
         document.getElementById('globalSearch').addEventListener('input', e => {
           state.search = e.target.value.toLowerCase().trim();
           render();
-        });
-        document.getElementById('toggleIndicatorFilters').addEventListener('click', () => {
-          state.indicatorFiltersCollapsed = !state.indicatorFiltersCollapsed;
-          document.querySelector('.indicator-filter-panel').classList.toggle('collapsed', state.indicatorFiltersCollapsed);
-          document.getElementById('toggleIndicatorFilters').textContent = state.indicatorFiltersCollapsed ? 'Expandir' : 'Recolher';
-        });
-        document.getElementById('indicatorUnitSearch').addEventListener('input', e => {
-          state.indicadorFiltroBuscaUnidade = e.target.value.toLowerCase().trim();
-          renderIndicadores();
-        });
-        document.getElementById('indicatorCategorySearch').addEventListener('input', e => {
-          state.indicadorFiltroBuscaCategoria = e.target.value.toLowerCase().trim();
-          renderIndicadores();
         });
         ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador'].forEach(id => {
           document.getElementById(id).addEventListener('change', e => {
@@ -903,12 +861,8 @@
 
       const unidades = unique(rows.map(r => getIndicatorUnit(r)).filter(Boolean));
       const categoriasFiltros = unique(rows.map(r => r.CATEGORIA).filter(Boolean));
-      const unidadesFiltradas = unidades.filter(u => !state.indicadorFiltroBuscaUnidade || u.toLowerCase().includes(state.indicadorFiltroBuscaUnidade));
-      const categoriasFiltradas = categoriasFiltros.filter(c => !state.indicadorFiltroBuscaCategoria || c.toLowerCase().includes(state.indicadorFiltroBuscaCategoria));
       if (state.unidadeIndicadorSelecionada && !unidades.includes(state.unidadeIndicadorSelecionada)) state.unidadeIndicadorSelecionada = '';
       if (state.categoriaIndicadorSelecionada && !categoriasFiltros.includes(state.categoriaIndicadorSelecionada)) state.categoriaIndicadorSelecionada = '';
-      document.getElementById('indicatorUnitFilters').innerHTML = renderFilterList('Todas as unidades', unidadesFiltradas, state.unidadeIndicadorSelecionada, 'setIndicadorUnidade');
-      document.getElementById('indicatorCategoryFilters').innerHTML = renderFilterList('Todas as categorias', categoriasFiltradas, state.categoriaIndicadorSelecionada, 'setIndicadorCategoria');
       if (state.unidadeIndicadorSelecionada) rows = rows.filter(x => getIndicatorUnit(x) === state.unidadeIndicadorSelecionada);
       if (state.categoriaIndicadorSelecionada) rows = rows.filter(x => x.CATEGORIA === state.categoriaIndicadorSelecionada);
 
