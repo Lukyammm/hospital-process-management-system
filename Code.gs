@@ -21,6 +21,9 @@ const SIGEP = {
       BASE_INDICADORES: ['ID_INDICADOR'],
       BASE_LANCAMENTOS_INDICADORES: ['ID_INDICADOR'],
       BASE_UNIDADES: ['ID_UNIDADE']
+    },
+    autoCreate: {
+      BASE_INDICADORES: ['META_OPERADOR']
     }
   },
   featureFlags: {
@@ -221,6 +224,7 @@ function runWithWriteLock_(callback) {
 class SigepApplication {
   constructor() {
     this.repo = new SheetRepository();
+    this.repo.ensureSchemaColumns();
     this.auth = new AuthorizationService(this.repo);
     this.audit = new AuditService(this.repo, this.auth);
     this.processos = new ProcessoService(this.repo, this.audit);
@@ -463,6 +467,25 @@ class SheetRepository {
     return this.getSheet(sheetName).getDataRange().getValues()[0] || [];
   }
 
+  ensureSchemaColumns() {
+    const requiredBySheet = SIGEP.schema.required || {};
+    Object.keys(requiredBySheet).forEach(sheetName => this.ensureColumnsForSheet_(sheetName, requiredBySheet[sheetName] || []));
+    const autoCreateBySheet = SIGEP.schema.autoCreate || {};
+    Object.keys(autoCreateBySheet).forEach(sheetName => this.ensureColumnsForSheet_(sheetName, autoCreateBySheet[sheetName] || []));
+  }
+
+  ensureColumnsForSheet_(sheetName, columns) {
+    if (!columns || !columns.length) return;
+    const sh = this.getSheet(sheetName);
+    const headers = this.getHeaders(sheetName).map(h => String(h || '').trim());
+    const missing = columns.filter(col => col && !headers.includes(col));
+    if (!missing.length) return;
+    missing.forEach(col => {
+      sh.insertColumnAfter(sh.getLastColumn());
+      sh.getRange(1, sh.getLastColumn()).setValue(col);
+    });
+  }
+
   validateSchemas() {
     const requiredBySheet = SIGEP.schema.required || {};
     Object.keys(requiredBySheet).forEach(sheetName => {
@@ -645,7 +668,7 @@ class IndicadorService {
     if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
     PayloadValidator.validateIndicadorUpdate(payload);
     const patch = {};
-    ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'].forEach(k => {
+    ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'].forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
     const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
@@ -1326,7 +1349,7 @@ class PayloadValidator {
   }
 
   static validateIndicadorUpdate(payload) {
-    const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'];
+    const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'];
     this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed), 'indicador');
     this.validateRequiredChangeReason_(payload, allowed, 'indicador');
   }
