@@ -668,8 +668,12 @@ class IndicadorService {
     if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
     PayloadValidator.validateIndicadorUpdate(payload);
     const patch = {};
+    const operadorAlias = payload['META OPERADOR'] !== undefined ? payload['META OPERADOR'] : payload.OPERADOR_META;
+    const normalizedPayload = Object.assign({}, payload, {
+      META_OPERADOR: payload.META_OPERADOR !== undefined ? payload.META_OPERADOR : operadorAlias
+    });
     ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'].forEach(k => {
-      if (payload[k] !== undefined) patch[k] = payload[k];
+      if (normalizedPayload[k] !== undefined) patch[k] = normalizedPayload[k];
     });
     const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
     const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch);
@@ -1350,8 +1354,9 @@ class PayloadValidator {
 
   static validateIndicadorUpdate(payload) {
     const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'];
-    this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed), 'indicador');
-    this.validateRequiredChangeReason_(payload, allowed, 'indicador');
+    const aliases = ['META OPERADOR', 'OPERADOR_META'];
+    this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed, aliases), 'indicador');
+    this.validateRequiredChangeReason_(payload, allowed.concat(aliases), 'indicador');
   }
 
   static validateAllowedKeys_(payload, allowed, context) {
