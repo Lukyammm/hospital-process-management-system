@@ -554,13 +554,15 @@ class ProcessoService {
   update(payload) {
     if (!payload || !payload.ID_PROCESSO) throw new Error('ID_PROCESSO obrigatório.');
     PayloadValidator.validateProcessoUpdate(payload);
-    const allowed = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
+    const allowed = ['PROCESSO', 'TIPO_PROCESSO', 'STATUS_GERAL', 'MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
     const patch = {};
     allowed.forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
     const current = this.repo.getById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO);
-    patch.STATUS_GERAL = this.calcularStatus_({ ...current, ...patch });
+    if (payload.STATUS_GERAL === undefined) {
+      patch.STATUS_GERAL = this.calcularStatus_({ ...current, ...patch });
+    }
     const updated = this.repo.updateById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO, patch);
     this.audit.logChange({ acao: 'ATUALIZAR_PROCESSO', entidade: 'PROCESSO', id: payload.ID_PROCESSO, before: current, after: updated, patch, origem: 'PROCESSOS', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
@@ -1301,7 +1303,7 @@ class AuditService {
 
 class PayloadValidator {
   static validateProcessoUpdate(payload) {
-    const allowed = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
+    const allowed = ['PROCESSO', 'TIPO_PROCESSO', 'STATUS_GERAL', 'MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
     this.validateAllowedKeys_(payload, ['ID_PROCESSO', 'MOTIVO_ALTERACAO'].concat(allowed), 'processo');
     this.validateRequiredChangeReason_(payload, allowed, 'processo');
   }
