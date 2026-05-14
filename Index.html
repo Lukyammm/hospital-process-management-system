@@ -371,6 +371,9 @@
     .state-error { background: var(--danger-bg) !important; border-color: #f3cccc !important; color: var(--danger) !important; }
     .state-selected { border-color: var(--primary) !important; background: var(--primary-2) !important; color: var(--primary) !important; font-weight: 800 !important; box-shadow: inset 0 0 0 1px var(--primary-3); }
     .indicator-process-shell { border:1px solid #d8e4f2; border-radius:18px; background:linear-gradient(180deg,#fbfdff 0%,#f6faff 100%); padding:20px; display:grid; gap:16px; }
+    .indicator-process-shell.is-collapsed .indicator-process-body { display:none; }
+    .indicator-filter-toggle { border:1px solid #c6d8ec; background:#fff; color:#1f4e79; border-radius:12px; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer; }
+    .indicator-filter-toggle:hover { background:#f1f7ff; }
     .indicator-process-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
     .indicator-process-title-wrap { display:flex; gap:12px; align-items:flex-start; }
     .indicator-process-icon { width:44px; height:44px; border-radius:14px; border:1px solid #cfe0f2; background:#eef5fe; color:#2f74bd; display:grid; place-items:center; flex:0 0 auto; }
@@ -599,7 +602,8 @@
       filtroStatusAcomp: '',
       filtroTipoProcesso: '',
       filtroCategoriaIndicador: '',
-      processoIndicadorSelecionado: '',
+      processosIndicadorSelecionados: [],
+      indicadorFiltroRecolhido: false,
       processoIndicadorBusca: '',
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
@@ -883,7 +887,7 @@
       if (state.categoriaIndicadorSelecionada) rows = rows.filter(x => x.CATEGORIA === state.categoriaIndicadorSelecionada);
 
       const processos = unique(rows.map(r => r.PROCESSO).filter(Boolean));
-      if (!state.processoIndicadorSelecionado || !processos.includes(state.processoIndicadorSelecionado)) state.processoIndicadorSelecionado = processos[0] || '';
+      state.processosIndicadorSelecionados = (state.processosIndicadorSelecionados || []).filter(p => processos.includes(p));
       const processoCounts = rows.reduce((acc, item) => {
         const key = item.PROCESSO || 'Sem processo';
         acc[key] = (acc[key] || 0) + 1;
@@ -891,23 +895,26 @@
       }, {});
       const termoBuscaProcesso = (state.processoIndicadorBusca || '').toLowerCase().trim();
       const processosFiltrados = termoBuscaProcesso ? processos.filter(p => p.toLowerCase().includes(termoBuscaProcesso)) : processos;
-      const selecionados = state.processoIndicadorSelecionado ? [state.processoIndicadorSelecionado] : [];
+      const selecionados = state.processosIndicadorSelecionados || [];
       const selectedHtml = selecionados.length ? `
         <div class="indicator-selected">
           <div class="indicator-selected-head"><b>Selecionados (${selecionados.length})</b><button class="indicator-clear-btn" onclick="clearProcessoIndicador()">Limpar seleção</button></div>
-          <div class="indicator-process-tabs">${selecionados.map(p => `<button class="indicator-chip state-selected" onclick="setProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')}</div>
+          <div class="indicator-process-tabs">${selecionados.map(p => `<button class="indicator-chip state-selected" onclick="toggleProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')}</div>
         </div>` : '';
       const processTabsHtml = processosFiltrados.length
-        ? processosFiltrados.map(p => `<button class="indicator-chip ${p === state.processoIndicadorSelecionado ? 'state-selected' : ''}" onclick="setProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')
+        ? processosFiltrados.map(p => `<button class="indicator-chip ${selecionados.includes(p) ? 'state-selected' : ''}" onclick="toggleProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')
         : '<span class="pill">Sem processos para os filtros atuais</span>';
+      document.getElementById('indicatorProcessTabsShell').className = `indicator-process-shell ${state.indicadorFiltroRecolhido ? 'is-collapsed' : ''}`;
       document.getElementById('indicatorProcessTabsShell').innerHTML = `
         <div class="indicator-process-head">
           <div class="indicator-process-title-wrap"><div class="indicator-process-icon">${icons.process}</div><div><h4>Processos</h4><p>Selecione um ou mais processos para focar os indicadores</p></div></div>
-          <span class="indicator-process-count"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" stroke="currentColor" stroke-width="1.6"/></svg>${processos.length} processos encontrados</span>
+          <div style="display:flex;gap:10px;align-items:center;"><button class="indicator-filter-toggle" onclick="toggleIndicadorFiltro()">${state.indicadorFiltroRecolhido ? 'Expandir filtros' : 'Recolher filtros'}</button><span class="indicator-process-count"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" stroke="currentColor" stroke-width="1.6"/></svg>${processos.length} processos encontrados</span></div>
         </div>
-        <label class="indicator-process-search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" placeholder="Buscar processo..." value="${escapeHtml(state.processoIndicadorBusca || '')}" oninput="setProcessoIndicadorBusca(this.value)"></label>
-        ${selectedHtml}
-        <div class="indicator-process-tabs">${processTabsHtml}</div>
+        <div class="indicator-process-body">
+          <label class="indicator-process-search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" placeholder="Buscar processo..." value="${escapeHtml(state.processoIndicadorBusca || '')}" oninput="setProcessoIndicadorBusca(this.value)"></label>
+          ${selectedHtml}
+          <div class="indicator-process-tabs">${processTabsHtml}</div>
+        </div>
       `;
 
       const total = rows.length;
@@ -922,7 +929,7 @@
       `;
       document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · ${pendentes} sem lançamento${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''}</p>`;
 
-      if (state.processoIndicadorSelecionado) rows = rows.filter(x => x.PROCESSO === state.processoIndicadorSelecionado);
+      if (state.processosIndicadorSelecionados && state.processosIndicadorSelecionados.length) rows = rows.filter(x => state.processosIndicadorSelecionados.includes(x.PROCESSO));
       const html = rows.map(ind => {
         const lans = byInd.get(ind.ID_INDICADOR) || [];
         const historicoOrdenado = lans
@@ -965,6 +972,13 @@
     }
     function setIndicadorUnidade(v) { state.unidadeIndicadorSelecionada = v; renderIndicadores(); }
     function setIndicadorCategoria(v) { state.categoriaIndicadorSelecionada = v; renderIndicadores(); }
+    function toggleProcessoIndicador(v) {
+      const list = new Set(state.processosIndicadorSelecionados || []);
+      if (list.has(v)) list.delete(v); else list.add(v);
+      state.processosIndicadorSelecionados = Array.from(list);
+      renderIndicadores();
+    }
+    function toggleIndicadorFiltro() { state.indicadorFiltroRecolhido = !state.indicadorFiltroRecolhido; renderIndicadores(); }
     function setTaskFilter(v) { state.taskFilter = v; render(); }
 
 
@@ -1249,10 +1263,9 @@
 
 
     function setProcessoIndicador(processo) {
-      state.processoIndicadorSelecionado = processo;
-      renderIndicadores();
+      toggleProcessoIndicador(processo);
     }
-    function clearProcessoIndicador() { state.processoIndicadorSelecionado = ''; renderIndicadores(); }
+    function clearProcessoIndicador() { state.processosIndicadorSelecionados = []; renderIndicadores(); }
     function setProcessoIndicadorBusca(value) { state.processoIndicadorBusca = value || ''; renderIndicadores(); }
 
     function buildHistoryChart(historico, meta, periodoAtual) {
