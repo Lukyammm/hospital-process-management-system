@@ -187,6 +187,11 @@
     .process-meta-item span { font-size:13px; font-weight:800; color:var(--ink); }
 
     .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .process-flow { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:14px; padding-top:14px; border-top:1px dashed #d9e6f4; }
+    .flow-step { position:relative; border:1px solid #d6e5f3; border-radius:12px; background:linear-gradient(180deg,#f6faff 0%,#eef5fd 100%); padding:9px 10px; min-height:64px; }
+    .flow-step:not(:last-child)::after { content:''; position:absolute; top:50%; right:-9px; width:10px; border-top:2px solid #b8cce1; transform:translateY(-50%); }
+    .flow-step b { display:block; font-size:10px; color:#60758f; text-transform:uppercase; letter-spacing:.07em; margin-bottom:4px; }
+    .flow-step span { font-size:12px; font-weight:700; color:var(--ink); }
     .pill { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; gap: 6px; border-radius: 10px; padding: 6px 12px; font-size: 11px; font-weight: 700; background: #eef3f9; color: #324c67; white-space: nowrap; border:1px solid #dce7f3; }
     .process-card-head .pill { align-self: start; margin-top: 1px; }
     .pill.ok { background: #e8f6ef; border-color:#c6e8d6; color: #27784f; }
@@ -847,11 +852,11 @@
           <div class="process-meta-grid">
             <div class="process-meta-item"><b>Tipo de processo</b><span>${escapeHtml(p.TIPO_PROCESSO || 'Não informado')}</span></div>
           </div>
-          <div class="pill-row">
-            <span class="pill ${badgeClass(p.MODELAGEM_REALIZADA)}">Modelagem ${escapeHtml(p.MODELAGEM_REALIZADA || 'Não informado')}</span>
-            <span class="pill ${badgeClass(p.VALIDACAO_NUGESP)}">NUGESP ${escapeHtml(p.VALIDACAO_NUGESP || 'Não informado')}</span>
-            <span class="pill ${badgeClass(p.VALIDACAO_DIRECAO)}">Direção ${escapeHtml(p.VALIDACAO_DIRECAO || 'Não informado')}</span>
-            <span class="pill ${badgeClass(p.PUBLICACAO)}">Publicação ${escapeHtml(p.PUBLICACAO || 'Não informado')}</span>
+          <div class="process-flow">
+            <div class="flow-step"><b>Modelagem</b><span class="pill ${badgeClass(p.MODELAGEM_REALIZADA)}">${escapeHtml(p.MODELAGEM_REALIZADA || 'Não informado')}</span></div>
+            <div class="flow-step"><b>NUGESP</b><span class="pill ${badgeClass(p.VALIDACAO_NUGESP)}">${escapeHtml(p.VALIDACAO_NUGESP || 'Não informado')}</span></div>
+            <div class="flow-step"><b>Direção</b><span class="pill ${badgeClass(p.VALIDACAO_DIRECAO)}">${escapeHtml(p.VALIDACAO_DIRECAO || 'Não informado')}</span></div>
+            <div class="flow-step"><b>Publicação</b><span class="pill ${badgeClass(p.PUBLICACAO)}">${escapeHtml(p.PUBLICACAO || 'Não informado')}</span></div>
           </div>
         </article>
       `).join('');
@@ -958,14 +963,97 @@
 
     function showProcesso(p) {
       ui.openDrawer(p.PROCESSO || 'Processo', p.SETOR || '', `
+        <div class="indicator-head">
+          <div>
+            <div class="indicator-code">${escapeHtml(p.ID_PROCESSO || '-')} · ${escapeHtml(p.SETOR || '-')}</div>
+            <h4 class="section-title">${escapeHtml(p.PROCESSO || 'Processo')}</h4>
+          </div>
+          <button class="btn secondary icon" onclick='abrirEdicaoProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+        </div>
         <div class="steps">
           ${drawerField('Tipo', p.TIPO_PROCESSO)}
+          ${drawerField('Status geral', p.STATUS_GERAL)}
           ${drawerField('Modelagem', p.MODELAGEM_REALIZADA)}
           ${drawerField('Validação NUGESP', p.VALIDACAO_NUGESP)}
           ${drawerField('Validação Direção', p.VALIDACAO_DIRECAO)}
           ${drawerField('Publicação', p.PUBLICACAO)}
         </div>
+        <div id="processEditHost"></div>
       `);
+    }
+
+    function abrirEdicaoProcesso(proc) {
+      const host = document.getElementById('processEditHost');
+      if (!host) return;
+      host.innerHTML = `
+        <form class="edit-form" onsubmit="salvarEdicaoProcesso(event, '${escapeHtml(proc.ID_PROCESSO || '')}')">
+          <h5>Editar processo</h5>
+          <label>Nome do processo<input name="PROCESSO" value="${escapeHtml(proc.PROCESSO || '')}" required></label>
+          <label>Tipo do processo<input name="TIPO_PROCESSO" value="${escapeHtml(proc.TIPO_PROCESSO || '')}"></label>
+          <label>Status geral<input name="STATUS_GERAL" value="${escapeHtml(proc.STATUS_GERAL || '')}"></label>
+          <label>Modelagem
+            <select name="MODELAGEM_REALIZADA">
+              ${renderYesNoOptions(proc.MODELAGEM_REALIZADA)}
+            </select>
+          </label>
+          <label>Validação NUGESP
+            <select name="VALIDACAO_NUGESP">
+              ${renderYesNoOptions(proc.VALIDACAO_NUGESP)}
+            </select>
+          </label>
+          <label>Validação Direção
+            <select name="VALIDACAO_DIRECAO">
+              ${renderYesNoOptions(proc.VALIDACAO_DIRECAO)}
+            </select>
+          </label>
+          <label>Publicação
+            <select name="PUBLICACAO">
+              ${renderYesNoOptions(proc.PUBLICACAO)}
+            </select>
+          </label>
+          <label>Motivo da alteração<textarea name="MOTIVO_ALTERACAO" required placeholder="Ex.: atualização após validação da reunião com NUGESP."></textarea></label>
+          <div class="edit-form-actions">
+            <button type="button" class="btn secondary" onclick="fecharEdicaoProcesso()">Cancelar</button>
+            <button type="submit" class="btn">Salvar</button>
+          </div>
+        </form>`;
+      host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderYesNoOptions(currentValue) {
+      const current = String(currentValue || '').trim();
+      const options = ['', 'SIM', 'NÃO'];
+      return options.map(opt => `<option value="${opt}" ${current === opt ? 'selected' : ''}>${opt || 'Não informado'}</option>`).join('');
+    }
+
+    function fecharEdicaoProcesso() {
+      const host = document.getElementById('processEditHost');
+      if (host) host.innerHTML = '';
+    }
+
+    function salvarEdicaoProcesso(event, idProcesso) {
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        ID_PROCESSO: idProcesso,
+        PROCESSO: form.PROCESSO.value.trim(),
+        TIPO_PROCESSO: form.TIPO_PROCESSO.value.trim(),
+        STATUS_GERAL: form.STATUS_GERAL.value.trim(),
+        MODELAGEM_REALIZADA: form.MODELAGEM_REALIZADA.value.trim(),
+        VALIDACAO_NUGESP: form.VALIDACAO_NUGESP.value.trim(),
+        VALIDACAO_DIRECAO: form.VALIDACAO_DIRECAO.value.trim(),
+        PUBLICACAO: form.PUBLICACAO.value.trim(),
+        MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
+      };
+      showSaveFeedback('Salvando processo...');
+      google.script.run
+        .withSuccessHandler(() => {
+          showSaveFeedback('Processo salvo com sucesso.', true);
+          fecharEdicaoProcesso();
+          loadData();
+        })
+        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar processo.'); alert('Erro ao editar processo: ' + (err.message || err)); })
+        .atualizarProcesso(payload);
     }
 
     function showIndicador(ind) {
