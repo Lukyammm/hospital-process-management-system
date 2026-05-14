@@ -645,7 +645,7 @@ class IndicadorService {
     if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
     PayloadValidator.validateIndicadorUpdate(payload);
     const patch = {};
-    ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'].forEach(k => {
+    ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'].forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
     const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
@@ -1326,7 +1326,7 @@ class PayloadValidator {
   }
 
   static validateIndicadorUpdate(payload) {
-    const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'RESULTADO_ESPERADO'];
+    const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'];
     this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed), 'indicador');
     this.validateRequiredChangeReason_(payload, allowed, 'indicador');
   }
