@@ -1368,7 +1368,6 @@
 
     function buildProcessFlow(p) {
       const steps = [
-        { name: 'Ambulatório', done: true, raw: 'concluído' },
         { name: 'Modelagem', raw: p.MODELAGEM_REALIZADA },
         { name: 'NUGESP', raw: p.VALIDACAO_NUGESP },
         { name: 'Direção', raw: p.VALIDACAO_DIRECAO },
@@ -1376,9 +1375,9 @@
       ];
       let blocked = false;
       let currentMarked = false;
-      const parsed = steps.map((step, index) => {
-        if (index === 0) return { ...step, state: 'done', label: 'Concluído', pillClass: 'ok' };
-        const isDone = normalize(step.raw) === 'SIM' || normalize(step.raw).includes('CONCLUID');
+      const parsed = steps.map(step => {
+        const normalized = normalize(step.raw);
+        const isDone = normalized === 'SIM' || normalized.includes('CONCLUID');
         if (isDone) return { ...step, state: 'done', label: step.name === 'Publicação' ? 'Publicado' : 'Concluído', pillClass: 'ok' };
         if (!blocked && !currentMarked) {
           blocked = true;
