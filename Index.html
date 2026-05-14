@@ -384,12 +384,21 @@
     .indicator-process-tabs .pill { border:1px solid var(--line); background:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; white-space:nowrap; border-radius:999px; }
     .indicator-process-tabs .pill-count { display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 6px; border-radius:999px; background:#eef4fb; color:#355679; font-size:11px; font-weight:700; }
     .indicator-process-tabs .pill.state-selected .pill-count { background:var(--primary); color:#fff; }
-    .edit-form { border:1px solid var(--line); border-radius:12px; background:#fff; padding:14px; display:grid; gap:10px; }
-    .edit-form h5 { margin:0; font-size:14px; color:var(--ink); }
-    .edit-form label { display:grid; gap:6px; font-size:12px; color:var(--muted); }
-    .edit-form input, .edit-form textarea { width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 11px; color:var(--text); background:#fff; }
-    .edit-form textarea { min-height:88px; resize:vertical; }
-    .edit-form-actions { display:flex; gap:8px; justify-content:flex-end; }
+    .edit-form { border:1px solid #cdddf0; border-radius:16px; background:linear-gradient(180deg,#ffffff 0%,#f9fcff 100%); padding:18px; display:grid; gap:16px; box-shadow:0 12px 22px rgba(16,49,82,.08); }
+    .edit-form-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; padding-bottom:12px; border-bottom:1px solid #dfebf8; }
+    .edit-form-head h5 { margin:0; font-size:16px; color:var(--ink); letter-spacing:-.01em; }
+    .edit-form-head p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .edit-badge { display:inline-flex; align-items:center; gap:6px; border:1px solid #c7dcf3; background:#eef5fd; color:#1f4e79; border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+    .edit-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 14px; }
+    .edit-form-group { border:1px solid #d9e7f5; border-radius:13px; background:#fff; padding:12px; display:grid; gap:10px; }
+    .edit-form-group.full { grid-column:1 / -1; }
+    .edit-form-group-title { margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#56718f; font-weight:800; }
+    .edit-form label { display:grid; gap:6px; font-size:12px; color:#56718f; font-weight:600; }
+    .edit-form input, .edit-form select, .edit-form textarea { width:100%; border:1px solid #c9daee; border-radius:10px; padding:10px 11px; color:var(--text); background:#fff; transition:border-color var(--ease), box-shadow var(--ease), background-color var(--ease); }
+    .edit-form select { appearance:none; background-image:linear-gradient(45deg, transparent 50%, #5c7591 50%), linear-gradient(135deg, #5c7591 50%, transparent 50%), linear-gradient(to right, #fff, #fff); background-position:calc(100% - 17px) calc(1em + 1px), calc(100% - 12px) calc(1em + 1px), 100% 0; background-size:5px 5px,5px 5px,2.9em 100%; background-repeat:no-repeat; padding-right:36px; }
+    .edit-form input:focus, .edit-form select:focus, .edit-form textarea:focus { outline:none; border-color:#8fb4dc; box-shadow:0 0 0 3px rgba(31,111,189,.16); background:#fdfefe; }
+    .edit-form textarea { min-height:94px; resize:vertical; }
+    .edit-form-actions { display:flex; gap:10px; justify-content:flex-end; padding-top:2px; }
     .result-soft { background: var(--success-bg); border: 1px solid #cfeedd; border-radius: 12px; padding: 12px; }
     .note-soft { background: var(--primary-2); border: 1px solid var(--primary-3); border-radius: 12px; padding: 12px; }
 
@@ -428,6 +437,10 @@
       .drawer-card { width: 100%; max-height: 92vh; border-radius: var(--radius-lg); padding: 16px; }
       .drawer-head { margin: -16px -16px 12px; padding: 14px 16px 12px; }
       .drawer-head h3 { font-size: 19px; }
+      .edit-form-grid { grid-template-columns: 1fr; }
+      .edit-form-group.full { grid-column: auto; }
+      .edit-form-actions { justify-content: stretch; }
+      .edit-form-actions .btn { flex: 1 1 0; }
       .topbar { align-items: flex-start; flex-direction: column; }
       .search { width: 100%; }
       .panel-head { position: static; }
@@ -1000,31 +1013,48 @@
       if (!host) return;
       host.innerHTML = `
         <form class="edit-form" onsubmit="salvarEdicaoProcesso(event, '${escapeHtml(proc.ID_PROCESSO || '')}')">
-          <h5>Editar processo</h5>
-          <label>Nome do processo<input name="PROCESSO" value="${escapeHtml(proc.PROCESSO || '')}" required></label>
-          <label>Tipo do processo<input name="TIPO_PROCESSO" value="${escapeHtml(proc.TIPO_PROCESSO || '')}"></label>
-          <label>Status geral<input name="STATUS_GERAL" value="${escapeHtml(proc.STATUS_GERAL || '')}"></label>
-          <label>Modelagem
-            <select name="MODELAGEM_REALIZADA">
-              ${renderYesNoOptions(proc.MODELAGEM_REALIZADA)}
-            </select>
-          </label>
-          <label>Validação NUGESP
-            <select name="VALIDACAO_NUGESP">
-              ${renderYesNoOptions(proc.VALIDACAO_NUGESP)}
-            </select>
-          </label>
-          <label>Validação Direção
-            <select name="VALIDACAO_DIRECAO">
-              ${renderYesNoOptions(proc.VALIDACAO_DIRECAO)}
-            </select>
-          </label>
-          <label>Publicação
-            <select name="PUBLICACAO">
-              ${renderYesNoOptions(proc.PUBLICACAO)}
-            </select>
-          </label>
-          <label>Motivo da alteração<textarea name="MOTIVO_ALTERACAO" required placeholder="Ex.: atualização após validação da reunião com NUGESP."></textarea></label>
+          <div class="edit-form-head">
+            <div>
+              <h5>Editar processo</h5>
+              <p>Atualize os campos mantendo histórico e padronização institucional.</p>
+            </div>
+            <span class="edit-badge">Modo edição</span>
+          </div>
+          <div class="edit-form-grid">
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Dados gerais</p>
+              <label>Nome do processo<input name="PROCESSO" value="${escapeHtml(proc.PROCESSO || '')}" required></label>
+              <label>Tipo do processo<input name="TIPO_PROCESSO" value="${escapeHtml(proc.TIPO_PROCESSO || '')}"></label>
+              <label>Status geral<input name="STATUS_GERAL" value="${escapeHtml(proc.STATUS_GERAL || '')}"></label>
+            </div>
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Marcos de validação</p>
+              <label>Modelagem
+                <select name="MODELAGEM_REALIZADA">
+                  ${renderYesNoOptions(proc.MODELAGEM_REALIZADA)}
+                </select>
+              </label>
+              <label>Validação NUGESP
+                <select name="VALIDACAO_NUGESP">
+                  ${renderYesNoOptions(proc.VALIDACAO_NUGESP)}
+                </select>
+              </label>
+              <label>Validação Direção
+                <select name="VALIDACAO_DIRECAO">
+                  ${renderYesNoOptions(proc.VALIDACAO_DIRECAO)}
+                </select>
+              </label>
+              <label>Publicação
+                <select name="PUBLICACAO">
+                  ${renderYesNoOptions(proc.PUBLICACAO)}
+                </select>
+              </label>
+            </div>
+            <div class="edit-form-group full">
+              <p class="edit-form-group-title">Rastreabilidade</p>
+              <label>Motivo da alteração<textarea name="MOTIVO_ALTERACAO" required placeholder="Ex.: atualização após validação da reunião com NUGESP."></textarea></label>
+            </div>
+          </div>
           <div class="edit-form-actions">
             <button type="button" class="btn secondary" onclick="fecharEdicaoProcesso()">Cancelar</button>
             <button type="submit" class="btn">Salvar</button>
