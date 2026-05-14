@@ -43,6 +43,11 @@ const SIGEP = {
   operations: {
     adminEmails: [],
     dailyJobHour: 6
+  },
+  appConfig: {
+    sheet: 'CONFIG_APP',
+    schemaVersionKey: 'SCHEMA_VERSION',
+    defaultSchemaVersion: 1
   }
 };
 
@@ -137,6 +142,15 @@ function salvarFiltroAvancado(payload) {
 function listarFiltrosAvancados() {
   const app = new SigepApplication();
   return app.listarFiltrosAvancados();
+}
+
+function getAppConfig() {
+  const app = new SigepApplication();
+  return app.getAppConfig();
+}
+
+function runSchemaMigrations() {
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.runSchemaMigrations()));
 }
 
 function withWritePermission_(screenName, callback) {
@@ -306,6 +320,16 @@ class SigepApplication {
   listarFiltrosAvancados() {
     const ops = new ProductivityService(this.repo, this.audit, this.auth);
     return ops.listarFiltrosAvancados();
+  }
+
+  getAppConfig() {
+    const cfg = new ConfigService(this.repo, this.audit, this.auth);
+    return cfg.getPublicConfig();
+  }
+
+  runSchemaMigrations() {
+    const cfg = new ConfigService(this.repo, this.audit, this.auth);
+    return cfg.runMigrations();
   }
 }
 
@@ -951,6 +975,99 @@ class ProductivityService {
       .map(k => JSON.parse(all[k]))
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     return { ok: true, filtros: list };
+  }
+}
+
+class ConfigService {
+  constructor(repo, audit, auth) {
+    this.repo = repo;
+    this.audit = audit;
+    this.auth = auth;
+  }
+
+  getPublicConfig() {
+    const currentVersion = this.getCurrentSchemaVersion_();
+    return {
+      ok: true,
+      schemaVersion: currentVersion,
+      targetVersion: this.getTargetSchemaVersion_(),
+      timezone: SIGEP.timezones.operational,
+      limits: { pageSizeDefault: 50, pageSizeMax: 200 }
+    };
+  }
+
+  runMigrations() {
+    const user = this.auth.assertAuthorized('ADMIN', 'ADMIN');
+    this.ensureConfigSheet_();
+    let current = this.getCurrentSchemaVersion_();
+    const target = this.getTargetSchemaVersion_();
+    const steps = [];
+    while (current < target) {
+      const next = current + 1;
+      this.applyMigrationStep_(next);
+      steps.push(next);
+      current = next;
+      this.setSchemaVersion_(current);
+    }
+    this.audit.log('SCHEMA_MIGRATION', 'CONFIG_APP', String(current), JSON.stringify({ actor: user.email, steps }));
+    return { ok: true, from: this.getCurrentSchemaVersion_() - steps.length, to: current, steps };
+  }
+
+  getCurrentSchemaVersion_() {
+    const scriptProp = PropertiesService.getScriptProperties().getProperty(SIGEP.appConfig.schemaVersionKey);
+    if (scriptProp) return Number(scriptProp) || SIGEP.appConfig.defaultSchemaVersion;
+    const rows = this.repo.getObjectsSafe(SIGEP.appConfig.sheet, []);
+    const row = rows.find(r => String(r.CHAVE || '').trim() === SIGEP.appConfig.schemaVersionKey);
+    if (!row) return SIGEP.appConfig.defaultSchemaVersion;
+    return Number(row.VALOR || SIGEP.appConfig.defaultSchemaVersion) || SIGEP.appConfig.defaultSchemaVersion;
+  }
+
+  getTargetSchemaVersion_() {
+    return 4;
+  }
+
+  setSchemaVersion_(version) {
+    const value = String(version);
+    PropertiesService.getScriptProperties().setProperty(SIGEP.appConfig.schemaVersionKey, value);
+    const rows = this.repo.getObjectsSafe(SIGEP.appConfig.sheet, []);
+    const row = rows.find(r => String(r.CHAVE || '').trim() === SIGEP.appConfig.schemaVersionKey);
+    if (row) {
+      this.repo.updateById(SIGEP.appConfig.sheet, 'CHAVE', SIGEP.appConfig.schemaVersionKey, { CHAVE: SIGEP.appConfig.schemaVersionKey, VALOR: value });
+    } else {
+      this.repo.append(SIGEP.appConfig.sheet, [SIGEP.appConfig.schemaVersionKey, value, 'versão de schema']);
+    }
+  }
+
+  applyMigrationStep_(version) {
+    if (version === 2) this.ensureConfigSheet_();
+    if (version === 3) this.ensureColumnIfMissing_(SIGEP.sheets.usuarios, 'SETOR');
+    if (version === 4) this.ensureBackupSheet_();
+  }
+
+  ensureConfigSheet_() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(SIGEP.appConfig.sheet);
+    if (!sh) {
+      sh = ss.insertSheet(SIGEP.appConfig.sheet);
+      sh.getRange(1, 1, 1, 3).setValues([['CHAVE', 'VALOR', 'DESCRICAO']]);
+    }
+    return sh;
+  }
+
+  ensureBackupSheet_() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss.getSheetByName(SIGEP.sheets.backups)) {
+      const sh = ss.insertSheet(SIGEP.sheets.backups);
+      sh.getRange(1, 1, 1, 4).setValues([['DATA_EXECUCAO', 'RESUMO_JSON', 'QTD_FINDINGS', 'SEVERIDADE']]);
+    }
+  }
+
+  ensureColumnIfMissing_(sheetName, columnName) {
+    const sh = this.repo.getSheet(sheetName);
+    const headers = this.repo.getHeaders(sheetName).map(h => String(h).trim());
+    if (headers.includes(columnName)) return;
+    sh.insertColumnAfter(headers.length);
+    sh.getRange(1, headers.length + 1).setValue(columnName);
   }
 }
 
