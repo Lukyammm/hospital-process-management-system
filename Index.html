@@ -952,7 +952,7 @@
         const ultimo = historicoOrdenado.slice().reverse().find(l => l.hasData);
         const metaIndicador = parseNumericValue(ind.META);
         const referenciaStatus = getReferenciaStatus(historicoOrdenado);
-        const statusCard = getStatusIndicador(referenciaStatus, metaIndicador);
+        const statusCard = getStatusIndicador(referenciaStatus, metaIndicador, ind.META_OPERADOR);
         const sparkline = buildMiniSparkline(historicoOrdenado, metaIndicador);
         return `
           <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
@@ -963,7 +963,7 @@
             <div class="indicator-meta">
               <div class="indicator-col"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
               <div class="indicator-col"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
-              <div class="indicator-col"><b>Meta</b><span>${escapeHtml(ind.META || '-')}</span></div>
+              <div class="indicator-col"><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
               <div class="indicator-col"><b>Último valor</b><span>${escapeHtml(ultimo ? (ultimo.VALOR || '-') : '-')}</span></div>
             </div>
             <div class="indicator-col"><b>Miniatura de evolução</b>${sparkline}</div>
@@ -1212,7 +1212,7 @@
       const metaNumerica = parseNumericValue(ind.META || '');
       const variacao = getVariacaoMensal(historico);
       const tendencia = getTendencia(historico);
-      const status = getStatusIndicador(ultimo, metaNumerica);
+      const status = getStatusIndicador(ultimo, metaNumerica, ind.META_OPERADOR);
       const svg = buildHistoryChart(historico, metaNumerica, periodo);
       ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
         <div class="indicator-modal">
@@ -1226,7 +1226,7 @@
           <div class="meta-grid">
             <div class="meta-item"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
             <div class="meta-item"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
-            <div class="meta-item"><b>Meta</b><span>${escapeHtml(ind.META || '-')}</span></div>
+            <div class="meta-item"><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
             <div class="meta-item"><b>Origem</b><span>${escapeHtml(ind.ABA_ORIGEM || '-')}</span></div>
           </div>
           <h4 class="section-title">Resultado</h4>
@@ -1234,7 +1234,7 @@
             <div><b>Resultado atual</b><span class="result-main">${escapeHtml(valorAtual)}</span></div>
             <div><b>Status</b><span>${escapeHtml(status.label)}</span></div>
             <div><b>Período referência</b><span>${escapeHtml(periodo)}</span></div>
-            <div><b>Meta</b><span>${escapeHtml(ind.META || 'Não informada')}</span></div>
+            <div><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</span></div>
             <div><b>Variação mensal</b><span>${escapeHtml(variacao)}</span></div>
             <div><b>Tendência</b><span>${escapeHtml(tendencia)}</span></div>
           </div>
@@ -1257,7 +1257,7 @@
             </div>
           </div>
           <div class="history-list">
-            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td>${escapeHtml(h.comp)}</td><td>${escapeHtml(h.valor)}</td><td>${escapeHtml(ind.META || 'Não informada')}</td><td><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
+            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td>${escapeHtml(h.comp)}</td><td>${escapeHtml(h.valor)}</td><td>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
@@ -1354,7 +1354,17 @@
     function parseCompetencia(comp) { const txt = String(comp || '').toLowerCase().trim(); const m={jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11}; const mm=txt.match(/(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[\.\-/ ]*(\d{2,4})/); if(mm){const y=Number(mm[2].length===2?'20'+mm[2]:mm[2]); return new Date(y,m[mm[1]],1).getTime();} const iso=Date.parse(txt); return Number.isFinite(iso)?iso:0; }
     function getVariacaoMensal(hist){ const vals=hist.filter(h=>h.hasData); if(vals.length<2) return 'Sem base comparativa'; const a=vals[vals.length-1].numericValue; const b=vals[vals.length-2].numericValue; const d=a-b; const p=b!==0?((d/Math.abs(b))*100):0; return `${d>=0?'+':''}${d.toFixed(1).replace('.',',')} (${d>=0?'+':''}${p.toFixed(1).replace('.',',')}%)`; }
     function getTendencia(hist){ const vals=hist.filter(h=>h.hasData).map(h=>h.numericValue); if(vals.length<3) return 'Estável'; const d=vals[vals.length-1]-vals[vals.length-3]; if(d>0.5) return 'Melhorando'; if(d<-0.5) return 'Piorando'; return 'Estável'; }
-    function getStatusIndicador(item, meta){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return item.numericValue>=meta?{label:'Dentro da meta',className:'ok'}:{label:'Abaixo da meta',className:'bad'}; }
+    function compareAgainstMeta(valor, meta, operador) {
+      if (!Number.isFinite(valor) || !Number.isFinite(meta)) return false;
+      const op = String(operador || '>=').trim();
+      if (op === '>') return valor > meta;
+      if (op === '<') return valor < meta;
+      if (op === '<=') return valor <= meta;
+      if (op === '=') return valor === meta;
+      return valor >= meta;
+    }
+
+    function getStatusIndicador(item, meta, operador){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return compareAgainstMeta(item.numericValue, meta, operador)?{label:'Dentro da meta',className:'ok'}:{label:'Fora da meta',className:'bad'}; }
     function getReferenciaStatus(historico){ const comDados = historico.filter(h => h.hasData); return comDados.length ? comDados[comDados.length - 1] : null; }
     function buildMiniSparkline(historico, meta){
       const pontos = historico.filter(h => h.hasData);
@@ -1431,7 +1441,12 @@
           <h5>Editar indicador</h5>
           <label>Nome do indicador<input name="NOME_INDICADOR" value="${escapeHtml(ind.NOME_INDICADOR || '')}" required></label>
           <label>Tipo do indicador<input name="TIPO_INDICADOR" value="${escapeHtml(ind.TIPO_INDICADOR || '')}" required></label>
-          <label>Meta<input name="META" value="${escapeHtml(ind.META || '')}"></label>
+          <label>Meta (numérica)<input name="META" type="number" inputmode="decimal" step="any" value="${escapeHtml(ind.META || '')}" required></label>
+          <label>Regra da meta
+            <select name="META_OPERADOR" required>
+              ${['>=', '>', '<=', '<', '='].map(op => `<option value="${op}" ${String(ind.META_OPERADOR || '>=').trim() === op ? 'selected' : ''}>${op}</option>`).join('')}
+            </select>
+          </label>
           <label>Observações/resultado esperado<textarea name="RESULTADO_ESPERADO">${escapeHtml(ind.RESULTADO_ESPERADO || '')}</textarea></label>
           <div class="edit-form-actions">
             <button type="button" class="btn secondary" onclick="fecharEdicaoIndicador()">Cancelar</button>
@@ -1453,9 +1468,16 @@
         ID_INDICADOR: idIndicador,
         NOME_INDICADOR: form.NOME_INDICADOR.value.trim(),
         TIPO_INDICADOR: form.TIPO_INDICADOR.value.trim(),
-        META: form.META.value.trim(),
+        META: form.META.value.trim().replace(',', '.'),
+        META_OPERADOR: form.META_OPERADOR.value.trim(),
         RESULTADO_ESPERADO: form.RESULTADO_ESPERADO.value.trim()
       };
+      
+      const metaValor = Number(payload.META);
+      if (!Number.isFinite(metaValor)) {
+        alert('A meta precisa ser numérica.');
+        return;
+      }
       showSaveFeedback('Salvando indicador...');
       google.script.run
         .withSuccessHandler(() => {
