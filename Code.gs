@@ -37,7 +37,12 @@ const SIGEP = {
     unidades: 'BASE_UNIDADES',
     usuarios: 'USUARIOS',
     historico: 'HISTORICO',
-    dashboardBase: 'DASHBOARD_BASE'
+    dashboardBase: 'DASHBOARD_BASE',
+    backups: 'BACKUPS_LOGICOS'
+  },
+  operations: {
+    adminEmails: [],
+    dailyJobHour: 6
   }
 };
 
@@ -89,6 +94,16 @@ function runDashboardSnapshotJob() {
 function runBasesHealthCheckJob() {
   const app = new SigepApplication();
   return app.runBasesHealthCheck();
+}
+
+function setupPhase1Automation() {
+  const app = new SigepApplication();
+  return app.setupPhase1Automation();
+}
+
+function runDailyOperationalGuardJob() {
+  const app = new SigepApplication();
+  return app.runDailyOperationalGuardJob();
 }
 
 function getProcessosPage(payload) {
@@ -239,6 +254,16 @@ class SigepApplication {
   runBasesHealthCheck() {
     const checker = new BaseHealthService(this.repo, this.audit);
     return checker.run();
+  }
+
+  setupPhase1Automation() {
+    const ops = new OperationalHardeningService(this.repo, this.audit);
+    return ops.setupDailyAutomation();
+  }
+
+  runDailyOperationalGuardJob() {
+    const ops = new OperationalHardeningService(this.repo, this.audit);
+    return ops.runDailyGuard();
   }
 }
 
@@ -673,6 +698,121 @@ class BaseHealthService {
     return this.repo.getObjects('BASE_ACOMPANHAMENTO')
       .filter(r => String(r.UNIDADE || '').trim() && !unidades.has(String(r.UNIDADE || '').trim()))
       .map(r => ({ type: 'INCONSISTENT_REFERENCE', sheet: 'BASE_ACOMPANHAMENTO', row: r._rowNumber, unidade: r.UNIDADE }));
+  }
+}
+
+class OperationalHardeningService {
+  constructor(repo, audit) {
+    this.repo = repo;
+    this.audit = audit;
+  }
+
+  setupDailyAutomation() {
+    this.ensureBackupSheet_();
+    this.protectBaseSheets_();
+    const triggerCreated = this.ensureDailyTrigger_();
+    this.audit.log('PHASE1_SETUP', 'AUTOMACAO', triggerCreated ? 'TRIGGER_CRIADO' : 'TRIGGER_EXISTENTE', 'Fase 1 configurada');
+    return { ok: true, triggerCreated };
+  }
+
+  runDailyGuard() {
+    this.ensureBackupSheet_();
+    this.protectBaseSheets_();
+    const health = new BaseHealthService(this.repo, this.audit).run();
+    const backup = this.createLogicalBackup_();
+    if (health.findings && health.findings.length) {
+      this.sendHealthAlertEmail_(health, backup);
+    }
+    return { ok: true, health, backup };
+  }
+
+  ensureDailyTrigger_() {
+    const fnName = 'runDailyOperationalGuardJob';
+    const exists = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === fnName);
+    if (exists) return false;
+    ScriptApp.newTrigger(fnName)
+      .timeBased()
+      .everyDays(1)
+      .atHour(SIGEP.operations.dailyJobHour)
+      .create();
+    return true;
+  }
+
+  protectBaseSheets_() {
+    const baseNames = Object.values(SIGEP.sheets).filter(name => String(name).indexOf('BASE_') === 0);
+    const ownerEmail = Session.getEffectiveUser().getEmail();
+    baseNames.forEach(sheetName => {
+      const sh = this.repo.getSheet(sheetName);
+      const protections = sh.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+      const managedDescription = '[SIGEP] PROTECAO_BASE_WEBAPP';
+      const alreadyManaged = protections.find(p => p.getDescription() === managedDescription);
+      if (alreadyManaged) return;
+      const protection = sh.protect().setDescription(managedDescription);
+      protection.setWarningOnly(false);
+      protection.removeEditors(protection.getEditors());
+      if (ownerEmail) protection.addEditor(ownerEmail);
+    });
+  }
+
+  ensureBackupSheet_() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(SIGEP.sheets.backups);
+    if (!sh) {
+      sh = ss.insertSheet(SIGEP.sheets.backups);
+      sh.getRange(1, 1, 1, 4).setValues([['DATA_EXECUCAO', 'RESUMO_JSON', 'QTD_FINDINGS', 'SEVERIDADE']]);
+    }
+    return sh;
+  }
+
+  createLogicalBackup_() {
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      generatedAtLocal: this.repo.formatDateOperational(new Date()),
+      BASE_PROCESSOS: this.repo.getObjects(SIGEP.sheets.processos),
+      BASE_ACOMPANHAMENTO: this.repo.getObjects(SIGEP.sheets.acompanhamento),
+      BASE_INDICADORES: this.repo.getObjects(SIGEP.sheets.indicadores),
+      BASE_LANCAMENTOS_INDICADORES: this.repo.getObjects(SIGEP.sheets.lancamentos),
+      BASE_UNIDADES: this.repo.getObjects(SIGEP.sheets.unidades)
+    };
+    const summary = {
+      generatedAt: payload.generatedAt,
+      generatedAtLocal: payload.generatedAtLocal,
+      counts: Object.keys(payload).filter(k => k.indexOf('BASE_') === 0).reduce((acc, key) => {
+        acc[key] = payload[key].length;
+        return acc;
+      }, {})
+    };
+    const sh = this.ensureBackupSheet_();
+    sh.appendRow([payload.generatedAtLocal, JSON.stringify(summary), 0, 'OK']);
+    return summary;
+  }
+
+  sendHealthAlertEmail_(health, backup) {
+    const recipients = this.resolveAdminEmails_();
+    if (!recipients.length) return;
+    const subject = '[SIGEP-HUC] Alerta crítico de integridade das bases';
+    const body = [
+      'Foram encontradas inconsistências no health check diário.',
+      '',
+      'Data: ' + this.repo.formatDateOperational(new Date()),
+      'Severidade: ' + health.severity,
+      'Quantidade de achados: ' + health.findings.length,
+      'Resumo do backup: ' + JSON.stringify(backup.counts),
+      '',
+      'Primeiros achados:',
+      JSON.stringify(health.findings.slice(0, 15), null, 2)
+    ].join('\n');
+    MailApp.sendEmail(recipients.join(','), subject, body);
+    this.audit.log('EMAIL_ALERTA_HEALTHCHECK', 'BASES', recipients.join(','), 'Alerta de saúde enviado');
+  }
+
+  resolveAdminEmails_() {
+    const fromUsers = this.repo.getObjectsSafe(SIGEP.sheets.usuarios, [])
+      .filter(u => String(u.ATIVO || '').toUpperCase() === 'SIM' && String(u.PERFIL || '').toUpperCase() === 'ADMIN')
+      .map(u => String(u.EMAIL || '').trim().toLowerCase())
+      .filter(Boolean);
+    const fromConfig = (SIGEP.operations.adminEmails || []).map(e => String(e || '').trim().toLowerCase()).filter(Boolean);
+    return [...new Set(fromUsers.concat(fromConfig))];
   }
 }
 
