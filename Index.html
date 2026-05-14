@@ -833,7 +833,7 @@
           ['Ficha técnica', b.FICHA_TECNICA_INDICADORES]
         ];
         return `
-          <article class="unit-card">
+          <article class="unit-card" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showAcompanhamento(${JSON.stringify(group.base).replace(/'/g, "&apos;")})'>
             <div class="unit-top">
               <div><h4>${escapeHtml(group.unidade)}</h4><small>${group.items.length} data(s) registrada(s) · ${escapeHtml(b.STATUS_GERAL || '')}</small></div>
               <div class="ring" style="--p:${group.progresso}"><span>${group.progresso}%</span></div>
@@ -986,6 +986,103 @@
     function setIndicadorUnidade(v) { state.unidadeIndicadorSelecionada = v; renderIndicadores(); }
     function setIndicadorCategoria(v) { state.categoriaIndicadorSelecionada = v; renderIndicadores(); }
     function setTaskFilter(v) { state.taskFilter = v; render(); }
+
+
+    function showAcompanhamento(item) {
+      const unidade = item.UNIDADE || 'Unidade';
+      const subtitulo = `${item.STATUS_AGENDAMENTO || 'Sem status'} · ${item.DATA_AGENDAMENTO || 'Sem data'}`;
+      ui.openDrawer(unidade, subtitulo, `
+        <div class="indicator-head">
+          <div>
+            <div class="indicator-code">${escapeHtml(item.ID_ACOMPANHAMENTO || '-')} · ${escapeHtml(item.UNIDADE || '-')}</div>
+            <h4 class="section-title">Acompanhamento da unidade</h4>
+          </div>
+          <button class="btn secondary icon" onclick='abrirEdicaoAcompanhamento(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+        </div>
+        <div class="steps">
+          ${drawerField('Data agendamento', item.DATA_AGENDAMENTO)}
+          ${drawerField('Status agendamento', item.STATUS_AGENDAMENTO)}
+          ${drawerField('Introdução', item.INTRODUCAO)}
+          ${drawerField('Perfil', item.PERFIL)}
+          ${drawerField('Fluxo do processo', item.FLUXO_PROCESSO)}
+          ${drawerField('Modelagem', item.MODELAGEM)}
+          ${drawerField('Indicadores', item.INDICADORES)}
+          ${drawerField('Ficha técnica', item.FICHA_TECNICA_INDICADORES)}
+        </div>
+        <div id="acompEditHost"></div>
+      `);
+    }
+
+    function abrirEdicaoAcompanhamento(item) {
+      const host = document.getElementById('acompEditHost');
+      if (!host) return;
+      host.innerHTML = `
+        <form class="edit-form" onsubmit="salvarEdicaoAcompanhamento(event, '${escapeHtml(item.ID_ACOMPANHAMENTO || '')}')">
+          <div class="edit-form-head">
+            <div>
+              <h5>Editar acompanhamento</h5>
+              <p>Atualize status e etapas mantendo histórico auditável.</p>
+            </div>
+            <span class="edit-badge">Modo edição</span>
+          </div>
+          <div class="edit-form-grid">
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Agendamento</p>
+              <label>Data do agendamento<input name="DATA_AGENDAMENTO" value="${escapeHtml(item.DATA_AGENDAMENTO || '')}" placeholder="dd/mm/aaaa"></label>
+              <label>Status do agendamento<input name="STATUS_AGENDAMENTO" value="${escapeHtml(item.STATUS_AGENDAMENTO || '')}"></label>
+            </div>
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Etapas</p>
+              <label>Introdução<input name="INTRODUCAO" value="${escapeHtml(item.INTRODUCAO || '')}"></label>
+              <label>Perfil<input name="PERFIL" value="${escapeHtml(item.PERFIL || '')}"></label>
+              <label>Fluxo do processo<input name="FLUXO_PROCESSO" value="${escapeHtml(item.FLUXO_PROCESSO || '')}"></label>
+              <label>Modelagem<input name="MODELAGEM" value="${escapeHtml(item.MODELAGEM || '')}"></label>
+              <label>Indicadores<input name="INDICADORES" value="${escapeHtml(item.INDICADORES || '')}"></label>
+              <label>Ficha técnica de indicadores<input name="FICHA_TECNICA_INDICADORES" value="${escapeHtml(item.FICHA_TECNICA_INDICADORES || '')}"></label>
+            </div>
+            <div class="edit-form-group full">
+              <p class="edit-form-group-title">Rastreabilidade</p>
+              <label>Motivo da alteração<textarea name="MOTIVO_ALTERACAO" required placeholder="Ex.: ajuste de status após reunião da unidade."></textarea></label>
+            </div>
+          </div>
+          <div class="edit-form-actions">
+            <button type="button" class="btn secondary" onclick="fecharEdicaoAcompanhamento()">Cancelar</button>
+            <button type="submit" class="btn">Salvar</button>
+          </div>
+        </form>`;
+      host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function fecharEdicaoAcompanhamento() {
+      const host = document.getElementById('acompEditHost');
+      if (host) host.innerHTML = '';
+    }
+
+    function salvarEdicaoAcompanhamento(event, idAcompanhamento) {
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        ID_ACOMPANHAMENTO: idAcompanhamento,
+        DATA_AGENDAMENTO: form.DATA_AGENDAMENTO.value.trim(),
+        STATUS_AGENDAMENTO: form.STATUS_AGENDAMENTO.value.trim(),
+        INTRODUCAO: form.INTRODUCAO.value.trim(),
+        PERFIL: form.PERFIL.value.trim(),
+        FLUXO_PROCESSO: form.FLUXO_PROCESSO.value.trim(),
+        MODELAGEM: form.MODELAGEM.value.trim(),
+        INDICADORES: form.INDICADORES.value.trim(),
+        FICHA_TECNICA_INDICADORES: form.FICHA_TECNICA_INDICADORES.value.trim(),
+        MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
+      };
+      showSaveFeedback('Salvando acompanhamento...');
+      google.script.run
+        .withSuccessHandler(() => {
+          showSaveFeedback('Acompanhamento salvo com sucesso.', true);
+          fecharEdicaoAcompanhamento();
+          loadData();
+        })
+        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar acompanhamento.'); alert('Erro ao editar acompanhamento: ' + (err.message || err)); })
+        .atualizarStatusAcompanhamento(payload);
+    }
 
     function showProcesso(p) {
       ui.openDrawer(p.PROCESSO || 'Processo', p.SETOR || '', `
