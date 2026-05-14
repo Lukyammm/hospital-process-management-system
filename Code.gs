@@ -552,6 +552,7 @@ class ProcessoService {
   }
 
   update(payload) {
+    payload = this.normalizePayload_(payload);
     if (!payload || !payload.ID_PROCESSO) throw new Error('ID_PROCESSO obrigatório.');
     PayloadValidator.validateProcessoUpdate(payload);
     const allowed = ['PROCESSO', 'TIPO_PROCESSO', 'STATUS_GERAL', 'MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
@@ -568,6 +569,15 @@ class ProcessoService {
     return { ok: true, data: updated };
   }
 
+
+  normalizePayload_(payload) {
+    const source = payload || {};
+    const normalized = { ...source };
+    if (normalized.PROCESSO === undefined && source.NOME_PROCESSO !== undefined) normalized.PROCESSO = source.NOME_PROCESSO;
+    if (normalized.TIPO_PROCESSO === undefined && source.TIPO !== undefined) normalized.TIPO_PROCESSO = source.TIPO;
+    if (normalized.STATUS_GERAL === undefined && source.STATUS !== undefined) normalized.STATUS_GERAL = source.STATUS;
+    return normalized;
+  }
   calcularStatus_(p) {
     const campos = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO']
       .map(k => String(p[k] || '').toUpperCase().trim())
@@ -1304,7 +1314,8 @@ class AuditService {
 class PayloadValidator {
   static validateProcessoUpdate(payload) {
     const allowed = ['PROCESSO', 'TIPO_PROCESSO', 'STATUS_GERAL', 'MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
-    this.validateAllowedKeys_(payload, ['ID_PROCESSO', 'MOTIVO_ALTERACAO'].concat(allowed), 'processo');
+    const aliases = ['NOME_PROCESSO', 'TIPO', 'STATUS'];
+    this.validateAllowedKeys_(payload, ['ID_PROCESSO', 'MOTIVO_ALTERACAO'].concat(allowed, aliases), 'processo');
     this.validateRequiredChangeReason_(payload, allowed, 'processo');
   }
 
