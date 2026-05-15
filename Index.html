@@ -2036,34 +2036,34 @@
     function aplicarSugestaoEmLote(batch) {
       if (!batch || !batch.findings || !batch.findings.length || !batch.suggestedValue) return;
       if (!confirm(`Aplicar "${batch.suggestedValue}" para ${batch.findings.length} registros de ${batch.title}?`)) return;
-      let pending = batch.findings.length;
-      let failed = 0;
-      batch.findings.forEach(item => {
-        google.script.run
-          .withSuccessHandler(() => {
-            pending -= 1;
-            if (pending === 0) {
-              if (failed) alert(`Correção em lote concluída com ${failed} falha(s).`);
-              loadAdminData();
-              showAdminDataReview();
-            }
-          })
-          .withFailureHandler(() => {
-            failed += 1;
-            pending -= 1;
-            if (pending === 0) {
-              alert(`Correção em lote finalizada com ${failed} falha(s).`);
-              loadAdminData();
-              showAdminDataReview();
-            }
-          })
-          .aplicarCorrecaoDados({
-            sheetName: item.sheetName,
-            rowNumber: item.rowNumber,
-            fieldName: item.fieldName,
-            newValue: batch.suggestedValue
-          });
-      });
+
+      const updates = batch.findings.map(item => ({
+        sheetName: item.sheetName,
+        rowNumber: item.rowNumber,
+        fieldName: item.fieldName,
+        newValue: batch.suggestedValue
+      }));
+
+      google.script.run
+        .withSuccessHandler(result => {
+          const failed = Number(result && result.failed || 0);
+          const success = Number(result && result.success || 0);
+          if (failed > 0) {
+            const firstError = (result.errors && result.errors[0] && result.errors[0].message) ? `
+Primeiro erro: ${result.errors[0].message}` : '';
+            alert(`Correção em lote concluída com sucesso parcial.
+Sucessos: ${success}
+Falhas: ${failed}${firstError}`);
+          } else {
+            alert(`Correção em lote aplicada com sucesso em ${success} registro(s).`);
+          }
+          loadAdminData();
+          showAdminDataReview();
+        })
+        .withFailureHandler(err => {
+          alert('Falha ao executar correção em lote: ' + (err.message || err));
+        })
+        .aplicarCorrecaoDadosEmLote({ updates });
     }
 
     function corrigirDadoManual(finding) {

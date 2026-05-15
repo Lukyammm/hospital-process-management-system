@@ -198,6 +198,11 @@ function aplicarCorrecaoDados(payload) {
   return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.aplicarCorrecaoDados(payload)));
 }
 
+
+function aplicarCorrecaoDadosEmLote(payload) {
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.aplicarCorrecaoDadosEmLote(payload)));
+}
+
 function salvarUsuario(payload) {
   return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.salvarUsuario(payload)));
 }
@@ -1154,14 +1159,79 @@ class AdminService {
 
   aplicarCorrecaoDados(payload) {
     if (!payload || !payload.sheetName || !payload.rowNumber || !payload.fieldName) throw new Error('Payload de correção inválido.');
-    const sh = this.repo.getSheet(payload.sheetName);
-    const headers = this.repo.getHeaders(payload.sheetName).map(h => String(h || '').trim());
-    const col = headers.indexOf(payload.fieldName);
-    if (col === -1) throw new Error('Campo não encontrado para correção: ' + payload.fieldName);
-    sh.getRange(Number(payload.rowNumber), col + 1).setValue(payload.newValue || '');
-    this.audit.log('CORRECAO_DADO_ADMIN', payload.sheetName, String(payload.rowNumber), JSON.stringify(payload));
-    this.repo.clearCache();
+    const result = this.aplicarCorrecaoDadosEmLote({
+      updates: [{
+        sheetName: payload.sheetName,
+        rowNumber: payload.rowNumber,
+        fieldName: payload.fieldName,
+        newValue: payload.newValue
+      }]
+    });
+    if (result.failed > 0) {
+      throw new Error(result.errors[0] && result.errors[0].message ? result.errors[0].message : 'Falha ao aplicar correção.');
+    }
     return { ok: true };
+  }
+
+  aplicarCorrecaoDadosEmLote(payload) {
+    const updates = payload && Array.isArray(payload.updates) ? payload.updates : [];
+    if (!updates.length) throw new Error('Nenhuma correção informada para o lote.');
+
+    const headersCache = {};
+    const sheetCache = {};
+    const errors = [];
+    let success = 0;
+
+    updates.forEach((item, idx) => {
+      try {
+        if (!item || !item.sheetName || !item.rowNumber || !item.fieldName) throw new Error('Item inválido no índice ' + idx + '.');
+
+        if (!sheetCache[item.sheetName]) sheetCache[item.sheetName] = this.repo.getSheet(item.sheetName);
+        if (!headersCache[item.sheetName]) headersCache[item.sheetName] = this.repo.getHeaders(item.sheetName).map(h => String(h || '').trim());
+
+        const rowNumber = Number(item.rowNumber);
+        if (!rowNumber || rowNumber < 2) throw new Error('Linha inválida para atualização: ' + item.rowNumber);
+
+        const colIndex = this.findHeaderIndex_(headersCache[item.sheetName], item.fieldName);
+        if (colIndex === -1) throw new Error('Campo não encontrado para correção: ' + item.fieldName);
+
+        sheetCache[item.sheetName].getRange(rowNumber, colIndex + 1).setValue(item.newValue || '');
+        this.audit.log('CORRECAO_DADO_ADMIN', item.sheetName, String(rowNumber), JSON.stringify(item));
+        success += 1;
+      } catch (error) {
+        errors.push({
+          index: idx,
+          sheetName: item && item.sheetName ? item.sheetName : '',
+          rowNumber: item && item.rowNumber ? item.rowNumber : '',
+          fieldName: item && item.fieldName ? item.fieldName : '',
+          message: error && error.message ? error.message : String(error)
+        });
+      }
+    });
+
+    if (success > 0) this.repo.clearCache();
+    return { ok: errors.length === 0, total: updates.length, success, failed: errors.length, errors };
+  }
+
+  findHeaderIndex_(headers, requestedField) {
+    const rawField = String(requestedField || '').trim();
+    if (!rawField) return -1;
+    const exact = headers.indexOf(rawField);
+    if (exact !== -1) return exact;
+
+    const target = this.normalizeHeaderKey_(rawField);
+    for (let i = 0; i < headers.length; i += 1) {
+      if (this.normalizeHeaderKey_(headers[i]) === target) return i;
+    }
+    return -1;
+  }
+
+  normalizeHeaderKey_(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .toUpperCase();
   }
 
   reviewLancamentos_() {
