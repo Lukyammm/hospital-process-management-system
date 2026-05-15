@@ -415,6 +415,10 @@
     .edit-form input:focus, .edit-form select:focus, .edit-form textarea:focus { outline:none; border-color:#8fb4dc; box-shadow:0 0 0 3px rgba(31,111,189,.16); background:#fdfefe; }
     .edit-form textarea { min-height:94px; resize:vertical; }
     .edit-form-actions { display:flex; gap:10px; justify-content:flex-end; padding-top:2px; }
+    .edit-form-note { border:1px solid #d6e6f7; background:#f2f8ff; color:#365375; font-size:12px; border-radius:12px; padding:10px 12px; margin:0; }
+    .edit-form-step-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .edit-form-step-grid label { margin:0; }
+    .edit-form-step-grid label span { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#5d7794; font-weight:700; }
 
     .acomp-modal { display:grid; gap:16px; }
     .acomp-hero { border:1px solid #d7e5f4; border-radius:16px; background:linear-gradient(135deg,#f9fcff 0%,#eef5ff 100%); padding:16px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:start; }
@@ -484,6 +488,7 @@
       .indicator-summary, .indicator-meta { grid-template-columns: 1fr; }
       .acomp-hero, .acomp-grid-meta, .acomp-steps { grid-template-columns: 1fr; }
       .acomp-actions { flex-wrap: wrap; }
+      .edit-form-step-grid { grid-template-columns: 1fr; }
       .nav { grid-template-columns: 1fr; }
       .kpi-grid, .admin-grid { grid-template-columns: 1fr; }
       .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap td, .table-wrap tr { display:block; }
@@ -1055,6 +1060,17 @@
     function abrirEdicaoAcompanhamento(item) {
       const host = document.getElementById('acompEditHost');
       if (!host) return;
+      const statusOptions = ['Concluído', 'Em andamento', 'Aguardando', 'Pendente', 'Não iniciado', 'Não se aplica'];
+      const renderStatusSelect = (fieldName, label, currentValue) => `
+        <label>
+          <span>${escapeHtml(label)}</span>
+          <select name="${fieldName}">
+            <option value="">Sem status</option>
+            ${statusOptions.map(op => `<option value="${escapeHtml(op)}" ${String(currentValue || '').toLowerCase() === op.toLowerCase() ? 'selected' : ''}>${escapeHtml(op)}</option>`).join('')}
+            ${currentValue && !statusOptions.some(op => op.toLowerCase() === String(currentValue).toLowerCase()) ? `<option value="${escapeHtml(currentValue)}" selected>${escapeHtml(currentValue)}</option>` : ''}
+          </select>
+        </label>
+      `;
       host.innerHTML = `
         <form class="edit-form" onsubmit="salvarEdicaoAcompanhamento(event, '${escapeHtml(item.ID_ACOMPANHAMENTO || '')}')">
           <div class="edit-form-head">
@@ -1064,20 +1080,23 @@
             </div>
             <span class="edit-badge">Modo edição</span>
           </div>
+          <p class="edit-form-note">Use valores padronizados para manter os cards e filtros consistentes em toda a aba de acompanhamento.</p>
           <div class="edit-form-grid">
             <div class="edit-form-group">
               <p class="edit-form-group-title">Agendamento</p>
               <label>Data do agendamento<input name="DATA_AGENDAMENTO" value="${escapeHtml(item.DATA_AGENDAMENTO || '')}" placeholder="dd/mm/aaaa"></label>
-              <label>Status do agendamento<input name="STATUS_AGENDAMENTO" value="${escapeHtml(item.STATUS_AGENDAMENTO || '')}"></label>
+              ${renderStatusSelect('STATUS_AGENDAMENTO', 'Status do agendamento', item.STATUS_AGENDAMENTO)}
             </div>
             <div class="edit-form-group">
               <p class="edit-form-group-title">Etapas</p>
-              <label>Introdução<input name="INTRODUCAO" value="${escapeHtml(item.INTRODUCAO || '')}"></label>
-              <label>Perfil<input name="PERFIL" value="${escapeHtml(item.PERFIL || '')}"></label>
-              <label>Fluxo do processo<input name="FLUXO_PROCESSO" value="${escapeHtml(item.FLUXO_PROCESSO || '')}"></label>
-              <label>Modelagem<input name="MODELAGEM" value="${escapeHtml(item.MODELAGEM || '')}"></label>
-              <label>Indicadores<input name="INDICADORES" value="${escapeHtml(item.INDICADORES || '')}"></label>
-              <label>Ficha técnica de indicadores<input name="FICHA_TECNICA_INDICADORES" value="${escapeHtml(item.FICHA_TECNICA_INDICADORES || '')}"></label>
+              <div class="edit-form-step-grid">
+                ${renderStatusSelect('INTRODUCAO', 'Introdução', item.INTRODUCAO)}
+                ${renderStatusSelect('PERFIL', 'Perfil', item.PERFIL)}
+                ${renderStatusSelect('FLUXO_PROCESSO', 'Fluxo do processo', item.FLUXO_PROCESSO)}
+                ${renderStatusSelect('MODELAGEM', 'Modelagem', item.MODELAGEM)}
+                ${renderStatusSelect('INDICADORES', 'Indicadores', item.INDICADORES)}
+                ${renderStatusSelect('FICHA_TECNICA_INDICADORES', 'Ficha técnica de indicadores', item.FICHA_TECNICA_INDICADORES)}
+              </div>
             </div>
             <div class="edit-form-group full">
               <p class="edit-form-group-title">Rastreabilidade</p>
