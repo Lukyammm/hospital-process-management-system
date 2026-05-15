@@ -415,6 +415,25 @@
     .edit-form input:focus, .edit-form select:focus, .edit-form textarea:focus { outline:none; border-color:#8fb4dc; box-shadow:0 0 0 3px rgba(31,111,189,.16); background:#fdfefe; }
     .edit-form textarea { min-height:94px; resize:vertical; }
     .edit-form-actions { display:flex; gap:10px; justify-content:flex-end; padding-top:2px; }
+
+    .acomp-modal { display:grid; gap:16px; }
+    .acomp-hero { border:1px solid #d7e5f4; border-radius:16px; background:linear-gradient(135deg,#f9fcff 0%,#eef5ff 100%); padding:16px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:start; }
+    .acomp-hero h4 { margin:4px 0 0; font-size:22px; color:var(--ink); letter-spacing:-.02em; }
+    .acomp-hero p { margin:8px 0 0; color:#55708d; font-size:13px; }
+    .acomp-hero .indicator-code { font-size:12px; }
+    .acomp-actions { display:flex; align-items:center; gap:10px; }
+    .acomp-status-chip { display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px; border:1px solid #c8daec; background:#fff; color:#2b4d70; font-size:12px; font-weight:700; }
+    .acomp-section { border:1px solid #d9e6f4; background:#fff; border-radius:14px; padding:14px; display:grid; gap:12px; }
+    .acomp-section h5 { margin:0; font-size:14px; text-transform:uppercase; letter-spacing:.05em; color:#55708d; }
+    .acomp-grid-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .acomp-meta-item { border:1px solid #d7e4f2; border-radius:12px; background:#f8fbff; padding:10px 12px; }
+    .acomp-meta-item b { display:block; margin-bottom:4px; font-size:10px; text-transform:uppercase; color:#647d97; letter-spacing:.05em; }
+    .acomp-meta-item span { font-size:13px; color:var(--ink); font-weight:700; }
+    .acomp-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .acomp-step-card { border:1px solid #d7e4f2; border-radius:12px; background:#fff; padding:11px; display:grid; gap:6px; }
+    .acomp-step-card b { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#60758f; }
+    .acomp-step-card span { font-size:13px; font-weight:700; }
+
     .result-soft { background: var(--success-bg); border: 1px solid #cfeedd; border-radius: 12px; padding: 12px; }
     .note-soft { background: var(--primary-2); border: 1px solid var(--primary-3); border-radius: 12px; padding: 12px; }
 
@@ -463,6 +482,8 @@
       .process-grid, .indicator-grid, .steps, .meta-grid, .result-box { grid-template-columns: 1fr; }
       .process-flow { grid-template-columns: 1fr; }
       .indicator-summary, .indicator-meta { grid-template-columns: 1fr; }
+      .acomp-hero, .acomp-grid-meta, .acomp-steps { grid-template-columns: 1fr; }
+      .acomp-actions { flex-wrap: wrap; }
       .nav { grid-template-columns: 1fr; }
       .kpi-grid, .admin-grid { grid-template-columns: 1fr; }
       .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap td, .table-wrap tr { display:block; }
@@ -987,25 +1008,47 @@
     function showAcompanhamento(item) {
       const unidade = item.UNIDADE || 'Unidade';
       const subtitulo = `${item.STATUS_AGENDAMENTO || 'Sem status'} · ${item.DATA_AGENDAMENTO || 'Sem data'}`;
+      const etapas = [
+        ['Introdução', item.INTRODUCAO],
+        ['Perfil', item.PERFIL],
+        ['Fluxo do processo', item.FLUXO_PROCESSO],
+        ['Modelagem', item.MODELAGEM],
+        ['Indicadores', item.INDICADORES],
+        ['Ficha técnica', item.FICHA_TECNICA_INDICADORES]
+      ];
       ui.openDrawer(unidade, subtitulo, `
-        <div class="indicator-head">
-          <div>
-            <div class="indicator-code">${escapeHtml(item.ID_ACOMPANHAMENTO || '-')} · ${escapeHtml(item.UNIDADE || '-')}</div>
-            <h4 class="section-title">Acompanhamento da unidade</h4>
-          </div>
-          <button class="btn secondary icon" onclick='abrirEdicaoAcompanhamento(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+        <div class="acomp-modal">
+          <section class="acomp-hero">
+            <div>
+              <div class="indicator-code">Registro ${escapeHtml(item.ID_ACOMPANHAMENTO || '-')}</div>
+              <h4>Acompanhamento da unidade</h4>
+              <p>Painel organizado para leitura rápida das informações operacionais e das etapas do fluxo.</p>
+            </div>
+            <div class="acomp-actions">
+              <span class="acomp-status-chip ${statusClass(item.STATUS_AGENDAMENTO)}">${escapeHtml(item.STATUS_AGENDAMENTO || 'Sem status')}</span>
+              <button class="btn secondary icon" onclick='abrirEdicaoAcompanhamento(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+            </div>
+          </section>
+
+          <section class="acomp-section">
+            <h5>Resumo do agendamento</h5>
+            <div class="acomp-grid-meta">
+              <div class="acomp-meta-item"><b>Unidade</b><span>${escapeHtml(item.UNIDADE || '-')}</span></div>
+              <div class="acomp-meta-item"><b>Data do agendamento</b><span>${escapeHtml(item.DATA_AGENDAMENTO || 'Sem data')}</span></div>
+              <div class="acomp-meta-item"><b>Status geral</b><span>${escapeHtml(item.STATUS_GERAL || 'Sem status geral')}</span></div>
+              <div class="acomp-meta-item"><b>Status do agendamento</b><span>${escapeHtml(item.STATUS_AGENDAMENTO || 'Sem status')}</span></div>
+            </div>
+          </section>
+
+          <section class="acomp-section">
+            <h5>Etapas do acompanhamento</h5>
+            <div class="acomp-steps">
+              ${etapas.map(([label, valor]) => `<div class="acomp-step-card"><b>${escapeHtml(label)}</b><span class="${statusClass(valor)}">${escapeHtml(valor || 'Sem status')}</span></div>`).join('')}
+            </div>
+          </section>
+
+          <div id="acompEditHost"></div>
         </div>
-        <div class="steps">
-          ${drawerField('Data agendamento', item.DATA_AGENDAMENTO)}
-          ${drawerField('Status agendamento', item.STATUS_AGENDAMENTO)}
-          ${drawerField('Introdução', item.INTRODUCAO)}
-          ${drawerField('Perfil', item.PERFIL)}
-          ${drawerField('Fluxo do processo', item.FLUXO_PROCESSO)}
-          ${drawerField('Modelagem', item.MODELAGEM)}
-          ${drawerField('Indicadores', item.INDICADORES)}
-          ${drawerField('Ficha técnica', item.FICHA_TECNICA_INDICADORES)}
-        </div>
-        <div id="acompEditHost"></div>
       `);
     }
 
