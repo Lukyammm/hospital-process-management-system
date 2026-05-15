@@ -1970,8 +1970,11 @@
                     <b>${escapeHtml(g.label)}</b>
                     <span>${g.items.length} ocorrência(s)</span>
                   </div>
-                  ${g.canApplyBatch ? `<button class="btn secondary small" onclick='aplicarSugestaoEmLote(${JSON.stringify(g.batchPayload).replace(/'/g,"&apos;")})'>Aplicar sugestão para todo tema</button>` : '<span class="pill purple">Sem sugestão em lote</span>'}
+                  ${g.canApplyBatch
+                    ? `<button class="btn secondary small" onclick='aplicarSugestaoEmLote(${JSON.stringify(g.batchPayload).replace(/'/g,"&apos;")})'>${escapeHtml(g.batchLabel || 'Aplicar sugestão para todo tema')}</button>`
+                    : '<span class="pill purple">Sem sugestão em lote</span>'}
                 </div>
+                ${g.hints && g.hints.length ? `<div class="pill-row">${g.hints.map(h => `<span class="pill">${escapeHtml(h)}</span>`).join('')}</div>` : ''}
               </div>
             `).join('')}
           </div>
@@ -1993,29 +1996,79 @@
     function groupFindingsByTheme(rows) {
       const bucket = new Map();
       rows.forEach(item => {
-        const key = [item.sheetName || '-', item.fieldName || '-', item.issue || '-'].join('|');
+        const key = buildThemeKey(item);
         if (!bucket.has(key)) bucket.set(key, []);
         bucket.get(key).push(item);
       });
       return Array.from(bucket.entries()).map(([key, items]) => {
-        const [sheetName, fieldName, issue] = key.split('|');
+        const [sheetName, fieldName, issueTheme] = key.split('|');
         const suggestions = Array.from(new Set(items.map(it => (it.suggestedValue || '').toString().trim()).filter(Boolean)));
-        const canApplyBatch = suggestions.length === 1;
-        return {
-          label: `${sheetName} · ${fieldName} · ${issue}`,
-          items,
-          canApplyBatch,
-          batchPayload: canApplyBatch ? {
+        const withSuggestion = items.filter(it => (it.suggestedValue || '').toString().trim());
+        const canApplyExact = suggestions.length === 1 && withSuggestion.length > 0;
+        const canApplyThemeSuggestions = withSuggestion.length >= 2;
+        const canApplyBatch = canApplyExact || canApplyThemeSuggestions;
+        let batchPayload = null;
+        let batchLabel = '';
+        if (canApplyExact) {
+          batchPayload = {
             title: `${sheetName} / ${fieldName}`,
+            mode: 'FIXED_VALUE',
             suggestedValue: suggestions[0],
             findings: items.map(it => ({
               sheetName: it.sheetName,
               rowNumber: it.rowNumber,
               fieldName: it.fieldName
             }))
-          } : null
+          };
+          batchLabel = 'Aplicar mesmo valor para todo tema';
+        } else if (canApplyThemeSuggestions) {
+          batchPayload = {
+            title: `${sheetName} / ${fieldName}`,
+            mode: 'PER_ROW_SUGGESTION',
+            findings: withSuggestion.map(it => ({
+              sheetName: it.sheetName,
+              rowNumber: it.rowNumber,
+              fieldName: it.fieldName,
+              suggestedValue: it.suggestedValue
+            }))
+          };
+          batchLabel = 'Aplicar todas as sugestões do tema';
+        }
+        return {
+          label: `${sheetName} · ${fieldName} · ${issueTheme}`,
+          items,
+          canApplyBatch,
+          batchLabel,
+          hints: buildThemeHints(items, suggestions),
+          batchPayload
         };
       }).sort((a, b) => b.items.length - a.items.length);
+    }
+
+    function buildThemeKey(item) {
+      const sheetName = item.sheetName || '-';
+      const fieldName = item.fieldName || '-';
+      const issue = item.issue || '-';
+      const issueTheme = normalizeIssueTheme(issue);
+      return [sheetName, fieldName, issueTheme].join('|');
+    }
+
+    function normalizeIssueTheme(issue) {
+      return String(issue || '-')
+        .replace(/\d{1,2}\/\d{2,4}/g, '[PERIODO]')
+        .replace(/\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?[\/-]?\d{2,4}\b/gi, '[PERIODO]')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function buildThemeHints(items, suggestions) {
+      const hints = [];
+      const total = items.length;
+      const withSuggestion = items.filter(it => (it.suggestedValue || '').toString().trim()).length;
+      if (withSuggestion > 0) hints.push(`${withSuggestion}/${total} com sugestão automática`);
+      if (suggestions.length > 1) hints.push(`Sugestões variadas (${suggestions.length} valores)`);
+      if (items.some(it => /compet[eê]ncia/i.test(String(it.fieldName || '')))) hints.push('Tema de competência/mês detectado');
+      return hints;
     }
 
     function aplicarSugestao(finding) {
@@ -2034,15 +2087,20 @@
     }
 
     function aplicarSugestaoEmLote(batch) {
-      if (!batch || !batch.findings || !batch.findings.length || !batch.suggestedValue) return;
-      if (!confirm(`Aplicar "${batch.suggestedValue}" para ${batch.findings.length} registros de ${batch.title}?`)) return;
+      if (!batch || !batch.findings || !batch.findings.length) return;
+      const mode = batch.mode || 'FIXED_VALUE';
+      const isPerRowSuggestion = mode === 'PER_ROW_SUGGESTION';
+      if (!isPerRowSuggestion && !batch.suggestedValue) return;
+      if (!confirm(isPerRowSuggestion
+        ? `Aplicar as sugestões individuais em ${batch.findings.length} registro(s) de ${batch.title}?`
+        : `Aplicar "${batch.suggestedValue}" para ${batch.findings.length} registros de ${batch.title}?`)) return;
 
       const updates = batch.findings.map(item => ({
         sheetName: item.sheetName,
         rowNumber: item.rowNumber,
         fieldName: item.fieldName,
-        newValue: batch.suggestedValue
-      }));
+        newValue: isPerRowSuggestion ? (item.suggestedValue || '') : batch.suggestedValue
+      })).filter(item => String(item.newValue || '').trim());
 
       google.script.run
         .withSuccessHandler(result => {
