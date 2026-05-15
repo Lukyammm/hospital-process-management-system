@@ -1,12 +1,1707 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGEP-HUC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --surface: #ffffff;
+      --surface-soft: #f6f9fe;
+      --ink: #11263f;
+      --text: #22374f;
+      --muted: #60758f;
+      --line: #d5e1ef;
+      --line-strong: #c3d4e8;
+      --primary: #1f4e79;
+      --primary-2: #ebf2fa;
+      --primary-3: #c5d9ee;
+      --success: #2f9e6d;
+      --success-bg: #edf9f2;
+      --warning: #b9891d;
+      --warning-bg: #fff7e4;
+      --danger: #bf4c4c;
+      --danger-bg: #fdeeee;
+      --shadow-sm: 0 8px 20px rgba(16, 38, 67, .07);
+      --shadow-md: 0 18px 42px rgba(16, 38, 67, .14);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --content-max: 1480px;
+      --sidebar: 286px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --focus-ring: #0b63ce;
+      --radius-lg: 22px;
+      --ease: .2s ease;
+      --modal-overlay: rgba(11, 30, 52, .56);
+      --modal-surface: linear-gradient(160deg, #ffffff 0%, #f8fbff 100%);
+      --modal-line: #d6e3f1;
+      --modal-soft: #f3f8ff;
+      --modal-title: #0f2740;
+      --modal-scroll: #b9cce0;
+    }
 
-Editor
-Code.gs
-Index.html
-Migrador_SIGEP_HUC.gs
-.
+    :where(button, input, select, textarea) {
+      font: inherit;
+      color: inherit;
+    }
 
-17341735173617371738173917401741174217431744174517461747174817491750175117521753175417551756175717581759170417051706170717081709171017111712171317141715171617171718171917201721172217231724172517261727172817291730173117321733
+    :focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
 
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at top right, #e9f1fb 0%, #f3f6fb 40%, #f3f6fb 100%); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); line-height: 1.45; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; position:relative; overflow-x:hidden; }
+    body::before, body::after { content:""; position:fixed; z-index:-1; pointer-events:none; filter: blur(80px); opacity:.55; }
+    body::before { width:420px; height:420px; right:-120px; top:-120px; background: radial-gradient(circle, rgba(86,155,224,.55), rgba(86,155,224,0)); }
+    body::after { width:380px; height:380px; left:-140px; bottom:-140px; background: radial-gradient(circle, rgba(131,196,167,.45), rgba(131,196,167,0)); }
+    button, input, select, textarea { font: inherit; }
+
+    .app { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) 1fr; }
+
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; padding: 24px 18px;
+      background: linear-gradient(180deg, #f9fcff 0%, #edf4fc 100%);
+      border-right: 1px solid var(--line); color: var(--text);
+      backdrop-filter: blur(10px);
+    }
+    .brand { display: block; padding: 20px 12px 24px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+    .mark { display: none; }
+    .mark img { width: 100%; height: 100%; object-fit: contain; }
+    .brand h1 { margin: 0; font-size: 42px; line-height: 1; letter-spacing: -.03em; color: var(--ink); }
+    .brand span { display: block; margin-top: 10px; color: var(--muted); font-size: 14px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
+    .nav { display: grid; gap: 8px; }
+    .nav button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 11px; cursor: pointer; text-align: left; transition: var(--ease); }
+    .nav button:hover { background: #f3f8ff; color: var(--ink); border-color: var(--line); }
+    .nav button.active { background: var(--primary-2); color: var(--primary); border-color: var(--primary-3); font-weight: 700; box-shadow: inset 0 0 0 1px rgba(31,78,121,.08); }
+    .nav svg { width: 19px; height: 19px; flex: 0 0 auto; }
+    .sidebar-note { position: absolute; left: 18px; right: 18px; bottom: 18px; padding: 14px; border-radius: 14px; background: #fff; border: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .main { padding: 28px 32px 46px; min-width: 0; width: 100%; max-width: var(--content-max); margin: 0 auto; }
+    .topbar { background: linear-gradient(135deg, #ffffff 0%, #f3f8ff 100%); border:1px solid var(--line); border-radius:18px; padding:18px 20px; box-shadow: var(--shadow-sm); }
+    .topbar { display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-bottom: 24px; }
+    .title-kicker { color: var(--primary); font-weight: 800; letter-spacing: .08em; font-size: 12px; text-transform: uppercase; }
+    .title h2 { margin: 4px 0 0; font-size: 30px; line-height: 1.1; letter-spacing: -.04em; color: var(--ink); }
+    .title p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .actions { display: flex; gap: 10px; align-items: center; }
+    .work-queue { display:flex; gap:8px; flex-wrap:wrap; margin: 0 0 14px; }
+    .task-chip { border:1px solid var(--line); background:#fff; color:var(--text); border-radius:999px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+    .task-chip.active { border-color:var(--primary); color:var(--primary); background:var(--primary-2); }
+    .ops-alert { border:1px solid var(--line); border-left:4px solid var(--warning); border-radius:12px; background:#fff; padding:10px 12px; color:var(--text); font-size:12px; margin-bottom:12px; }
+    .search { width: min(360px, 38vw); position: relative; }
+    .search input { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 13px 14px 13px 42px; outline: none; box-shadow: var(--shadow-sm); color: var(--text); }
+    .search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 18px; }
+
+    .btn { border: 1px solid var(--primary); border-radius: 12px; padding: 11px 16px; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-sm); }
+    .btn:hover { filter: brightness(.96); }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary { background: #fff; color: var(--primary); border: 1px solid var(--primary-3); box-shadow: none; }
+
+
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .hero, .panel, .unit-card, .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+    .panel, .unit-card, .table-wrap, .summary-card, .hero-panel {
+      backdrop-filter: blur(4px);
+    }
+    .hero { padding: 24px; margin-bottom: 30px; display: grid; grid-template-columns: 1.4fr .8fr; gap: 18px; }
+    .hero h3 { font-size: 22px; margin: 0 0 8px; letter-spacing: -.03em; color: var(--ink); }
+    .hero p { color: var(--muted); margin: 0; line-height: 1.55; }
+    .hero-panel { border: 1px solid var(--line); background: linear-gradient(180deg,#f7fbff 0%,#f2f7fe 100%); border-radius: 14px; padding: 16px; }
+    .progress-line { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin-bottom: 9px; }
+    .bar { height: 11px; background: #e6eef8; border-radius: 999px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), #4e95da); border-radius: inherit; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 8px 0 20px; }
+    .kpi { position: relative; }
+    .kpi::after { content:''; position:absolute; inset:0 0 auto 0; height:3px; border-radius:14px 14px 0 0; background:linear-gradient(90deg, #1f4e79, #3c6f9d); opacity:.85; }
+    .kpi { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 17px; box-shadow: var(--shadow-sm); }
+    .kpi .icon { width: 38px; height: 38px; border-radius: 12px; background: var(--primary-2); color: var(--primary); display: grid; place-items: center; margin-bottom: 12px; }
+    .kpi strong { display: block; font-size: clamp(24px, 2.2vw, 30px); letter-spacing: -.04em; color: var(--ink); }
+    .kpi span { color: var(--muted); font-size: 13px; }
+    .kpi.kpi-priority {
+      border-color: #b8d8f7;
+      background: linear-gradient(180deg, #f6fbff 0%, #ffffff 100%);
+      box-shadow: 0 14px 28px rgba(31,111,189,.12);
+      position: relative;
+    }
+    .kpi.kpi-priority::before {
+      content: "Indicador principal";
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: var(--primary);
+      background: #fff;
+      border: 1px solid #cfe4ff;
+      border-radius: 999px;
+    }
+
+
+
+    .panel { overflow: hidden; }
+    .panel-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px 16px; position: sticky; top: 0; background: linear-gradient(180deg,#ffffff 0%,#f8fbff 100%); z-index: 3; }
+    .panel-head h3 { margin: 0; font-size: 17px; color: var(--ink); }
+    .panel-head span { color: var(--muted); font-size: 13px; }
+    .filters { display: flex; gap: 12px; flex-wrap: wrap; }
+    .panel-head .filters { margin-left: auto; }
+    .filters select { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 12px; outline: none; color: var(--text); min-width: 150px; }
+    .content-pad { padding: 18px; }
+
+    .process-grid, .indicator-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .card {
+      position: relative;
+      border: 1px solid #d9e5f2;
+      background: linear-gradient(180deg, #ffffff 0%, #fcfeff 100%);
+      border-radius: 18px;
+      padding: 22px;
+      min-width: 0;
+      transition: border-color var(--ease), box-shadow var(--ease), transform var(--ease);
+      box-shadow: 0 4px 14px rgba(15,39,68,.06);
+      isolation: isolate;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      border-radius: 16px 16px 0 0;
+      background: linear-gradient(90deg, rgba(31,111,189,.95), rgba(78,149,218,.55));
+      opacity: .9;
+    }
+    .card:hover {
+      border-color: #bfd4ea;
+      box-shadow: 0 10px 24px rgba(21, 48, 84, .11);
+      transform: translateY(-1px);
+    }
+    .card h4 { margin: 0; font-size: 18px; line-height: 1.3; letter-spacing: -.025em; color: var(--ink); font-weight: 800; }
+    .card p { margin: 0; color: #62758d; font-size: 13px; line-height: 1.45; }
+    .process-card-head { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:12px; align-items:start; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #e5eef8; }
+    .process-card-head h4 { margin:0; }
+    .process-sector { font-size:12px; color:#4f6580; margin-bottom:14px; font-weight:600; }
+    .process-meta-grid { display:grid; grid-template-columns: minmax(0,1fr); gap:10px; margin-bottom:14px; }
+    .process-meta-item { border:1px solid #d6e5f4; border-radius:14px; background:linear-gradient(180deg,#f4f9ff 0%,#eef5fd 100%); padding:12px 14px; }
+    .process-meta-item b { display:block; font-size:10px; color:#5f7590; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+    .process-meta-item span { font-size:13px; font-weight:800; color:var(--ink); }
+
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .process-flow { position:relative; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:14px; padding-top:18px; }
+    .process-flow::before { content:""; position:absolute; left:4%; right:4%; top:34px; border-top:2px solid #d4e1ef; z-index:0; }
+    .flow-step { position:relative; z-index:1; border:1px solid #d6e5f3; border-radius:12px; background:#f8fbff; padding:10px 10px 12px; min-height:86px; overflow:hidden; display:grid; gap:6px; justify-items:center; text-align:center; }
+    .flow-step::before { content:""; width:16px; height:16px; border-radius:50%; border:2px solid #bccedf; background:#fff; box-shadow:0 0 0 4px #f3f8ff; }
+    .flow-step b { display:block; font-size:10px; color:#60758f; text-transform:uppercase; letter-spacing:.07em; margin:0; }
+    .flow-step span { font-size:11px; font-weight:700; color:var(--ink); }
+    .flow-step.state-done { border-color:#bfe2cf; background:#edf8f2; }
+    .flow-step.state-done::before { border-color:#2f9e6d; background:#2f9e6d; box-shadow:0 0 0 4px #dff3e8; }
+    .flow-step.state-current { border-color:#bcd6f1; background:#edf4fd; }
+    .flow-step.state-current::before { border-color:#2f74bd; background:#2f74bd; box-shadow:0 0 0 4px #dfeeff; }
+    .flow-step.state-blocked, .flow-step.state-pending { border-color:#d7e0ea; background:#f4f7fb; }
+    .flow-step.state-blocked::before, .flow-step.state-pending::before { border-color:#9fb2c7; background:#fff; }
+    .pill { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; gap: 6px; border-radius: 10px; padding: 6px 12px; font-size: 11px; font-weight: 700; background: #eef3f9; color: #324c67; white-space: nowrap; border:1px solid #dce7f3; max-width:100%; }
+    .process-flow .pill { white-space: normal; text-align: center; line-height: 1.2; overflow-wrap: anywhere; font-size:10px; min-height:26px; }
+    .process-next-action { margin-top:12px; border:1px solid #d8e6f5; background:#f4f9ff; border-radius:12px; padding:10px 12px; font-size:12px; color:#2a4562; }
+    .process-next-action b { color:#1f4e79; }
+    .process-card-head .pill { align-self: start; margin-top: 1px; }
+    .pill.ok { background: #e8f6ef; border-color:#c6e8d6; color: #27784f; }
+    .pill.warn { background: var(--warning-bg); color: var(--warning); }
+    .pill.bad { background: var(--danger-bg); color: var(--danger); }
+    .pill.purple { background: #f2ecff; color: #6f57b2; }
+
+    .acomp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .unit-top { padding: 18px; display: flex; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--line); background: var(--surface-soft); }
+    .unit-top h4 { margin: 0 0 7px; font-size: 18px; letter-spacing: -.03em; color: var(--ink); }
+    .unit-top small { color: var(--muted); }
+    .ring { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--primary) calc(var(--p) * 1%), #e6eef8 0); position: relative; flex: 0 0 auto; }
+    .ring::after { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
+    .ring span { position: relative; z-index: 1; font-weight: 800; font-size: 14px; color: var(--ink); }
+    .unit-body { padding: 16px 18px 18px; }
+    .steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+    .step { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface-soft); }
+    .step b { display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: .04em; margin-bottom: 5px; }
+    .step span { font-size: 12px; font-weight: 700; color: var(--text); }
+    .timeline { border-left: 2px solid #d8e5f2; margin-left: 7px; padding-left: 15px; display: grid; gap: 10px; }
+    .timeline-item { position: relative; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .timeline-item::before { content: ''; position: absolute; left: -22px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px var(--primary-2); }
+    .timeline-item .date { font-weight: 800; font-size: 13px; color: var(--ink); }
+    .timeline-item .status { color: var(--muted); font-size: 12px; text-align: right; }
+
+    .empty, .loading { padding: 36px; text-align: center; color: var(--muted); border-radius: 12px; background: #fff; border: 1px dashed var(--line-strong); }
+    .empty { display:grid; gap:8px; place-items:center; }
+    .skeleton { position: relative; overflow: hidden; background: #eef3f8; border-radius: 12px; min-height: 16px; }
+    .skeleton::after { content:''; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation:shimmer 1.25s infinite; }
+    .skeleton-card { border:1px solid var(--line); border-radius: 14px; padding:14px; background:#fff; display:grid; gap:10px; }
+    @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    .drawer { position: fixed; inset: 0; background: var(--modal-overlay); backdrop-filter: blur(8px) saturate(130%); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 30; animation: modalFade .2s ease; }
+    .drawer.active { display: flex; }
+    .drawer-card { width: min(1680px, calc(100vw - 32px)); max-height: min(95vh, 1100px); overflow: hidden; background: var(--modal-surface); border-radius: 24px; border: 1px solid var(--modal-line); box-shadow: 0 24px 54px rgba(8, 24, 43, .32); padding: 22px; animation: modalPop .23s cubic-bezier(.2,.9,.3,1); }
+    .drawer-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin: -22px -22px 16px; padding: 18px 22px 14px; background: linear-gradient(180deg,#ffffff 0%, #f7fbff 100%); border-bottom: 1px solid var(--modal-line); }
+    .drawer-head h3 { margin: 0; font-size: 22px; letter-spacing: -.02em; color: var(--modal-title); }
+    #drawerSubtitle { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .close { background: #f2f7fd; border: 1px solid var(--modal-line); width: 38px; height: 38px; border-radius: 12px; cursor: pointer; font-size: 22px; line-height: 1; color: var(--text); transition: all var(--ease); }
+    .close:hover { border-color: #b9cde4; background: #eaf2fc; color: var(--ink); transform: translateY(-1px); }
+
+    .admin-grid { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:14px; }
+    .table-wrap{overflow:auto;margin-top:10px;max-height:62vh;border-radius:12px;border:1px solid var(--line)}
+    .table-wrap::-webkit-scrollbar,
+    .filter-chip-list::-webkit-scrollbar,
+    .indicator-process-tabs::-webkit-scrollbar { height: 10px; width: 10px; }
+    .table-wrap::-webkit-scrollbar-thumb,
+    .filter-chip-list::-webkit-scrollbar-thumb,
+    .indicator-process-tabs::-webkit-scrollbar-thumb { background: #c8d8ea; border-radius: 999px; border:2px solid #f4f8fd; }
+    .table-wrap::-webkit-scrollbar-track,
+    .filter-chip-list::-webkit-scrollbar-track,
+    .indicator-process-tabs::-webkit-scrollbar-track { background:#f4f8fd; border-radius:999px; }
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;min-width:920px}
+    th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;color:var(--text);vertical-align:top}
+    th{background:#eef4fb;color:#3f5a76;font-weight:700;position:sticky;top:0;z-index:2}
+    tbody tr:nth-child(even) td{background:#f8fbff}
+    tbody tr:hover td{background:#ecf3fb}
+    .btn.small{padding:8px 10px;border-radius:10px;font-size:12px;box-shadow:none}
+
+    .indicators-layout { display:grid; grid-template-columns: 1fr; gap:16px; }
+
+    .indicator-filter-search { position:relative; margin-bottom:10px; }
+    .indicator-filter-search input { width:100%; border:1px solid var(--line); border-radius:10px; padding:9px 10px 9px 34px; font-size:12px; color:var(--text); background:#fff; }
+    .indicator-filter-search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; color:var(--muted); }
+
+    .indicator-filter-group { margin-bottom:12px; }
+    .indicator-filter-group b { display:block; font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.05em; }
+    .filter-chip-list { display:grid; gap:7px; max-height:340px; overflow:auto; padding-right:4px; }
+    .filter-chip { border:1px solid var(--line); background:#fff; color:var(--text); border-radius:10px; padding:8px 10px; text-align:left; cursor:pointer; font-size:12px; }
+    .filter-chip.active { border-color:var(--primary); color:var(--primary); background:var(--primary-2); font-weight:700; }
+    .indicator-main-area { display:grid; gap:12px; min-width:0; }
+    .indicator-summary { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:12px; }
+    .summary-card { border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff; }
+    .summary-card b { display:block; color:var(--muted); font-size:12px; margin-bottom:6px; }
+    .summary-card strong { font-size:28px; color:var(--ink); letter-spacing:-.03em; }
+    .summary-card span { display:block; margin-top:4px; color:var(--muted); font-size:12px; }
+    #processSummary { margin-bottom: 18px; }
+    #processSummary .summary-card.featured {
+      border-color:#b8d8f7;
+      background:linear-gradient(180deg,#f6fbff 0%,#ffffff 100%);
+      box-shadow:0 14px 28px rgba(31,111,189,.12);
+      position:relative;
+    }
+    #processSummary .summary-card.featured::before {
+      content:'Destaque';
+      position:absolute;
+      top:-10px;
+      left:14px;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      color:var(--primary);
+      background:#fff;
+      border:1px solid #cfe4ff;
+      border-radius:999px;
+      padding:4px 8px;
+    }
+    #processSummary .summary-card.featured b { color: var(--primary); }
+
+    .indicator-context { border:1px solid var(--line); background:var(--surface-soft); border-radius:14px; padding:14px; }
+    .indicator-context h4 { margin:0 0 6px; font-size:17px; color:var(--ink); }
+    .indicator-context p { margin:0; color:var(--muted); font-size:13px; }
+    .indicator-list { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:12px; }
+    .indicator-row { border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff; cursor:pointer; transition:.18s ease; display:grid; gap:10px; }
+    .indicator-row:hover { border-color:var(--line-strong); box-shadow:var(--shadow-sm); }
+    .indicator-row.hit { border-color:#bfe8d0; background:linear-gradient(180deg,#f6fff9 0%,#ffffff 100%); }
+    .indicator-row.miss { border-color:#f1cdcd; background:linear-gradient(180deg,#fff8f8 0%,#ffffff 100%); }
+    .indicator-main h4 { margin:0 0 6px; font-size:15px; color:var(--ink); }
+    .indicator-main p { margin:0; font-size:12px; color:var(--muted); }
+    .indicator-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .indicator-col b { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px; }
+    .indicator-col span { font-size:13px; font-weight:700; color:var(--text); }
+    .sparkline { width:100%; height:168px; border:1px solid #d8e6f7; border-radius:12px; background:linear-gradient(180deg,#fbfdff 0%,#fff 100%); padding:6px 8px; }
+    .sparkline svg { width:100%; height:100%; display:block; }
+
+    .drawer-body { max-height: calc(92vh - 120px); overflow: auto; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--modal-scroll) transparent; }
+    .drawer-body::-webkit-scrollbar { width: 10px; }
+    .drawer-body::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#c8d9eb,#a8c0d8); border-radius: 999px; border:2px solid #f2f6fb; }
+    .drawer-body::-webkit-scrollbar-track { background: transparent; }
+    .indicator-modal { display: grid; gap: 14px; }
+    .indicator-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .indicator-code { color: var(--primary); font-size: 13px; font-weight: 700; }
+    .meta-grid { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:10px; }
+    .meta-item { border:1px solid #d4e2f1; border-radius: 12px; padding:12px; background:linear-gradient(180deg,#fff 0%, #fbfdff 100%); }
+    .meta-item b { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:.04em; }
+    .meta-item span { font-weight:700; color:var(--ink); font-size:13px; }
+    .section-title { font-size:18px; margin:4px 0 0; color:var(--ink); }
+    .result-box { border:1px solid #cfeedd; border-left:4px solid var(--success); background:linear-gradient(180deg,#f3fff8 0%,#ecf9f2 100%); border-radius:14px; padding:14px; display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:8px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.45); }
+    .result-box b { display:block; font-size:11px; color:#4d6c5d; text-transform:uppercase; margin-bottom:4px; }
+    .result-box span { font-size:14px; font-weight:700; color:#1d6142; }
+    .result-main { font-size:36px !important; letter-spacing:-.04em; }
+     .history-list { border:1px solid var(--line); border-radius:12px; background:#fff; overflow:hidden; }
+    .history-chart { border:1px solid #d7e4f2; border-radius:16px; padding:16px; background:#fff; box-shadow:0 8px 20px rgba(20,40,70,.06); display:grid; gap:12px; }
+    .history-chart-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .history-chart-head h5 { margin:0; font-size:15px; color:var(--ink); }
+    .history-chart-head p { margin:4px 0 0; font-size:12px; color:var(--muted); }
+    .history-chart-kpi { text-align:right; }
+    .history-chart-kpi b { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+    .history-chart-kpi strong { font-size:20px; color:var(--ink); letter-spacing:-.03em; }
+    .history-chart svg { width:100%; height:420px; display:block; background:linear-gradient(180deg,#fbfdff 0%,#ffffff 100%); border:1px solid #e3edf8; border-radius:12px; }
+    .chart-caption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .history-chart-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+    .history-chart-legend span { display:inline-flex; align-items:center; gap:6px; }
+    .history-chart-legend i { width:16px; height:3px; border-radius:999px; display:inline-block; }
+    .history-chart-labels { display:grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap:8px; margin-top:8px; font-size:12px; color:var(--muted); }
+    .btn.icon { display:inline-flex; align-items:center; gap:8px; }
+    .btn.icon svg { width:14px; height:14px; }
+    .save-feedback { position: fixed; right: 20px; bottom: 20px; z-index: 60; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text); box-shadow: var(--shadow-sm); font-size: 12px; display:none; }
+    .save-feedback.show { display:block; }
+    .history-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .history-table th, .history-table td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; }
+    .history-table th { background:#f6f9fd; color:#4d6580; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+    .history-table tr.current td { background:#eef6ff; font-weight:600; }
+    .history-status { font-weight:700; }
+    .history-status.ok { color:var(--success); }
+    .history-status.warn { color:var(--warning); }
+    .history-status.bad { color:var(--danger); }
+    .state-success { background: var(--success-bg) !important; border-color: #cfeedd !important; color: var(--success) !important; }
+    .state-warning { background: var(--warning-bg) !important; border-color: #f3e2b5 !important; color: var(--warning) !important; }
+    .state-error { background: var(--danger-bg) !important; border-color: #f3cccc !important; color: var(--danger) !important; }
+    .state-selected { border-color: var(--primary) !important; background: var(--primary-2) !important; color: var(--primary) !important; font-weight: 800 !important; box-shadow: inset 0 0 0 1px var(--primary-3); }
+    .indicator-process-shell { border:1px solid #d8e4f2; border-radius:18px; background:linear-gradient(180deg,#fbfdff 0%,#f6faff 100%); padding:20px; display:grid; gap:16px; }
+    .indicator-process-shell.is-collapsed .indicator-process-body { display:none; }
+    .indicator-filter-toggle { border:1px solid #c6d8ec; background:#fff; color:#1f4e79; border-radius:12px; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer; }
+    .indicator-filter-toggle:hover { background:#f1f7ff; }
+    .indicator-process-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .indicator-process-title-wrap { display:flex; gap:12px; align-items:flex-start; }
+    .indicator-process-icon { width:44px; height:44px; border-radius:14px; border:1px solid #cfe0f2; background:#eef5fe; color:#2f74bd; display:grid; place-items:center; flex:0 0 auto; }
+    .indicator-process-icon svg { width:22px; height:22px; }
+    .indicator-process-head h4 { margin:0; font-size:38px; line-height:1.02; letter-spacing:-.03em; color:var(--ink); }
+    .indicator-process-head p { margin:4px 0 0; color:var(--muted); font-size:15px; }
+    .indicator-process-count { display:inline-flex; align-items:center; gap:9px; border:1px solid #d3e0ef; border-radius:12px; background:#fff; color:#4d6684; padding:10px 14px; font-size:16px; font-weight:600; white-space:nowrap; }
+    .indicator-process-count svg { width:18px; height:18px; }
+    .indicator-process-body { display:grid; gap:14px; margin-top:4px; }
+    .indicator-process-search { position:relative; }
+    .indicator-process-search input { width:100%; border:1px solid #d1deed; border-radius:14px; padding:12px 14px 12px 42px; background:#fff; color:var(--text); transition:border-color var(--ease), box-shadow var(--ease); }
+    .indicator-process-search input:focus { outline:none; border-color:#8db4dc; box-shadow:0 0 0 3px rgba(31,111,189,.14); }
+    .indicator-process-search svg { position:absolute; left:13px; top:50%; transform:translateY(-50%); width:18px; color:#70849d; }
+    .indicator-selected { border:1px solid #d6e4f3; border-radius:14px; background:#fff; padding:12px; display:grid; gap:10px; }
+    .indicator-selected-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .indicator-selected-head b { font-size:18px; color:var(--ink); }
+    .indicator-clear-btn { border:1px solid #d4dfec; background:#fff; border-radius:10px; color:#5b6f88; font-size:13px; font-weight:600; padding:8px 12px; cursor:pointer; }
+    .indicator-clear-btn:hover { border-color:#b9ccdf; color:#2b4867; }
+    .indicator-process-tabs { display:flex; gap:10px; flex-wrap:wrap; }
+    .indicator-chip { border:1px solid #ccd9e8; background:#fbfdff; color:#203b57; cursor:pointer; display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:13px; min-height:44px; transition:all .18s ease; max-width:100%; }
+    .indicator-chip:hover { background:#f4f8fe; border-color:#b7cce3; }
+    .indicator-chip-label { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .indicator-chip-count { display:inline-grid; place-items:center; min-width:24px; height:24px; padding:0 8px; border-radius:999px; background:#e9f0f8; color:#36557a; font-size:12px; font-weight:700; }
+    .indicator-chip.state-selected { background:#eaf4ff; border-color:#7eaee0; color:#17436f; }
+    .indicator-chip.state-selected .indicator-chip-count { background:#2c73bb; color:#fff; }
+    .edit-form { border:1px solid #cdddf0; border-radius:16px; background:linear-gradient(180deg,#ffffff 0%,#f9fcff 100%); padding:18px; display:grid; gap:16px; box-shadow:0 12px 22px rgba(16,49,82,.08); }
+    .edit-form-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; padding-bottom:12px; border-bottom:1px solid #dfebf8; }
+    .edit-form-head h5 { margin:0; font-size:16px; color:var(--ink); letter-spacing:-.01em; }
+    .edit-form-head p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .edit-badge { display:inline-flex; align-items:center; gap:6px; border:1px solid #c7dcf3; background:#eef5fd; color:#1f4e79; border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+    .edit-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 14px; }
+    .edit-form-group { border:1px solid #d9e7f5; border-radius:13px; background:#fff; padding:12px; display:grid; gap:10px; }
+    .edit-form-group.full { grid-column:1 / -1; }
+    .edit-form-group-title { margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#56718f; font-weight:800; }
+    .edit-form label { display:grid; gap:6px; font-size:12px; color:#56718f; font-weight:600; }
+    .edit-form input, .edit-form select, .edit-form textarea { width:100%; border:1px solid #c9daee; border-radius:10px; padding:10px 11px; color:var(--text); background:#fff; transition:border-color var(--ease), box-shadow var(--ease), background-color var(--ease); }
+    .edit-form select { appearance:none; background-image:linear-gradient(45deg, transparent 50%, #5c7591 50%), linear-gradient(135deg, #5c7591 50%, transparent 50%), linear-gradient(to right, #fff, #fff); background-position:calc(100% - 17px) calc(1em + 1px), calc(100% - 12px) calc(1em + 1px), 100% 0; background-size:5px 5px,5px 5px,2.9em 100%; background-repeat:no-repeat; padding-right:36px; }
+    .edit-form input:focus, .edit-form select:focus, .edit-form textarea:focus { outline:none; border-color:#8fb4dc; box-shadow:0 0 0 3px rgba(31,111,189,.16); background:#fdfefe; }
+    .edit-form textarea { min-height:94px; resize:vertical; }
+    .edit-form-actions { display:flex; gap:10px; justify-content:flex-end; padding-top:2px; }
+    .edit-form-note { border:1px solid #d6e6f7; background:#f2f8ff; color:#365375; font-size:12px; border-radius:12px; padding:10px 12px; margin:0; }
+    .edit-form-step-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .edit-form-step-grid label { margin:0; }
+    .edit-form-step-grid label span { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:#5d7794; font-weight:700; }
+
+    .acomp-modal { display:grid; gap:16px; }
+    .acomp-hero { border:1px solid #d7e5f4; border-radius:16px; background:linear-gradient(135deg,#f9fcff 0%,#eef5ff 100%); padding:16px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:start; }
+    .acomp-hero h4 { margin:4px 0 0; font-size:22px; color:var(--ink); letter-spacing:-.02em; }
+    .acomp-hero p { margin:8px 0 0; color:#55708d; font-size:13px; }
+    .acomp-hero .indicator-code { font-size:12px; }
+    .acomp-actions { display:flex; align-items:center; gap:10px; }
+    .acomp-status-chip { display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px; border:1px solid #c8daec; background:#fff; color:#2b4d70; font-size:12px; font-weight:700; }
+    .acomp-section { border:1px solid #d9e6f4; background:#fff; border-radius:14px; padding:14px; display:grid; gap:12px; }
+    .acomp-section h5 { margin:0; font-size:14px; text-transform:uppercase; letter-spacing:.05em; color:#55708d; }
+    .acomp-grid-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .acomp-meta-item { border:1px solid #d7e4f2; border-radius:12px; background:#f8fbff; padding:10px 12px; }
+    .acomp-meta-item b { display:block; margin-bottom:4px; font-size:10px; text-transform:uppercase; color:#647d97; letter-spacing:.05em; }
+    .acomp-meta-item span { font-size:13px; color:var(--ink); font-weight:700; }
+    .acomp-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .acomp-step-card { border:1px solid #d7e4f2; border-radius:12px; background:#fff; padding:11px; display:grid; gap:6px; }
+    .acomp-step-card b { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#60758f; }
+    .acomp-step-card span { font-size:13px; font-weight:700; }
+
+    .result-soft { background: var(--success-bg); border: 1px solid #cfeedd; border-radius: 12px; padding: 12px; }
+    .note-soft { background: var(--primary-2); border: 1px solid var(--primary-3); border-radius: 12px; padding: 12px; }
+    .drawer .acomp-section,
+    .drawer .indicator-process-shell,
+    .drawer .history-chart,
+    .drawer .history-list,
+    .drawer .edit-form { box-shadow: 0 10px 24px rgba(24, 54, 92, .08); }
+
+    @keyframes modalFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes modalPop {
+      from { opacity: 0; transform: translateY(8px) scale(.992); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .mobile-menu-btn { display:none; border:1px solid var(--line-strong); background:#fff; color:var(--ink); border-radius:12px; padding:10px 12px; font-weight:700; box-shadow: var(--shadow-sm); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(10,25,44,.45); z-index:15; }
+    .block-skeleton { display:grid; gap:12px; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .card:focus-visible, .indicator-row:focus-visible, .filter-chip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+
+    @media (max-width: 1100px) {
+      .mobile-menu-btn { display:inline-flex; align-items:center; gap:8px; }
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; }
+      .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sidebar-note { position: static; margin-top: 18px; }
+      .nav { grid-template-columns: repeat(4, 1fr); }
+      .hero, .kpi-grid, .acomp-grid { grid-template-columns: 1fr; }
+      .process-grid, .indicator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .process-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow-step::after { display:none; }
+      .indicators-layout { grid-template-columns: 1fr; }
+      .indicator-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .indicator-list { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: fixed; left:0; top:0; height:100vh; width:min(84vw,320px); transform:translateX(-100%); transition:transform .22s ease; z-index:20; box-shadow: var(--shadow-md); }
+      .app.sidebar-open .sidebar { transform:translateX(0); }
+      .app.sidebar-open .sidebar-overlay { display:block; }
+      .main { padding: 16px; }
+      .hero { border-radius: var(--radius-sm); }
+      .kpi, .summary-card, .card { padding: 14px; }
+      .drawer { padding: 10px; }
+      .drawer-card { width: 100%; max-height: 92vh; border-radius: var(--radius-lg); padding: 16px; }
+      .drawer-head { margin: -16px -16px 12px; padding: 14px 16px 12px; }
+      .drawer-head h3 { font-size: 19px; }
+      .edit-form-grid { grid-template-columns: 1fr; }
+      .edit-form-group.full { grid-column: auto; }
+      .edit-form-actions { justify-content: stretch; }
+      .edit-form-actions .btn { flex: 1 1 0; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .search { width: 100%; }
+      .panel-head { position: static; }
+      .process-grid, .indicator-grid, .steps, .meta-grid, .result-box { grid-template-columns: 1fr; }
+      .process-flow { grid-template-columns: 1fr; }
+      .indicator-summary, .indicator-meta { grid-template-columns: 1fr; }
+      .acomp-hero, .acomp-grid-meta, .acomp-steps { grid-template-columns: 1fr; }
+      .acomp-actions { flex-wrap: wrap; }
+      .edit-form-step-grid { grid-template-columns: 1fr; }
+      .nav { grid-template-columns: 1fr; }
+      .kpi-grid, .admin-grid { grid-template-columns: 1fr; }
+      .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap td, .table-wrap tr { display:block; }
+      .table-wrap thead { display:none; }
+      .table-wrap tr { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fff; }
+      .table-wrap td { border-bottom:1px solid var(--line); display:grid; grid-template-columns:120px 1fr; gap:8px; }
+      .table-wrap td::before { content: attr(data-label); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+    }
+</style>
+</head>
+<body>
+  <div class="app" id="appRoot">
+    <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"><img src="https://i.ibb.co/tTGkBCXj/oie-transparent.png" alt="Logo do sistema"></div>
+        <div><h1>SIGEP</h1><span>Gestão de processos e indicadores</span></div>
+      </div>
+      <nav class="nav" id="sidebarNav" aria-label="Navegação principal">
+        <button class="active" data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
+        <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Modelagem de Processos</button>
+        <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
+        <button data-view="admin"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.5 4.8.7-3.5 3.4.8 4.8L12 14.8 7.7 16.4l.8-4.8L5 8.2l4.8-.7L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>Administração</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title">
+          <div class="title-kicker">Hospital Universitário do Ceará</div>
+          <h2 id="pageTitle">Acompanhamento por unidade</h2>
+          <p id="pageSubtitle">Evolução operacional das etapas por unidade e período.</p>
+        </div>
+        <div class="actions">
+          <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu lateral" aria-controls="sidebarNav" aria-expanded="false">☰ Menu</button>
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input id="globalSearch" type="search" placeholder="Pesquisar unidade, processo ou indicador">
+          </div>
+          <button class="btn secondary" id="refreshBtn">Atualizar</button>
+        </div>
+      </header>
+
+
+      <section id="dashboard" class="view">
+        <div class="hero">
+          <div>
+            <h3>Central de gestão do SIGEP-HUC</h3>
+          </div>
+          <div class="hero-panel">
+            <div class="progress-line"><span>Progresso médio das etapas</span><strong id="heroProgressText">0%</strong></div>
+            <div class="bar"><span id="heroProgressBar" style="width:0%"></span></div>
+          </div>
+        </div>
+        <div class="work-queue" id="workQueue"></div>
+        <div class="ops-alert" id="opsAlert">Carregando priorização operacional...</div>
+        <div class="kpi-grid" id="kpis"></div>
+        <div class="panel">
+          <div class="panel-head"><div><h3>Resumo de acompanhamento</h3><span>Unidades com suas datas/status preservados</span></div></div>
+          <div class="content-pad" id="dashboardAcompanhamento"></div>
+        </div>
+      </section>
+
+      <section id="acompanhamento" class="view active">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Acompanhamento por unidade</h3><span>Uma unidade pode aparecer com várias datas no mesmo card</span></div>
+            <div class="filters"><select id="filtroStatusAcomp" aria-label="Filtrar acompanhamento por status"><option value="">Todos os status</option></select></div>
+          </div>
+          <div class="content-pad"><div class="acomp-grid" id="acompGrid"></div></div>
+        </div>
+      </section>
+
+      <section id="processos" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Modelagem de Processos</h3><span>Pipeline de modelagem, validação e publicação</span></div>
+            <div class="filters"><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select></div>
+          </div>
+          <div class="content-pad">
+            <div id="processSummary" class="indicator-summary"></div>
+            <div class="process-grid" id="processGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="indicadores" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Painel de indicadores</h3><span>Visão analítica por categoria, processo e cobertura mensal</span></div>
+            <div class="filters"><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></div>
+          </div>
+          <div class="content-pad indicators-layout">
+            <div class="indicator-main-area">
+              <div id="indicatorSummary" class="indicator-summary"></div>
+              <div id="indicatorContext" class="indicator-context"></div>
+              <div id="indicatorProcessTabsShell" class="indicator-process-shell"></div>
+              <div id="indicatorGrid" class="indicator-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section id="admin" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Administração</h3><span>Usuários, permissões e configurações de apoio</span></div>
+            <button class="btn secondary" onclick="loadAdminData()">Atualizar administração</button>
+          </div>
+          <div class="content-pad"><div id="adminGrid" class="admin-grid"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer" id="drawer">
+    <div class="drawer-card">
+      <div class="drawer-head">
+        <div><h3 id="drawerTitle">Detalhes</h3><p id="drawerSubtitle"></p></div>
+        <button class="close" onclick="ui.closeDrawer()">×</button>
+      </div>
+      <div id="drawerContent" class="drawer-body"></div>
+    </div>
+  </div>
+  <div class="save-feedback" id="saveFeedback"></div>
+
+  <script>
+    const icons = {
+      process: '<svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+      unit: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 20V6l8-3 8 3v14" stroke="currentColor" stroke-width="1.8"/><path d="M9 20v-7h6v7" stroke="currentColor" stroke-width="1.8"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3v4M17 3v4M4 9h16M5 5h14v15H5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      chart: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+    };
+
+    const state = {
+      data: null,
+      view: 'acompanhamento',
+      search: '',
+      filtroStatusAcomp: '',
+      filtroTipoProcesso: '',
+      filtroCategoriaIndicador: '',
+      processosIndicadorSelecionados: [],
+      indicadorFiltroRecolhido: false,
+      processoIndicadorBusca: '',
+      unidadeIndicadorSelecionada: '',
+      categoriaIndicadorSelecionada: '',
+      adminData: null,
+      taskFilter: 'all'
+    };
+
+    const ui = {
+      init() {
+        document.querySelectorAll('.nav button').forEach(btn => {
+          btn.setAttribute('role', 'tab');
+          btn.setAttribute('aria-selected', btn.classList.contains('active') ? 'true' : 'false');
+          btn.tabIndex = btn.classList.contains('active') ? 0 : -1;
+          btn.addEventListener('click', () => ui.setView(btn.dataset.view));
+          btn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ui.setView(btn.dataset.view); }
+          });
+        });
+        document.getElementById('refreshBtn').addEventListener('click', loadData);
+        const menuBtn = document.getElementById('mobileMenuBtn');
+        const appRoot = document.getElementById('appRoot');
+        const overlay = document.getElementById('sidebarOverlay');
+        const toggleSidebar = (open) => {
+          const willOpen = typeof open === 'boolean' ? open : !appRoot.classList.contains('sidebar-open');
+          appRoot.classList.toggle('sidebar-open', willOpen);
+          menuBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        };
+        menuBtn.addEventListener('click', () => toggleSidebar());
+        overlay.addEventListener('click', () => toggleSidebar(false));
+        document.getElementById('globalSearch').addEventListener('input', e => {
+          state.search = e.target.value.toLowerCase().trim();
+          render();
+        });
+        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador'].forEach(id => {
+          document.getElementById(id).addEventListener('change', e => {
+            state[id] = e.target.value;
+            render();
+          });
+        });
+        const drawer = document.getElementById('drawer');
+        drawer.addEventListener('click', e => {
+          if (e.target === drawer) ui.closeDrawer();
+        });
+        document.addEventListener('keydown', e => {
+          if (e.key === 'Escape') ui.closeDrawer();
+        });
+        loadData();
+      },
+
+      setView(view) {
+        state.view = view;
+        document.querySelectorAll('.nav button').forEach(b => {
+          const active = b.dataset.view === view;
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-selected', active ? 'true' : 'false');
+          b.tabIndex = active ? 0 : -1;
+        });
+        document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
+        const titles = {
+          dashboard: ['Dashboard executivo', 'Visão consolidada de processos, acompanhamento e indicadores.'],
+          acompanhamento: ['Acompanhamento', 'Unidades, datas de agenda e evolução das etapas.'],
+          processos: ['Modelagem de Processos', 'Pipeline de modelagem, validação e publicação.'],
+          indicadores: ['Indicadores', 'Carteira de indicadores e competências mensais.'],
+          admin: ['Administração', 'Usuários, permissões e configurações de apoio.']
+        };
+        document.getElementById('pageTitle').textContent = titles[view][0];
+        document.getElementById('pageSubtitle').textContent = titles[view][1];
+        if (view === 'admin' && !state.adminData) loadAdminData();
+        document.getElementById('appRoot').classList.remove('sidebar-open');
+        document.getElementById('mobileMenuBtn').setAttribute('aria-expanded', 'false');
+      },
+
+      openDrawer(title, subtitle, html) {
+        document.getElementById('drawerTitle').textContent = title;
+        document.getElementById('drawerSubtitle').textContent = subtitle || '';
+        document.getElementById('drawerContent').innerHTML = html;
+        const drawer = document.getElementById('drawer');
+        drawer.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      },
+
+      closeDrawer() {
+        const drawer = document.getElementById('drawer');
+        drawer.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    };
+
+    function showSectionSkeletons() {
+      const skeletonCard = `
+        <div class="skeleton-card">
+          <div class="skeleton" style="height:18px;width:62%"></div>
+          <div class="skeleton" style="height:14px;width:96%"></div>
+          <div class="skeleton" style="height:14px;width:80%"></div>
+        </div>`;
+      ['dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<div class="block-skeleton">${skeletonCard.repeat(id === 'dashboardAcompanhamento' ? 2 : 3)}</div>`;
+      });
+    }
+
+    function loadData() {
+      setLoading();
+      showSectionSkeletons();
+      google.script.run
+        .withSuccessHandler(payload => {
+          state.data = payload;
+          hydrateFilters();
+          render();
+        })
+        .withFailureHandler(err => {
+          document.querySelector('.main').innerHTML = `<div class="panel"><div class="empty"><strong>Erro ao carregar o SIGEP-HUC</strong><br>${escapeHtml(err.message || err)}</div></div>`;
+        })
+        .getSigepData();
+    }
+
+    function setLoading() {
+      ['kpis', 'dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid', 'adminGrid'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<div class="loading">Carregando dados do SIGEP-HUC...</div>';
+      });
+    }
+
+    function hydrateFilters() {
+      const data = state.data || {};
+      fillSelect('filtroStatusAcomp', unique((data.acompanhamento || []).map(x => x.STATUS_AGENDAMENTO)), 'Todos os status');
+      fillSelect('filtroTipoProcesso', unique((data.processos || []).map(x => x.TIPO_PROCESSO)), 'Todos os tipos');
+      fillSelect('filtroCategoriaIndicador', unique((data.indicadores || []).map(x => x.CATEGORIA)), 'Todas as categorias');
+    }
+
+    function fillSelect(id, items, first) {
+      const el = document.getElementById(id);
+      const current = el.value;
+      el.innerHTML = `<option value="">${first}</option>` + items.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+      el.value = current;
+    }
+
+    function render() {
+      if (!state.data) return;
+      renderDashboard();
+      renderAcompanhamento();
+      renderProcessos();
+      renderIndicadores();
+      renderAdmin();
+    }
+
+    function renderDashboard() {
+      const d = state.data.dashboard;
+      document.getElementById('heroProgressText').textContent = `${d.progressoMedio || 0}%`;
+      document.getElementById('heroProgressBar').style.width = `${d.progressoMedio || 0}%`;
+      const taxaModelagensRealizadas = d.processosTotal
+        ? Math.round((d.processosConcluidos / d.processosTotal) * 100)
+        : 0;
+      const kpis = [
+        { label: 'Taxa de modelagens realizadas', value: `${taxaModelagensRealizadas}%`, detail: `${d.processosConcluidos} de ${d.processosTotal} concluídas`, icon: icons.chart, priority: true },
+        { label: 'Modelagem de Processos', value: d.processosTotal, detail: `${d.processosConcluidos} publicados`, icon: icons.process },
+        { label: 'Unidades', value: d.unidadesAcompanhadas, detail: `${d.acompanhamentoLinhas} linhas de agenda`, icon: icons.unit },
+        { label: 'Agendamentos', value: d.agendamentosRealizados, detail: `${d.reagendados} reagendados`, icon: icons.calendar }
+      ];
+      document.getElementById('kpis').innerHTML = kpis.map(k => `
+        <div class="kpi ${k.priority ? 'kpi-priority' : ''}"><div class="icon">${k.icon}</div><strong>${k.value}</strong><span>${k.label} · ${k.detail}</span></div>
+      `).join('');
+      const queue = [
+        ['all', 'Visão geral'],
+        ['critical', 'Pendências críticas'],
+        ['today', 'Vence hoje'],
+        ['risk', 'Em risco'],
+        ['done', 'Concluídos recentes']
+      ];
+      document.getElementById('workQueue').innerHTML = queue.map(q => `<button class="task-chip ${state.taskFilter===q[0]?'active':''}" onclick="setTaskFilter('${q[0]}')">${q[1]}</button>`).join('');
+      document.getElementById('opsAlert').textContent = buildOpsAlert();
+      document.getElementById('dashboardAcompanhamento').innerHTML = renderUnitCards(getGroupedAcompanhamento().slice(0, 4));
+    }
+
+    function renderAcompanhamento() {
+      document.getElementById('acompGrid').innerHTML = renderUnitCards(getGroupedAcompanhamento());
+    }
+
+    function getGroupedAcompanhamento() {
+      let rows = state.data.acompanhamento || [];
+      rows = filterRows(rows, ['UNIDADE', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES']);
+      if (state.filtroStatusAcomp) rows = rows.filter(x => x.STATUS_AGENDAMENTO === state.filtroStatusAcomp);
+      const map = new Map();
+      rows.forEach(row => {
+        if (!map.has(row.UNIDADE)) map.set(row.UNIDADE, []);
+        map.get(row.UNIDADE).push(row);
+      });
+      return Array.from(map.entries()).map(([unidade, items]) => {
+        items.sort((a, b) => Number(a.ORDEM_AGENDAMENTO_UNIDADE || 0) - Number(b.ORDEM_AGENDAMENTO_UNIDADE || 0));
+        const base = items[items.length - 1] || items[0];
+        return { unidade, items, base, progresso: Number(base.PROGRESSO_PERCENTUAL || 0) };
+      }).filter(g => passTaskFilter(g.base, 'acomp')).sort((a, b) => b.progresso - a.progresso || a.unidade.localeCompare(b.unidade));
+    }
+
+    function renderUnitCards(groups) {
+      if (!groups.length) return '<div class="empty"><strong>Nenhum acompanhamento encontrado.</strong><br>Ajuste os filtros ou confirme se há dados migrados para esta visão.</div>';
+      return groups.map(group => {
+        const b = group.base;
+        const steps = [
+          ['Introdução', b.INTRODUCAO],
+          ['Perfil', b.PERFIL],
+          ['Fluxo do processo', b.FLUXO_PROCESSO],
+          ['Modelagem', b.MODELAGEM],
+          ['Indicadores', b.INDICADORES],
+          ['Ficha técnica', b.FICHA_TECNICA_INDICADORES]
+        ];
+        return `
+          <article class="unit-card" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showAcompanhamento(${JSON.stringify(group.base).replace(/'/g, "&apos;")})'>
+            <div class="unit-top">
+              <div><h4>${escapeHtml(group.unidade)}</h4><small>${group.items.length} data(s) registrada(s) · ${escapeHtml(b.STATUS_GERAL || '')}</small></div>
+              <div class="ring" style="--p:${group.progresso}"><span>${group.progresso}%</span></div>
+            </div>
+            <div class="unit-body">
+              <div class="steps">
+                ${steps.map(s => `<div class="step"><b>${escapeHtml(s[0])}</b><span class="${statusClass(s[1])}">${escapeHtml(s[1] || 'Sem status')}</span></div>`).join('')}
+              </div>
+              <div class="timeline">
+                ${group.items.map(item => `<div class="timeline-item"><div class="date">${escapeHtml(item.DATA_AGENDAMENTO || 'Sem data')}</div><div class="status">${escapeHtml(item.STATUS_AGENDAMENTO || 'Sem status')}</div></div>`).join('')}
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderProcessos() {
+      let rows = state.data.processos || [];
+      rows = filterRows(rows, ['SETOR', 'TIPO_PROCESSO', 'PROCESSO', 'STATUS_GERAL']);
+      if (state.filtroTipoProcesso) rows = rows.filter(x => x.TIPO_PROCESSO === state.filtroTipoProcesso);
+      rows = rows.filter(x => passTaskFilter(x, 'proc'));
+      const total = rows.length;
+      const emModelagem = rows.filter(p => normalizeStatus(p.MODELAGEM_REALIZADA) === 'SIM').length;
+      const emValidacao = rows.filter(p => normalizeStatus(p.VALIDACAO_NUGESP) === 'SIM' || normalizeStatus(p.VALIDACAO_DIRECAO) === 'SIM').length;
+      const publicados = rows.filter(p => normalizeStatus(p.PUBLICACAO) === 'SIM').length;
+      const taxaModelagensRealizadas = total ? Math.round((emModelagem / total) * 100) : 0;
+      document.getElementById('processSummary').innerHTML = `
+        <div class="summary-card featured"><b>Taxa de modelagens realizadas</b><strong>${taxaModelagensRealizadas}%</strong><span>${emModelagem} de ${total} processos com modelagem marcada como SIM</span></div>
+        <div class="summary-card"><b>Total mapeado</b><strong>${total}</strong><span>Processos dentro dos filtros atuais</span></div>
+        <div class="summary-card"><b>Em validação</b><strong>${emValidacao}</strong><span>Validação NUGESP ou Direção em andamento</span></div>
+        <div class="summary-card"><b>Publicados</b><strong>${publicados}</strong><span>Publicação concluída</span></div>
+      `;
+
+      const html = rows.map(p => {
+        const flow = buildProcessFlow(p);
+        return `
+        <article class="card" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+          <div class="process-card-head">
+            <h4>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h4>
+            <span class="pill ${badgeClass(p.STATUS_GERAL)}">${escapeHtml(p.STATUS_GERAL || 'Sem status')}</span>
+          </div>
+          <p class="process-sector">${escapeHtml(p.SETOR || 'Setor não informado')}</p>
+          <div class="process-meta-grid">
+            <div class="process-meta-item"><b>Tipo de processo</b><span>${escapeHtml(p.TIPO_PROCESSO || 'Pendente de preenchimento')}</span></div>
+          </div>
+          <div class="process-flow">
+            ${flow.steps.map(step => `<div class="flow-step state-${step.state}"><b>${escapeHtml(step.name)}</b><span class="pill ${step.pillClass}">${escapeHtml(step.label)}</span></div>`).join('')}
+          </div>
+          <div class="process-next-action"><b>Próxima ação:</b> ${escapeHtml(flow.nextAction)}</div>
+        </article>
+      `;}).join('');
+      document.getElementById('processGrid').innerHTML = html || '<div class="empty">Nenhum processo encontrado.</div>';
+    }
+
+    function renderIndicadores() {
+      let rows = state.data.indicadores || [];
+      rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO', 'UNIDADE', 'SETOR']);
+      if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
+      rows = rows.filter(x => passTaskFilter(x, 'ind'));
+      const lancamentos = state.data.lancamentos || [];
+      const byInd = new Map();
+      lancamentos.forEach(l => {
+        if (!byInd.has(l.ID_INDICADOR)) byInd.set(l.ID_INDICADOR, []);
+        byInd.get(l.ID_INDICADOR).push(l);
+      });
+
+      const unidades = unique(rows.map(r => getIndicatorUnit(r)).filter(Boolean));
+      const categoriasFiltros = unique(rows.map(r => r.CATEGORIA).filter(Boolean));
+      if (state.unidadeIndicadorSelecionada && !unidades.includes(state.unidadeIndicadorSelecionada)) state.unidadeIndicadorSelecionada = '';
+      if (state.categoriaIndicadorSelecionada && !categoriasFiltros.includes(state.categoriaIndicadorSelecionada)) state.categoriaIndicadorSelecionada = '';
+      if (state.unidadeIndicadorSelecionada) rows = rows.filter(x => getIndicatorUnit(x) === state.unidadeIndicadorSelecionada);
+      if (state.categoriaIndicadorSelecionada) rows = rows.filter(x => x.CATEGORIA === state.categoriaIndicadorSelecionada);
+
+      const processos = unique(rows.map(r => r.PROCESSO).filter(Boolean));
+      state.processosIndicadorSelecionados = (state.processosIndicadorSelecionados || []).filter(p => processos.includes(p));
+      const processoCounts = rows.reduce((acc, item) => {
+        const key = item.PROCESSO || 'Sem processo';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const termoBuscaProcesso = (state.processoIndicadorBusca || '').toLowerCase().trim();
+      const processosFiltrados = termoBuscaProcesso ? processos.filter(p => p.toLowerCase().includes(termoBuscaProcesso)) : processos;
+      const selecionados = state.processosIndicadorSelecionados || [];
+      const selectedHtml = selecionados.length ? `
+        <div class="indicator-selected">
+          <div class="indicator-selected-head"><b>Selecionados (${selecionados.length})</b><button class="indicator-clear-btn" onclick="clearProcessoIndicador()">Limpar seleção</button></div>
+          <div class="indicator-process-tabs">${selecionados.map(p => `<button class="indicator-chip state-selected" onclick="toggleProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')}</div>
+        </div>` : '';
+      const processTabsHtml = processosFiltrados.length
+        ? processosFiltrados.map(p => `<button class="indicator-chip ${selecionados.includes(p) ? 'state-selected' : ''}" onclick="toggleProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')
+        : '<span class="pill">Sem processos para os filtros atuais</span>';
+      document.getElementById('indicatorProcessTabsShell').className = `indicator-process-shell ${state.indicadorFiltroRecolhido ? 'is-collapsed' : ''}`;
+      document.getElementById('indicatorProcessTabsShell').innerHTML = `
+        <div class="indicator-process-head">
+          <div class="indicator-process-title-wrap"><div class="indicator-process-icon">${icons.process}</div><div><h4>Processos</h4><p>Selecione um ou mais processos para focar os indicadores</p></div></div>
+          <div style="display:flex;gap:10px;align-items:center;"><button class="indicator-filter-toggle" onclick="toggleIndicadorFiltro()">${state.indicadorFiltroRecolhido ? 'Expandir filtros' : 'Recolher filtros'}</button><span class="indicator-process-count"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" stroke="currentColor" stroke-width="1.6"/></svg>${processos.length} processos encontrados</span></div>
+        </div>
+        <div class="indicator-process-body">
+          <label class="indicator-process-search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" placeholder="Buscar processo..." value="${escapeHtml(state.processoIndicadorBusca || '')}" oninput="setProcessoIndicadorBusca(this.value)"></label>
+          ${selectedHtml}
+          <div class="indicator-process-tabs">${processTabsHtml}</div>
+        </div>
+      `;
+
+      const total = rows.length;
+      const preenchidos = rows.filter(ind => {
+        const lans = byInd.get(ind.ID_INDICADOR) || [];
+        return lans.some(l => String(l.VALOR || '').trim() !== '');
+      }).length;
+      const pendentes = Math.max(total - preenchidos, 0);
+      document.getElementById('indicatorSummary').innerHTML = `
+        <div class="summary-card"><b>Total de indicadores</b><strong>${total}</strong><span>Registros após filtros e pesquisa</span></div>
+        <div class="summary-card"><b>Com lançamento</b><strong>${preenchidos}</strong><span>Indicadores com algum valor preenchido</span></div>
+      `;
+      document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · ${pendentes} sem lançamento${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''}</p>`;
+
+      if (state.processosIndicadorSelecionados && state.processosIndicadorSelecionados.length) rows = rows.filter(x => state.processosIndicadorSelecionados.includes(x.PROCESSO));
+      const html = rows.map(ind => {
+        const lans = byInd.get(ind.ID_INDICADOR) || [];
+        const historicoOrdenado = lans
+          .slice()
+          .sort((a, b) => parseCompetencia(a.COMPETENCIA) - parseCompetencia(b.COMPETENCIA))
+          .map(l => ({ ...l, numericValue: parseNumericValue(l.VALOR), hasData: Number.isFinite(parseNumericValue(l.VALOR)) }));
+        const ultimo = historicoOrdenado.slice().reverse().find(l => l.hasData);
+        const metaIndicador = parseNumericValue(ind.META);
+        const referenciaStatus = getReferenciaStatus(historicoOrdenado);
+        const statusCard = getStatusIndicador(referenciaStatus, metaIndicador, ind.META_OPERADOR);
+        const sparkline = buildMiniSparkline(historicoOrdenado, metaIndicador);
+        return `
+          <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+            <div class="indicator-main">
+              <h4>${escapeHtml(ind.NOME_INDICADOR || 'Indicador sem nome')}</h4>
+              <p>${escapeHtml(ind.ID_INDICADOR || '-')} · ${escapeHtml(ind.PROCESSO || '-')} · ${escapeHtml(getIndicatorUnit(ind) || '-')}</p>
+            </div>
+            <div class="indicator-meta">
+              <div class="indicator-col"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
+              <div class="indicator-col"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
+              <div class="indicator-col"><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
+              <div class="indicator-col"><b>Último valor</b><span>${escapeHtml(ultimo ? (ultimo.VALOR || '-') : '-')}</span></div>
+            </div>
+            <div class="indicator-col"><b>Miniatura de evolução</b>${sparkline}</div>
+            <div class="pill-row"><span class="pill ${statusCard.className}">${statusCard.label} (${escapeHtml(referenciaStatus?.comp || 'sem competência')})</span></div>
+          </article>
+        `;
+      }).join('');
+      document.getElementById('indicatorGrid').innerHTML = html || '<div class="empty">Nenhum indicador encontrado.</div>';
+    }
+
+    function getIndicatorUnit(ind) {
+      return ind.UNIDADE || ind.SETOR || ind.AREA || '';
+    }
+    function renderFilterList(labelAll, items, selected, handler) {
+      const controls = [`<button class="filter-chip ${!selected ? 'active' : ''}" onclick="${handler}('')">${labelAll}</button>`]
+        .concat(items.map(item => `<button class="filter-chip ${item === selected ? 'active' : ''}" onclick="${handler}('${escapeHtml(item)}')">${escapeHtml(item)}</button>`));
+      if (items.length === 0) controls.push('<span class="pill">Nenhum filtro encontrado</span>');
+      return controls.join('');
+    }
+    function setIndicadorUnidade(v) { state.unidadeIndicadorSelecionada = v; renderIndicadores(); }
+    function setIndicadorCategoria(v) { state.categoriaIndicadorSelecionada = v; renderIndicadores(); }
+    function toggleProcessoIndicador(v) {
+      const list = new Set(state.processosIndicadorSelecionados || []);
+      if (list.has(v)) list.delete(v); else list.add(v);
+      state.processosIndicadorSelecionados = Array.from(list);
+      renderIndicadores();
+    }
+    function toggleIndicadorFiltro() { state.indicadorFiltroRecolhido = !state.indicadorFiltroRecolhido; renderIndicadores(); }
+    function setTaskFilter(v) { state.taskFilter = v; render(); }
+
+
+    function showAcompanhamento(item) {
+      const unidade = item.UNIDADE || 'Unidade';
+      const subtitulo = `${item.STATUS_AGENDAMENTO || 'Sem status'} · ${item.DATA_AGENDAMENTO || 'Sem data'}`;
+      const etapas = [
+        ['Introdução', item.INTRODUCAO],
+        ['Perfil', item.PERFIL],
+        ['Fluxo do processo', item.FLUXO_PROCESSO],
+        ['Modelagem', item.MODELAGEM],
+        ['Indicadores', item.INDICADORES],
+        ['Ficha técnica', item.FICHA_TECNICA_INDICADORES]
+      ];
+      ui.openDrawer(unidade, subtitulo, `
+        <div class="acomp-modal">
+          <section class="acomp-hero">
+            <div>
+              <div class="indicator-code">Registro ${escapeHtml(item.ID_ACOMPANHAMENTO || '-')}</div>
+              <h4>Acompanhamento da unidade</h4>
+              <p>Painel organizado para leitura rápida das informações operacionais e das etapas do fluxo.</p>
+            </div>
+            <div class="acomp-actions">
+              <span class="acomp-status-chip ${statusClass(item.STATUS_AGENDAMENTO)}">${escapeHtml(item.STATUS_AGENDAMENTO || 'Sem status')}</span>
+              <button class="btn secondary icon" onclick='abrirEdicaoAcompanhamento(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+            </div>
+          </section>
+
+          <section class="acomp-section">
+            <h5>Resumo do agendamento</h5>
+            <div class="acomp-grid-meta">
+              <div class="acomp-meta-item"><b>Unidade</b><span>${escapeHtml(item.UNIDADE || '-')}</span></div>
+              <div class="acomp-meta-item"><b>Data do agendamento</b><span>${escapeHtml(item.DATA_AGENDAMENTO || 'Sem data')}</span></div>
+              <div class="acomp-meta-item"><b>Status geral</b><span>${escapeHtml(item.STATUS_GERAL || 'Sem status geral')}</span></div>
+              <div class="acomp-meta-item"><b>Status do agendamento</b><span>${escapeHtml(item.STATUS_AGENDAMENTO || 'Sem status')}</span></div>
+            </div>
+          </section>
+
+          <section class="acomp-section">
+            <h5>Etapas do acompanhamento</h5>
+            <div class="acomp-steps">
+              ${etapas.map(([label, valor]) => `<div class="acomp-step-card"><b>${escapeHtml(label)}</b><span class="${statusClass(valor)}">${escapeHtml(valor || 'Sem status')}</span></div>`).join('')}
+            </div>
+          </section>
+
+          <div id="acompEditHost"></div>
+        </div>
+      `);
+    }
+
+    function abrirEdicaoAcompanhamento(item) {
+      const host = document.getElementById('acompEditHost');
+      if (!host) return;
+      const statusOptions = ['Concluído', 'Em andamento', 'Aguardando', 'Pendente', 'Não iniciado', 'Não se aplica'];
+      const renderStatusSelect = (fieldName, label, currentValue) => `
+        <label>
+          <span>${escapeHtml(label)}</span>
+          <select name="${fieldName}">
+            <option value="">Sem status</option>
+            ${statusOptions.map(op => `<option value="${escapeHtml(op)}" ${String(currentValue || '').toLowerCase() === op.toLowerCase() ? 'selected' : ''}>${escapeHtml(op)}</option>`).join('')}
+            ${currentValue && !statusOptions.some(op => op.toLowerCase() === String(currentValue).toLowerCase()) ? `<option value="${escapeHtml(currentValue)}" selected>${escapeHtml(currentValue)}</option>` : ''}
+          </select>
+        </label>
+      `;
+      host.innerHTML = `
+        <form class="edit-form" onsubmit="salvarEdicaoAcompanhamento(event, '${escapeHtml(item.ID_ACOMPANHAMENTO || '')}')">
+          <div class="edit-form-head">
+            <div>
+              <h5>Editar acompanhamento</h5>
+              <p>Atualize status e etapas mantendo histórico auditável.</p>
+            </div>
+            <span class="edit-badge">Modo edição</span>
+          </div>
+          <p class="edit-form-note">Use valores padronizados para manter os cards e filtros consistentes em toda a aba de acompanhamento.</p>
+          <div class="edit-form-grid">
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Agendamento</p>
+              <label>Data do agendamento<input name="DATA_AGENDAMENTO" value="${escapeHtml(item.DATA_AGENDAMENTO || '')}" placeholder="dd/mm/aaaa"></label>
+              ${renderStatusSelect('STATUS_AGENDAMENTO', 'Status do agendamento', item.STATUS_AGENDAMENTO)}
+            </div>
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Etapas</p>
+              <div class="edit-form-step-grid">
+                ${renderStatusSelect('INTRODUCAO', 'Introdução', item.INTRODUCAO)}
+                ${renderStatusSelect('PERFIL', 'Perfil', item.PERFIL)}
+                ${renderStatusSelect('FLUXO_PROCESSO', 'Fluxo do processo', item.FLUXO_PROCESSO)}
+                ${renderStatusSelect('MODELAGEM', 'Modelagem', item.MODELAGEM)}
+                ${renderStatusSelect('INDICADORES', 'Indicadores', item.INDICADORES)}
+                ${renderStatusSelect('FICHA_TECNICA_INDICADORES', 'Ficha técnica de indicadores', item.FICHA_TECNICA_INDICADORES)}
+              </div>
+            </div>
+            <div class="edit-form-group full">
+              <p class="edit-form-group-title">Rastreabilidade</p>
+              <label>Motivo da alteração<textarea name="MOTIVO_ALTERACAO" required placeholder="Ex.: ajuste de status após reunião da unidade."></textarea></label>
+            </div>
+          </div>
+          <div class="edit-form-actions">
+            <button type="button" class="btn secondary" onclick="fecharEdicaoAcompanhamento()">Cancelar</button>
+            <button type="submit" class="btn">Salvar</button>
+          </div>
+        </form>`;
+      host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function fecharEdicaoAcompanhamento() {
+      const host = document.getElementById('acompEditHost');
+      if (host) host.innerHTML = '';
+    }
+
+    function salvarEdicaoAcompanhamento(event, idAcompanhamento) {
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        ID_ACOMPANHAMENTO: idAcompanhamento,
+        DATA_AGENDAMENTO: form.DATA_AGENDAMENTO.value.trim(),
+        STATUS_AGENDAMENTO: form.STATUS_AGENDAMENTO.value.trim(),
+        INTRODUCAO: form.INTRODUCAO.value.trim(),
+        PERFIL: form.PERFIL.value.trim(),
+        FLUXO_PROCESSO: form.FLUXO_PROCESSO.value.trim(),
+        MODELAGEM: form.MODELAGEM.value.trim(),
+        INDICADORES: form.INDICADORES.value.trim(),
+        FICHA_TECNICA_INDICADORES: form.FICHA_TECNICA_INDICADORES.value.trim(),
+        MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
+      };
+      showSaveFeedback('Salvando acompanhamento...');
+      google.script.run
+        .withSuccessHandler(() => {
+          showSaveFeedback('Acompanhamento salvo com sucesso.', true);
+          fecharEdicaoAcompanhamento();
+          loadData();
+        })
+        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar acompanhamento.'); alert('Erro ao editar acompanhamento: ' + (err.message || err)); })
+        .atualizarStatusAcompanhamento(payload);
+    }
+
+    function showProcesso(p) {
+      ui.openDrawer(p.PROCESSO || 'Processo', p.SETOR || '', `
+        <div class="indicator-head">
+          <div>
+            <div class="indicator-code">${escapeHtml(p.ID_PROCESSO || '-')} · ${escapeHtml(p.SETOR || '-')}</div>
+            <h4 class="section-title">${escapeHtml(p.PROCESSO || 'Processo')}</h4>
+          </div>
+          <button class="btn secondary icon" onclick='abrirEdicaoProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+        </div>
+        <div class="steps">
+          ${drawerField('Tipo', p.TIPO_PROCESSO)}
+          ${drawerField('Status geral', p.STATUS_GERAL)}
+          ${drawerField('Modelagem', p.MODELAGEM_REALIZADA)}
+          ${drawerField('Validação NUGESP', p.VALIDACAO_NUGESP)}
+          ${drawerField('Validação Direção', p.VALIDACAO_DIRECAO)}
+          ${drawerField('Publicação', p.PUBLICACAO)}
+        </div>
+        <div id="processEditHost"></div>
+      `);
+    }
+
+    function abrirEdicaoProcesso(proc) {
+      const host = document.getElementById('processEditHost');
+      if (!host) return;
+      host.innerHTML = `
+        <form class="edit-form" onsubmit="salvarEdicaoProcesso(event, '${escapeHtml(proc.ID_PROCESSO || '')}')">
+          <div class="edit-form-head">
+            <div>
+              <h5>Editar processo</h5>
+              <p>Atualize os campos mantendo histórico e padronização institucional.</p>
+            </div>
+            <span class="edit-badge">Modo edição</span>
+          </div>
+          <div class="edit-form-grid">
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Dados gerais</p>
+              <label>Nome do processo<input name="PROCESSO" value="${escapeHtml(proc.PROCESSO || '')}" required></label>
+              <label>Tipo do processo<input name="TIPO_PROCESSO" value="${escapeHtml(proc.TIPO_PROCESSO || '')}"></label>
+              <label>Status geral<input name="STATUS_GERAL" value="${escapeHtml(proc.STATUS_GERAL || '')}"></label>
+            </div>
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Marcos de validação</p>
+              <label>Modelagem
+                <select name="MODELAGEM_REALIZADA">
+                  ${renderYesNoOptions(proc.MODELAGEM_REALIZADA)}
+                </select>
+              </label>
+              <label>Validação NUGESP
+                <select name="VALIDACAO_NUGESP">
+                  ${renderYesNoOptions(proc.VALIDACAO_NUGESP)}
+                </select>
+              </label>
+              <label>Validação Direção
+                <select name="VALIDACAO_DIRECAO">
+                  ${renderYesNoOptions(proc.VALIDACAO_DIRECAO)}
+                </select>
+              </label>
+              <label>Publicação
+                <select name="PUBLICACAO">
+                  ${renderYesNoOptions(proc.PUBLICACAO)}
+                </select>
+              </label>
+            </div>
+            <div class="edit-form-group full">
+              <p class="edit-form-group-title">Rastreabilidade</p>
+              <label>Motivo da alteração<textarea name="MOTIVO_ALTERACAO" required placeholder="Ex.: atualização após validação da reunião com NUGESP."></textarea></label>
+            </div>
+          </div>
+          <div class="edit-form-actions">
+            <button type="button" class="btn secondary" onclick="fecharEdicaoProcesso()">Cancelar</button>
+            <button type="submit" class="btn">Salvar</button>
+          </div>
+        </form>`;
+      host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function renderYesNoOptions(currentValue) {
+      const current = String(currentValue || '').trim();
+      const options = ['', 'SIM', 'NÃO'];
+      return options.map(opt => `<option value="${opt}" ${current === opt ? 'selected' : ''}>${opt || 'Não informado'}</option>`).join('');
+    }
+
+    function fecharEdicaoProcesso() {
+      const host = document.getElementById('processEditHost');
+      if (host) host.innerHTML = '';
+    }
+
+    function salvarEdicaoProcesso(event, idProcesso) {
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        ID_PROCESSO: idProcesso,
+        PROCESSO: form.PROCESSO.value.trim(),
+        TIPO_PROCESSO: form.TIPO_PROCESSO.value.trim(),
+        STATUS_GERAL: form.STATUS_GERAL.value.trim(),
+        MODELAGEM_REALIZADA: form.MODELAGEM_REALIZADA.value.trim(),
+        VALIDACAO_NUGESP: form.VALIDACAO_NUGESP.value.trim(),
+        VALIDACAO_DIRECAO: form.VALIDACAO_DIRECAO.value.trim(),
+        PUBLICACAO: form.PUBLICACAO.value.trim(),
+        MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
+      };
+      showSaveFeedback('Salvando processo...');
+      google.script.run
+        .withSuccessHandler(() => {
+          showSaveFeedback('Processo salvo com sucesso.', true);
+          fecharEdicaoProcesso();
+          loadData();
+        })
+        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar processo.'); alert('Erro ao editar processo: ' + (err.message || err)); })
+        .atualizarProcesso(payload);
+    }
+
+    function showIndicador(ind) {
+      const lans = (state.data.lancamentos || []).filter(l => l.ID_INDICADOR === ind.ID_INDICADOR);
+      const ordem = lans.slice().sort((a, b) => parseCompetencia(resolvePeriodoLabel(a)) - parseCompetencia(resolvePeriodoLabel(b)));
+      const historico = ordem.map(l => {
+        const raw = String(l.VALOR || '').trim();
+        const numericValue = parseNumericValue(raw);
+        const competencia = resolvePeriodoLabel(l);
+        return { comp: competencia || '-', valor: raw || 'Sem registro', numericValue, hasData: Number.isFinite(numericValue), dateKey: parseCompetencia(competencia) };
+      });
+      const preenchidos = historico.filter(h => h.hasData);
+      const ultimo = preenchidos[preenchidos.length - 1] || historico[historico.length - 1] || null;
+      const valorAtual = ultimo ? ultimo.valor : 'Sem registro';
+      const periodo = ultimo ? (ultimo.comp || '-') : '-';
+      const metaNumerica = parseNumericValue(ind.META || '');
+      const variacao = getVariacaoMensal(historico);
+      const tendencia = getTendencia(historico);
+      const status = getStatusIndicador(ultimo, metaNumerica, ind.META_OPERADOR);
+      const svg = buildHistoryChart(historico, metaNumerica, periodo);
+      ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
+        <div class="indicator-modal">
+          <div class="indicator-head">
+            <div>
+              <div class="indicator-code">${escapeHtml(ind.ID_INDICADOR || 'IND')} · ${escapeHtml(ind.PROCESSO || '-')}</div>
+              <h4 class="section-title">${escapeHtml(ind.NOME_INDICADOR || 'Indicador')}</h4>
+            </div>
+            <button class="btn secondary icon" onclick='abrirEdicaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
+            <div class="meta-item"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
+            <div class="meta-item"><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
+            <div class="meta-item"><b>Origem</b><span>${escapeHtml(ind.ABA_ORIGEM || '-')}</span></div>
+          </div>
+          <h4 class="section-title">Resultado</h4>
+          <div class="result-box">
+            <div><b>Resultado atual</b><span class="result-main">${escapeHtml(valorAtual)}</span></div>
+            <div><b>Status</b><span>${escapeHtml(status.label)}</span></div>
+            <div><b>Período referência</b><span>${escapeHtml(periodo)}</span></div>
+            <div><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</span></div>
+            <div><b>Variação mensal</b><span>${escapeHtml(variacao)}</span></div>
+            <div><b>Tendência</b><span>${escapeHtml(tendencia)}</span></div>
+          </div>
+          <h4 class="section-title">Série histórica</h4>
+          <div class="history-chart">
+            <div class="history-chart-head">
+              <div>
+                <h5>Evolução mensal do indicador</h5>
+                <p>Comparativo dos lançamentos preenchidos por competência.</p>
+              </div>
+              <div class="history-chart-kpi">
+                <b>Último valor</b>
+                <strong>${escapeHtml(valorAtual)}</strong>
+              </div>
+            </div>
+            ${svg}
+            <div class="history-chart-legend">
+              <span><i style="background:#2b79c2"></i>Valor apurado</span>
+              <span><i style="background:#b9891d"></i>Meta de referência</span>
+            </div>
+          </div>
+          <div class="history-list">
+            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td>${escapeHtml(h.comp)}</td><td>${escapeHtml(h.valor)}</td><td>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
+          </div>
+          <h4 class="section-title">Observações</h4>
+          <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
+          <div id="indicatorEditHost"></div>
+        </div>
+      `);
+    }
+
+
+
+    function setProcessoIndicador(processo) {
+      toggleProcessoIndicador(processo);
+    }
+    function clearProcessoIndicador() { state.processosIndicadorSelecionados = []; renderIndicadores(); }
+    function setProcessoIndicadorBusca(value) { state.processoIndicadorBusca = value || ''; renderIndicadores(); }
+
+    function buildHistoryChart(historico, meta, periodoAtual) {
+      const pontos = historico.filter(h => h.hasData);
+      if (!pontos.length) return '<div class="empty">Sem histórico com dados numéricos para exibir.</div>';
+      const values = pontos.map(p => p.numericValue);
+      const minV = Math.min(...values, Number.isFinite(meta) ? meta : values[0]);
+      const maxV = Math.max(...values, Number.isFinite(meta) ? meta : values[0]);
+      const pad = Math.max((maxV - minV) * 0.2, 1);
+      const yMin = minV - pad;
+      const yMax = maxV + pad;
+      const w = 1480, h = 430, pX = 110, pY = 28;
+      const chartH = h - pY * 2;
+      const chartW = w - pX * 2;
+      const edgeInset = pontos.length > 1 ? Math.min(40, chartW * 0.05) : chartW / 2;
+      const usableW = pontos.length > 1 ? chartW - edgeInset * 2 : 0;
+      const step = pontos.length > 1 ? usableW / (pontos.length - 1) : 0;
+      const toY = (v) => h - pY - ((v - yMin) / (yMax - yMin || 1)) * chartH;
+      const mapped = pontos.map((pt, i) => ({ ...pt, x: pX + edgeInset + i * step, y: toY(pt.numericValue) }));
+      const line = mapped.map(pt => `${pt.x},${pt.y}`).join(' ');
+      const area = `${pX},${h - pY} ${line} ${mapped[mapped.length - 1].x},${h - pY}`;
+      const ticks = 5;
+      let grid = '';
+      for (let i=0;i<ticks;i++) {
+        const ratio=i/(ticks-1);
+        const v = yMin + (yMax-yMin)*(1-ratio);
+        const y = pY + chartH*ratio;
+        grid += `<line x1="${pX}" y1="${y}" x2="${w-pX}" y2="${y}" stroke="#e7eff8" stroke-width="1"/><text x="${pX-12}" y="${y+4}" text-anchor="end" font-size="11" fill="#6d8199">${formatNumberBR(v)}</text>`;
+      }
+      const metaLine = Number.isFinite(meta) ? `<line x1="${pX}" y1="${toY(meta)}" x2="${w-pX}" y2="${toY(meta)}" stroke="#b9891d" stroke-width="1.8" stroke-dasharray="6 6"/><text x="${w-pX}" y="${toY(meta)-8}" text-anchor="end" font-size="11" fill="#b9891d">Meta ${formatNumberBR(meta)}</text>` : '';
+      const points = mapped.map((pt, idx) => {
+        const label = getPeriodoChartLabel(pt.comp);
+        const showXLabel = true;
+        return `<circle cx="${pt.x}" cy="${pt.y}" r="${pt.comp===periodoAtual?4.4:3.8}" fill="${pt.comp===periodoAtual?'#1f6fbd':'#2b79c2'}" stroke="#fff" stroke-width="1.8"><title>${escapeHtml(label)}: ${escapeHtml(pt.valor)}</title></circle><text x="${pt.x}" y="${pt.y-12}" text-anchor="middle" font-size="11" fill="#294866">${escapeHtml(formatNumberBR(pt.numericValue))}</text>${showXLabel ? `<text x="${pt.x}" y="${h-pY+18}" text-anchor="middle" font-size="11" fill="#6d8199">${escapeHtml(label)}</text>` : ''}`;
+      }).join('');
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6caee8" stop-opacity=".24"/><stop offset="100%" stop-color="#6caee8" stop-opacity=".02"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h-pY}" x2="${w-pX}" y2="${h-pY}" stroke="#cfdceb" stroke-width="1.2"/>${metaLine}<polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="#2b79c2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>${points}</svg>`;
+    }
+    function formatNumberBR(value) { return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
+    function resolvePeriodoLabel(item) {
+      if (!item || typeof item !== 'object') return '';
+
+      const normalizeKey = (v) => String(v || '')
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^A-Z0-9]/gi, '')
+        .toUpperCase();
+
+      const getByAliases = (aliases) => {
+        const aliasSet = new Set(aliases.map(normalizeKey));
+        const key = Object.keys(item).find(k => aliasSet.has(normalizeKey(k)));
+        const value = key ? item[key] : '';
+        return String(value || '').trim();
+      };
+
+      const explicit = getByAliases([
+        'COMPETENCIA', 'COMPETÊNCIA', 'PERIODO', 'PERÍODO', 'PERIODO_REFERENCIA',
+        'PERÍODO_REFERÊNCIA', 'REFERENCIA', 'REFERÊNCIA', 'MES_ANO', 'MÊS_ANO',
+        'MESANO', 'MÊSANO', 'ANO_MES', 'ANO-MES'
+      ]);
+      if (explicit) return explicit;
+
+      const dateCandidates = [
+        getByAliases(['DATA', 'DATA_REFERENCIA', 'DATA_REFERÊNCIA', 'CREATED_AT', 'CRIADO_EM'])
+      ].filter(Boolean);
+
+      for (const raw of dateCandidates) {
+        const parsed = new Date(raw);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        }
+      }
+      return '';
+    }
+
+    function getPeriodoChartLabel(comp) {
+      const label = String(comp || '').trim();
+      return label || 'Sem período';
+    }
+
+    function parseNumericValue(raw) { const txt=String(raw||'').trim(); if(!txt) return null; const n=Number(txt.replace(/%/g,'').replace('.', '').replace(',', '.')); return Number.isFinite(n)?n:null; }
+    function parseCompetencia(comp) { const txt = String(comp || '').toLowerCase().trim(); const m={jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11}; const mm=txt.match(/(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[\.\-/ ]*(\d{2,4})/); if(mm){const y=Number(mm[2].length===2?'20'+mm[2]:mm[2]); return new Date(y,m[mm[1]],1).getTime();} const iso=Date.parse(txt); return Number.isFinite(iso)?iso:0; }
+    function getVariacaoMensal(hist){ const vals=hist.filter(h=>h.hasData); if(vals.length<2) return 'Sem base comparativa'; const a=vals[vals.length-1].numericValue; const b=vals[vals.length-2].numericValue; const d=a-b; const p=b!==0?((d/Math.abs(b))*100):0; return `${d>=0?'+':''}${d.toFixed(1).replace('.',',')} (${d>=0?'+':''}${p.toFixed(1).replace('.',',')}%)`; }
+    function getTendencia(hist){ const vals=hist.filter(h=>h.hasData).map(h=>h.numericValue); if(vals.length<3) return 'Estável'; const d=vals[vals.length-1]-vals[vals.length-3]; if(d>0.5) return 'Melhorando'; if(d<-0.5) return 'Piorando'; return 'Estável'; }
+    function compareAgainstMeta(valor, meta, operador) {
+      if (!Number.isFinite(valor) || !Number.isFinite(meta)) return false;
+      const op = String(operador || '>=').trim();
+      if (op === '>') return valor > meta;
+      if (op === '<') return valor < meta;
+      if (op === '<=') return valor <= meta;
+      if (op === '=') return valor === meta;
+      return valor >= meta;
+    }
+
+    function getStatusIndicador(item, meta, operador){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return compareAgainstMeta(item.numericValue, meta, operador)?{label:'Dentro da meta',className:'ok'}:{label:'Fora da meta',className:'bad'}; }
+    function getReferenciaStatus(historico){ const comDados = historico.filter(h => h.hasData); return comDados.length ? comDados[comDados.length - 1] : null; }
+    function buildMiniSparkline(historico, meta){
+      const pontos = historico.filter(h => h.hasData);
+      if (!pontos.length) {
+        return '<div class="sparkline"><svg viewBox="0 0 320 108" preserveAspectRatio="none"><rect x="44" y="14" width="262" height="74" fill="none" stroke="#e6eef8"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#8da3ba">Sem dados</text></svg></div>';
+      }
+
+      const width = 440, height = 168;
+      const pad = { top: 20, right: 14, bottom: 30, left: 44 };
+      const chartW = width - pad.left - pad.right;
+      const chartH = height - pad.top - pad.bottom;
+
+      const valores = pontos.map(p => p.numericValue);
+      if (Number.isFinite(meta)) valores.push(meta);
+      let min = Math.min(...valores);
+      let max = Math.max(...valores);
+      if (min === max) { min -= 1; max += 1; }
+      const spread = max - min || 1;
+      const yMin = min - spread * 0.1;
+      const yMax = max + spread * 0.1;
+      const yRange = yMax - yMin || 1;
+
+      const toX = (idx) => pad.left + (idx * (chartW / Math.max(pontos.length - 1, 1)));
+      const toY = (v) => pad.top + ((yMax - v) / yRange) * chartH;
+
+      const gridTicks = 3;
+      let grid = '';
+      for (let i = 0; i < gridTicks; i++) {
+        const ratio = i / (gridTicks - 1);
+        const y = pad.top + chartH * ratio;
+        grid += `<line x1="${pad.left}" y1="${y.toFixed(2)}" x2="${width - pad.right}" y2="${y.toFixed(2)}" stroke="#ecf2fa" stroke-width="1"/>`;
+      }
+
+      const yLabelTop = formatNumberBR(yMax);
+      const yLabelBottom = formatNumberBR(yMin);
+
+      const path = pontos.map((p, i) => {
+        const x = toX(i);
+        const y = toY(p.numericValue);
+        return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
+      }).join(' ');
+
+      const xStep = Math.max(1, Math.ceil(pontos.length / 5));
+      const points = pontos.map((p, i) => {
+        const x = toX(i);
+        const y = toY(p.numericValue);
+        const isLast = i === pontos.length - 1;
+        const valueLabel = escapeHtml(formatNumberBR(p.numericValue));
+        const compLabelRaw = getPeriodoChartLabel(p.comp);
+        const compLabel = escapeHtml(compLabelRaw);
+        const showXLabel = true;
+        return `
+          <g>
+            <circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${isLast ? '3.6' : '3'}" fill="${isLast ? '#1f6fbd' : '#2b79c2'}" stroke="#fff" stroke-width="1.4">
+              <title>${compLabel}: ${escapeHtml(p.valor || '')}</title>
+            </circle>
+            <text x="${x.toFixed(2)}" y="${(y - 8).toFixed(2)}" text-anchor="middle" font-size="8.6" font-weight="700" fill="#2c4f70">${valueLabel}</text>
+            ${showXLabel ? `<text x="${x.toFixed(2)}" y="${(height - 8).toFixed(2)}" text-anchor="middle" font-size="8.4" fill="#748aa3">${compLabel}</text>` : ''}
+          </g>`;
+      }).join('');
+
+      const metaLine = Number.isFinite(meta)
+        ? `<line x1="${pad.left}" y1="${toY(meta).toFixed(2)}" x2="${width - pad.right}" y2="${toY(meta).toFixed(2)}" stroke="#b9891d" stroke-width="1.1" stroke-dasharray="4 3"/>`
+        : '';
+
+      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${grid}<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><text x="${pad.left - 6}" y="${pad.top + 4}" text-anchor="end" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelTop)}</text><text x="${pad.left - 6}" y="${height - pad.bottom}" text-anchor="end" dominant-baseline="ideographic" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelBottom)}</text>${metaLine}<path d="${path}" fill="none" stroke="#2b79c2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>${points}</svg></div>`;
+    }
+
+    function abrirEdicaoIndicador(ind) {
+      const host = document.getElementById('indicatorEditHost');
+      if (!host) return;
+      host.innerHTML = `
+        <form class="edit-form" onsubmit="salvarEdicaoIndicador(event, '${escapeHtml(ind.ID_INDICADOR || '')}')">
+          <h5>Editar indicador</h5>
+          <label>Nome do indicador<input name="NOME_INDICADOR" value="${escapeHtml(ind.NOME_INDICADOR || '')}" required></label>
+          <label>Tipo do indicador<input name="TIPO_INDICADOR" value="${escapeHtml(ind.TIPO_INDICADOR || '')}" required></label>
+          <label>Meta (numérica)<input name="META" type="number" inputmode="decimal" step="any" value="${escapeHtml(ind.META || '')}" required></label>
+          <label>Regra da meta
+            <select name="META_OPERADOR" required>
+              ${['>=', '>', '<=', '<', '='].map(op => `<option value="${op}" ${String(ind.META_OPERADOR || '>=').trim() === op ? 'selected' : ''}>${op}</option>`).join('')}
+            </select>
+          </label>
+          <label>Observações/resultado esperado<textarea name="RESULTADO_ESPERADO">${escapeHtml(ind.RESULTADO_ESPERADO || '')}</textarea></label>
+          <div class="edit-form-actions">
+            <button type="button" class="btn secondary" onclick="fecharEdicaoIndicador()">Cancelar</button>
+            <button type="submit" class="btn">Salvar</button>
+          </div>
+        </form>`;
+      host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function fecharEdicaoIndicador() {
+      const host = document.getElementById('indicatorEditHost');
+      if (host) host.innerHTML = '';
+    }
+
+    function salvarEdicaoIndicador(event, idIndicador) {
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        ID_INDICADOR: idIndicador,
+        NOME_INDICADOR: form.NOME_INDICADOR.value.trim(),
+        TIPO_INDICADOR: form.TIPO_INDICADOR.value.trim(),
+        META: form.META.value.trim().replace(',', '.'),
+        META_OPERADOR: form.META_OPERADOR.value.trim(),
+        RESULTADO_ESPERADO: form.RESULTADO_ESPERADO.value.trim()
+      };
+      
+      const metaValor = Number(payload.META);
+      if (!Number.isFinite(metaValor)) {
+        alert('A meta precisa ser numérica.');
+        return;
+      }
+      showSaveFeedback('Salvando indicador...');
+      google.script.run
+        .withSuccessHandler(() => {
+          showSaveFeedback('Indicador salvo com sucesso.', true);
+          fecharEdicaoIndicador();
+          loadData();
+        })
+        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar indicador.'); alert('Erro ao editar indicador: ' + (err.message || err)); })
+        .atualizarIndicador(payload);
+    }
+
+    function drawerField(label, value) {
+      return `<div class="step"><b>${escapeHtml(label)}</b><span>${escapeHtml(value || '-')}</span></div>`;
+    }
+
+    function filterRows(rows, fields) {
+      if (!state.search) return rows;
+      return rows.filter(row => fields.some(f => String(row[f] || '').toLowerCase().includes(state.search)));
+    }
+
+    function unique(arr) {
+      return Array.from(new Set(arr.filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }
+
+    function statusClass(v) {
+      const s = getUnifiedStatus(v);
+      if (s.type === 'ok') return 'pill ok';
+      if (s.type === 'bad') return 'pill bad';
+      if (s.type === 'warn') return 'pill warn';
+      return '';
+    }
+
+
+    function normalizeStatus(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
+    function buildProcessFlow(p) {
+      const steps = [
+        { name: 'Modelagem', raw: p.MODELAGEM_REALIZADA },
+        { name: 'NUGESP', raw: p.VALIDACAO_NUGESP },
+        { name: 'Direção', raw: p.VALIDACAO_DIRECAO },
+        { name: 'Publicação', raw: p.PUBLICACAO }
+      ];
+      let blocked = false;
+      let currentMarked = false;
+      const parsed = steps.map(step => {
+        const normalized = normalize(step.raw);
+        const isDone = normalized === 'SIM' || normalized.includes('CONCLUID');
+        if (isDone) return { ...step, state: 'done', label: step.name === 'Publicação' ? 'Publicado' : 'Concluído', pillClass: 'ok' };
+        if (!blocked && !currentMarked) {
+          blocked = true;
+          currentMarked = true;
+          return { ...step, state: 'current', label: step.raw ? 'Em análise' : 'Pendente de preenchimento', pillClass: 'warn' };
+        }
+        return { ...step, state: 'blocked', label: 'Aguardando etapa anterior', pillClass: '' };
+      });
+
+      const currentStep = parsed.find(s => s.state === 'current');
+      const nextAction = currentStep
+        ? `${currentStep.name} precisa concluir esta etapa para liberar ${parsed[parsed.indexOf(currentStep) + 1]?.name || 'o encerramento do processo'}.`
+        : 'Fluxo concluído. Processo pronto para manutenção e monitoramento.';
+      return { steps: parsed, nextAction };
+    }
+
+    function badgeClass(v) {
+      const n = normalize(v);
+      if (n === 'SIM' || n.includes('CONCLUID') || n.includes('REALIZADA')) return 'ok';
+      if (n === 'NAO' || n.includes('NAO INICIADA') || n.includes('PENDENTE')) return 'bad';
+      if (n.includes('ANDAMENTO')) return 'warn';
+      return '';
+    }
+
+    function normalize(v) {
+      return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    }
+    function getUnifiedStatus(v){
+      const n = normalize(v);
+      if (n.includes('CONCLUID') || n.includes('REALIZADA') || n === 'SIM') return {label:'Concluído', type:'ok'};
+      if (n.includes('BLOQUE') || n.includes('REAGEND')) return {label:'Bloqueado', type:'bad'};
+      if (n.includes('NAO INICIADA') || n.includes('PENDENTE') || n === 'NAO') return {label:'Atrasado', type:'bad'};
+      if (n.includes('ANDAMENTO') || n.includes('ANALISE')) return {label:'Atenção', type:'warn'};
+      return {label:'No prazo', type:'warn'};
+    }
+    function passTaskFilter(row, kind){
+      if (state.taskFilter === 'all') return true;
+      const s = getUnifiedStatus(row.STATUS_GERAL || row.STATUS_AGENDAMENTO || row.RESULTADO_ESPERADO || '');
+      if (state.taskFilter === 'critical') return s.type === 'bad';
+      if (state.taskFilter === 'risk') return s.type === 'warn';
+      if (state.taskFilter === 'done') return s.type === 'ok';
+      if (state.taskFilter === 'today') {
+        const d = String(row.DATA_AGENDAMENTO || '').trim();
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2,'0');
+        const mm = String(now.getMonth()+1).padStart(2,'0');
+        return d.includes(`${dd}/${mm}`);
+      }
+      return true;
+    }
+    function buildOpsAlert(){
+      const acomps = state.data?.acompanhamento || [];
+      const crit = acomps.filter(r => getUnifiedStatus(r.STATUS_AGENDAMENTO).type === 'bad').length;
+      const warn = acomps.filter(r => getUnifiedStatus(r.STATUS_AGENDAMENTO).type === 'warn').length;
+      return `Fila operacional: ${crit} pendências críticas e ${warn} itens em atenção. Use os filtros por tarefa para atuar primeiro no risco.`;
+    }
+    function showSaveFeedback(message, autoHide){
+      const el = document.getElementById('saveFeedback');
+      if (!el) return;
+      el.textContent = message;
+      el.classList.add('show');
+      if (autoHide) setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    function escapeHtml(v) {
+      return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    }
+
+
+
+    function loadAdminData() {
+      google.script.run
+        .withSuccessHandler(payload => {
+          state.adminData = payload;
+          renderAdmin();
+        })
+        .withFailureHandler(err => alert('Erro ao carregar administração: ' + (err.message || err)))
+        .getAdminData();
+    }
+
+    function renderAdmin() {
+      const el = document.getElementById('adminGrid');
+      if (!el) return;
+      const a = state.adminData;
+      if (!a) {
         el.innerHTML = '<div class="empty">Clique em "Atualizar administração" para carregar usuários e configurações.</div>';
         return;
       }
@@ -41,4 +1736,24 @@ Migrador_SIGEP_HUC.gs
     function showAdminSetores() {
       const rows = (state.adminData && state.adminData.setores) || [];
       ui.openDrawer('Setores/Unidades', 'Cadastro de setores do sistema.', `
+        <div class="actions" style="justify-content:flex-end;margin-bottom:8px"><button class="btn small" onclick="novoSetor()">Novo setor</button></div>
+        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome</th><th>Sigla</th><th>Ações</th></tr></thead><tbody>${rows.map(r=>`<tr><td data-label="ID">${escapeHtml(r.ID_SETOR||'-')}</td><td data-label="Nome">${escapeHtml(r.NOME_SETOR||'-')}</td><td data-label="Sigla">${escapeHtml(r.SIGLA||'-')}</td><td data-label="Ações"><button class="btn secondary small" onclick='editarSetor(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Editar</button> <button class="btn secondary small" onclick='excluirSetorUi("${escapeHtml(r.ID_SETOR||'')}")'>Excluir</button></td></tr>`).join('')}</tbody></table></div>
+      `);
+    }
+    function novoSetor(){ editarSetor({}); }
+    function editarSetor(s){ const ID_UNIDADE=prompt('ID do setor/unidade:', s.ID_SETOR || ''); if(!ID_UNIDADE) return; const UNIDADE=prompt('Nome do setor/unidade:', s.NOME_SETOR || '')||''; const SIGLA=prompt('Sigla:', s.SIGLA || '')||''; google.script.run.withSuccessHandler(()=>{loadAdminData(); alert('Setor salvo.');}).withFailureHandler(err=>alert(err.message||err)).salvarSetor({ID_UNIDADE,UNIDADE,SIGLA,idColumn:'ID_UNIDADE'}); }
+    function excluirSetorUi(id){ if(!id||!confirm('Excluir setor '+id+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminSetores();}).withFailureHandler(err=>alert(err.message||err)).excluirSetor(id); }
 
+    function showAdminStatus() {
+      const rows = (state.adminData && state.adminData.status) || [];
+      ui.openDrawer('Configuração de status', 'Status disponíveis para operação.', `<div class="steps">${rows.map(r => `<div class="step"><b>${escapeHtml(r.STATUS||'-')}</b><span>${escapeHtml((r.TIPO||'-') + ' · ordem ' + (r.ORDEM||'-'))}</span></div>`).join('')}</div>`);
+    }
+    function showAdminTipos() {
+      const rows = (state.adminData && state.adminData.tiposProcesso) || [];
+      ui.openDrawer('Tipos de processo', 'Lista de tipos para processos.', `<div class="steps">${rows.map(r => `<div class="step"><b>${escapeHtml(r.TIPO_PROCESSO||'-')}</b><span>${escapeHtml(r.DESCRICAO||'-')}</span></div>`).join('')}</div>`);
+    }
+    window.ui = ui;
+    ui.init();
+  </script>
+</body>
+</html>
