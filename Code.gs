@@ -189,6 +189,15 @@ function salvarConfiguracao(payload) {
   return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.salvarConfiguracao(payload)));
 }
 
+
+function getDataReviewReport() {
+  return withAdminPermission_('ADMIN', app => app.admin.getDataReviewReport());
+}
+
+function aplicarCorrecaoDados(payload) {
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.aplicarCorrecaoDados(payload)));
+}
+
 function salvarUsuario(payload) {
   return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.admin.salvarUsuario(payload)));
 }
@@ -1127,11 +1136,99 @@ class AdminService {
       tiposProcesso: this.repo.getObjects('CONFIG_TIPOS_PROCESSO'),
       featureFlags: this.repo.getObjectsSafe('CONFIG_FEATURE_FLAGS', []),
       unidades,
+      review: this.getDataReviewReport(),
       setores: unidades.map(x => ({
         ID_SETOR: x.ID_SETOR || x.ID_UNIDADE || x.UNIDADE,
         NOME_SETOR: x.NOME_SETOR || x.UNIDADE || '',
         SIGLA: x.SIGLA || ''
       }))
+    };
+  }
+
+  getDataReviewReport() {
+    const report = [];
+    report.push(...this.reviewLancamentos_());
+    report.push(...this.reviewUnidades_());
+    return { ok: true, generatedAt: new Date().toISOString(), findings: report, totalFindings: report.length };
+  }
+
+  aplicarCorrecaoDados(payload) {
+    if (!payload || !payload.sheetName || !payload.rowNumber || !payload.fieldName) throw new Error('Payload de correção inválido.');
+    const sh = this.repo.getSheet(payload.sheetName);
+    const headers = this.repo.getHeaders(payload.sheetName).map(h => String(h || '').trim());
+    const col = headers.indexOf(payload.fieldName);
+    if (col === -1) throw new Error('Campo não encontrado para correção: ' + payload.fieldName);
+    sh.getRange(Number(payload.rowNumber), col + 1).setValue(payload.newValue || '');
+    this.audit.log('CORRECAO_DADO_ADMIN', payload.sheetName, String(payload.rowNumber), JSON.stringify(payload));
+    this.repo.clearCache();
+    return { ok: true };
+  }
+
+  reviewLancamentos_() {
+    const rows = this.repo.getObjects(SIGEP.sheets.lancamentos);
+    return rows.flatMap(row => {
+      const findings = [];
+      const comp = String(row.COMPETENCIA || row.COMPETÊNCIA || '').trim();
+      if (!comp) {
+        findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Campo de competência vazio.', 'ALTO', 'Preencher no formato MM/AAAA.'));
+      } else {
+        const normalized = this.normalizeCompetencia_(comp);
+        if (!normalized.valid) {
+          findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Competência inválida: ' + comp, 'ALTO', 'Use MM/AAAA com mês entre 01 e 12.'));
+        } else if (normalized.value !== comp) {
+          findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Competência fora do padrão: ' + comp, 'MEDIO', 'Padronizar para ' + normalized.value + '.', normalized.value));
+        }
+      }
+      const ano = Number(comp.split('/')[1]);
+      if (comp && (!ano || ano < 2000 || ano > 2100)) {
+        findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Ano de competência fora da faixa esperada: ' + comp, 'ALTO', 'Ajustar para ano válido (2000-2100).'));
+      }
+      if (!String(row.ID_INDICADOR || '').trim()) {
+        findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'ID_INDICADOR', 'Lançamento sem ID_INDICADOR.', 'ALTO', 'Vincular lançamento a um indicador válido.'));
+      }
+      return findings;
+    });
+  }
+
+  reviewUnidades_() {
+    const rows = this.repo.getObjects(SIGEP.sheets.unidades);
+    const seen = {};
+    rows.forEach(row => {
+      const key = String(row.UNIDADE || row.NOME_SETOR || '').trim().toUpperCase();
+      if (!key) return;
+      seen[key] = seen[key] || [];
+      seen[key].push(row);
+    });
+    const findings = [];
+    Object.keys(seen).forEach(key => {
+      if (seen[key].length > 1) {
+        seen[key].forEach(row => findings.push(this.buildFinding_(SIGEP.sheets.unidades, row, 'UNIDADE', 'Nome de setor/unidade duplicado: ' + key, 'MEDIO', 'Revisar duplicidade e manter apenas cadastro válido.')));
+      }
+    });
+    return findings;
+  }
+
+  normalizeCompetencia_(raw) {
+    const s = String(raw || '').trim().replace(/\s+/g, '');
+    const m = s.match(/^(\d{1,2})[\/-](\d{4})$/);
+    if (!m) return { valid: false, value: s };
+    const mes = Number(m[1]);
+    const ano = Number(m[2]);
+    if (mes < 1 || mes > 12 || ano < 2000 || ano > 2100) return { valid: false, value: s };
+    return { valid: true, value: String(mes).padStart(2, '0') + '/' + String(ano) };
+  }
+
+  buildFinding_(sheetName, row, fieldName, issue, severity, recommendation, suggestedValue) {
+    return {
+      id: [sheetName, row._rowNumber, fieldName].join('#'),
+      sheetName,
+      rowNumber: row._rowNumber,
+      fieldName,
+      issue,
+      severity,
+      recommendation,
+      currentValue: row[fieldName] || row[fieldName.toUpperCase()] || '',
+      suggestedValue: suggestedValue === undefined ? '' : suggestedValue
     };
   }
 

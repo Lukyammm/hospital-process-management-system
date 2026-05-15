@@ -1884,6 +1884,7 @@
         <article class="card" onclick="showAdminSetores()"><h4>Setores</h4><p>${(a.setores||[]).length} cadastrados</p></article>
         <article class="card" onclick="showAdminStatus()"><h4>Status</h4><p>${(a.status||[]).length} opções configuradas</p></article>
         <article class="card" onclick="showAdminTipos()"><h4>Tipos de processo</h4><p>${(a.tiposProcesso||[]).length} tipos ativos</p></article>
+        <article class="card" onclick="showAdminDataReview()"><h4>Central de saneamento</h4><p>${(a.review?.totalFindings||0)} inconsistências detectadas</p></article>
       `;
     }
 
@@ -1926,7 +1927,42 @@
       const rows = (state.adminData && state.adminData.tiposProcesso) || [];
       ui.openDrawer('Tipos de processo', 'Lista de tipos para processos.', `<div class="steps">${rows.map(r => `<div class="step"><b>${escapeHtml(r.TIPO_PROCESSO||'-')}</b><span>${escapeHtml(r.DESCRICAO||'-')}</span></div>`).join('')}</div>`);
     }
-    window.ui = ui;
+    
+    function showAdminDataReview() {
+      const review = (state.adminData && state.adminData.review) || { findings: [], totalFindings: 0 };
+      const rows = review.findings || [];
+      const badge = t => t === 'ALTO' ? 'bad' : (t === 'MEDIO' ? 'warn' : 'ok');
+      ui.openDrawer('Central de conferência e saneamento', 'Revise, corrija e confirme dados antes de alimentar filtros, gráficos e indicadores.', `
+        <div class="actions" style="justify-content:space-between;margin-bottom:8px">
+          <strong>${rows.length} inconsistências encontradas</strong>
+          <button class="btn small" onclick="loadAdminData()">Atualizar diagnóstico</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Severidade</th><th>Aba</th><th>Linha</th><th>Campo</th><th>Problema</th><th>Valor atual</th><th>Sugestão</th><th>Ação</th></tr></thead><tbody>
+        ${rows.map(r => `<tr>
+          <td><span class="pill ${badge(r.severity)}">${escapeHtml(r.severity || '-')}</span></td>
+          <td>${escapeHtml(r.sheetName)}</td><td>${escapeHtml(r.rowNumber)}</td><td>${escapeHtml(r.fieldName)}</td>
+          <td>${escapeHtml(r.issue)}</td><td>${escapeHtml(r.currentValue || '-')}</td><td>${escapeHtml(r.suggestedValue || r.recommendation || '-')}</td>
+          <td>${r.suggestedValue ? `<button class="btn secondary small" onclick='aplicarSugestao(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Aplicar</button>` : '-'}</td>
+        </tr>`).join('') || '<tr><td colspan="8" style="text-align:center">Nenhuma inconsistência encontrada.</td></tr>'}
+        </tbody></table></div>
+      `);
+    }
+
+    function aplicarSugestao(finding) {
+      if (!finding || !finding.suggestedValue) return;
+      if (!confirm('Aplicar correção sugerida para ' + finding.fieldName + ' na linha ' + finding.rowNumber + '?')) return;
+      google.script.run.withSuccessHandler(() => {
+        loadAdminData();
+        showAdminDataReview();
+      }).withFailureHandler(err => alert('Falha ao aplicar correção: ' + (err.message || err)))
+        .aplicarCorrecaoDados({
+          sheetName: finding.sheetName,
+          rowNumber: finding.rowNumber,
+          fieldName: finding.fieldName,
+          newValue: finding.suggestedValue
+        });
+    }
+window.ui = ui;
     ui.init();
   </script>
 </body>
