@@ -1182,6 +1182,8 @@ class AdminService {
     const errors = [];
     let success = 0;
 
+    const groupedBySheetAndColumn = {};
+
     updates.forEach((item, idx) => {
       try {
         if (!item || !item.sheetName || !item.rowNumber || !item.fieldName) throw new Error('Item inválido no índice ' + idx + '.');
@@ -1195,9 +1197,23 @@ class AdminService {
         const colIndex = this.findHeaderIndex_(headersCache[item.sheetName], item.fieldName);
         if (colIndex === -1) throw new Error('Campo não encontrado para correção: ' + item.fieldName);
 
-        sheetCache[item.sheetName].getRange(rowNumber, colIndex + 1).setValue(item.newValue || '');
-        this.audit.log('CORRECAO_DADO_ADMIN', item.sheetName, String(rowNumber), JSON.stringify(item));
-        success += 1;
+        const groupKey = item.sheetName + '::' + colIndex;
+        if (!groupedBySheetAndColumn[groupKey]) {
+          groupedBySheetAndColumn[groupKey] = {
+            sheetName: item.sheetName,
+            colIndex,
+            rows: []
+          };
+        }
+        groupedBySheetAndColumn[groupKey].rows.push({
+          rowNumber,
+          value: item.newValue || '',
+          audit: {
+            sheetName: item.sheetName,
+            rowNumber: String(rowNumber),
+            payload: JSON.stringify(item)
+          }
+        });
       } catch (error) {
         errors.push({
           index: idx,
@@ -1209,9 +1225,48 @@ class AdminService {
       }
     });
 
+    Object.keys(groupedBySheetAndColumn).forEach(groupKey => {
+      const group = groupedBySheetAndColumn[groupKey];
+      const sheet = sheetCache[group.sheetName];
+      const colNumber = group.colIndex + 1;
+      const rows = group.rows;
+      if (!rows.length) return;
+
+      rows.sort((a, b) => a.rowNumber - b.rowNumber);
+
+      let segmentStart = rows[0].rowNumber;
+      let segmentValues = [[rows[0].value]];
+      let previousRow = rows[0].rowNumber;
+
+      const flushSegment = () => {
+        sheet.getRange(segmentStart, colNumber, segmentValues.length, 1).setValues(segmentValues);
+      };
+
+      for (let i = 1; i < rows.length; i += 1) {
+        const current = rows[i];
+        if (current.rowNumber === previousRow + 1) {
+          segmentValues.push([current.value]);
+          previousRow = current.rowNumber;
+          continue;
+        }
+
+        flushSegment();
+        segmentStart = current.rowNumber;
+        segmentValues = [[current.value]];
+        previousRow = current.rowNumber;
+      }
+      flushSegment();
+
+      rows.forEach(entry => {
+        this.audit.log('CORRECAO_DADO_ADMIN', entry.audit.sheetName, entry.audit.rowNumber, entry.audit.payload);
+        success += 1;
+      });
+    });
+
     if (success > 0) this.repo.clearCache();
     return { ok: errors.length === 0, total: updates.length, success, failed: errors.length, errors };
   }
+
 
   findHeaderIndex_(headers, requestedField) {
     const rawField = String(requestedField || '').trim();
