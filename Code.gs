@@ -1225,6 +1225,8 @@ class AdminService {
       }
     });
 
+    const auditEntries = [];
+
     Object.keys(groupedBySheetAndColumn).forEach(groupKey => {
       const group = groupedBySheetAndColumn[groupKey];
       const sheet = sheetCache[group.sheetName];
@@ -1258,11 +1260,18 @@ class AdminService {
       flushSegment();
 
       rows.forEach(entry => {
-        this.audit.log('CORRECAO_DADO_ADMIN', entry.audit.sheetName, entry.audit.rowNumber, entry.audit.payload);
+        auditEntries.push({
+          acao: 'CORRECAO_DADO_ADMIN',
+          entidade: entry.audit.sheetName,
+          id: entry.audit.rowNumber,
+          detalhes: entry.audit.payload,
+          origem: 'N/A'
+        });
         success += 1;
       });
     });
 
+    if (auditEntries.length) this.audit.logMany(auditEntries);
     if (success > 0) this.repo.clearCache();
     return { ok: errors.length === 0, total: updates.length, success, failed: errors.length, errors };
   }
@@ -1573,6 +1582,38 @@ class AuditService {
       this.repo.append(SIGEP.sheets.historico, [now, user.email, payload.acao, payload.entidade, payload.id, JSON.stringify(contexto)]);
     } catch (e) {
       console.warn('Falha ao registrar histórico:', e.message);
+    }
+  }
+
+  logMany(payloads) {
+    if (!Array.isArray(payloads) || !payloads.length) return;
+    try {
+      const now = new Date();
+      const user = this.auth.getCurrentUser();
+      const common = {
+        perfil: user.perfil,
+        usuario: user.email,
+        timestampIso: now.toISOString(),
+        timestampLocal: this.repo.formatDatePtBr(now)
+      };
+      const rows = payloads.map(payload => {
+        const contexto = {
+          origem: payload.origem || 'N/A',
+          motivo: payload.motivo || '',
+          perfil: common.perfil,
+          usuario: common.usuario,
+          timestampIso: common.timestampIso,
+          timestampLocal: common.timestampLocal,
+          antes: this.compact_(payload.before),
+          depois: this.compact_(payload.after),
+          alteracoes: payload.patch || null,
+          detalhes: payload.detalhes || ''
+        };
+        return [now, user.email, payload.acao, payload.entidade, payload.id, JSON.stringify(contexto)];
+      });
+      this.repo.appendRows(SIGEP.sheets.historico, rows);
+    } catch (e) {
+      console.warn('Falha ao registrar histórico em lote:', e.message);
     }
   }
 
