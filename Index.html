@@ -385,6 +385,7 @@
     .history-table th, .history-table td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; }
     .history-table th { background:#f6f9fd; color:#4d6580; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
     .history-table tr.current td { background:#eef6ff; font-weight:600; }
+    .history-table td.competencia-miss { color: var(--danger); font-weight: 800; }
     .history-status { font-weight:700; }
     .history-status.ok { color:var(--success); }
     .history-status.warn { color:var(--warning); }
@@ -615,7 +616,14 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Painel de indicadores</h3><span>Visão analítica por categoria, processo e cobertura mensal</span></div>
-            <div class="filters"><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></div>
+            <div class="filters">
+              <select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select>
+              <select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select>
+              <select id="filtroPeriodoIndicador" aria-label="Filtrar indicadores por período"><option value="">Todos os períodos</option></select>
+              <select id="filtroCompetenciaIndicador" aria-label="Filtrar indicadores por competência"><option value="">Todas as competências</option></select>
+              <select id="filtroComparacaoCompetencia" aria-label="Comparar com competência"><option value="">Sem comparação</option></select>
+              <select id="filtroStatusPreenchimento" aria-label="Filtrar preenchimento"><option value="">Todos preenchimentos</option><option value="preenchido">Preenchido</option><option value="nao_preenchido">Não preenchido</option></select>
+            </div>
           </div>
           <div class="content-pad indicators-layout">
             <div class="indicator-main-area">
@@ -667,6 +675,11 @@
       filtroStatusAcomp: '',
       filtroTipoProcesso: '',
       filtroCategoriaIndicador: '',
+      filtroTipoIndicador: '',
+      filtroPeriodoIndicador: '',
+      filtroCompetenciaIndicador: '',
+      filtroComparacaoCompetencia: '',
+      filtroStatusPreenchimento: '',
       processosIndicadorSelecionados: [],
       indicadorFiltroRecolhido: false,
       processoIndicadorBusca: '',
@@ -702,7 +715,7 @@
           state.search = e.target.value.toLowerCase().trim();
           render();
         });
-        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador'].forEach(id => {
+        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador', 'filtroTipoIndicador', 'filtroPeriodoIndicador', 'filtroCompetenciaIndicador', 'filtroComparacaoCompetencia', 'filtroStatusPreenchimento'].forEach(id => {
           document.getElementById(id).addEventListener('change', e => {
             state[id] = e.target.value;
             render();
@@ -797,6 +810,12 @@
       fillSelect('filtroStatusAcomp', unique((data.acompanhamento || []).map(x => x.STATUS_AGENDAMENTO)), 'Todos os status');
       fillSelect('filtroTipoProcesso', unique((data.processos || []).map(x => x.TIPO_PROCESSO)), 'Todos os tipos');
       fillSelect('filtroCategoriaIndicador', unique((data.indicadores || []).map(x => x.CATEGORIA)), 'Todas as categorias');
+      fillSelect('filtroTipoIndicador', unique((data.indicadores || []).map(x => x.TIPO_INDICADOR)), 'Todos os tipos');
+      const competencias = unique((data.lancamentos || []).map(x => x.COMPETENCIA).filter(Boolean)).sort((a,b)=>parseCompetencia(a)-parseCompetencia(b));
+      fillSelect('filtroCompetenciaIndicador', competencias, 'Todas as competências');
+      fillSelect('filtroComparacaoCompetencia', competencias, 'Sem comparação');
+      const periodos = ['Ano','Semestre','Quadrimestre','Trimestre','Mês'];
+      fillSelect('filtroPeriodoIndicador', periodos, 'Todos os períodos');
     }
 
     function fillSelect(id, items, first) {
@@ -937,12 +956,17 @@
       rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO', 'UNIDADE', 'SETOR']);
       if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
       rows = rows.filter(x => passTaskFilter(x, 'ind'));
+      if (state.filtroTipoIndicador) rows = rows.filter(x => x.TIPO_INDICADOR === state.filtroTipoIndicador);
       const lancamentos = state.data.lancamentos || [];
       const byInd = new Map();
       lancamentos.forEach(l => {
         if (!byInd.has(l.ID_INDICADOR)) byInd.set(l.ID_INDICADOR, []);
         byInd.get(l.ID_INDICADOR).push(l);
       });
+
+      if (state.filtroCompetenciaIndicador) {
+        rows = rows.filter(ind => (byInd.get(ind.ID_INDICADOR) || []).some(l => l.COMPETENCIA === state.filtroCompetenciaIndicador));
+      }
 
       const unidades = unique(rows.map(r => getIndicatorUnit(r)).filter(Boolean));
       const categoriasFiltros = unique(rows.map(r => r.CATEGORIA).filter(Boolean));
@@ -982,6 +1006,13 @@
         </div>
       `;
 
+      if (state.filtroStatusPreenchimento) {
+        rows = rows.filter(ind => {
+          const lans = byInd.get(ind.ID_INDICADOR) || [];
+          const hasFill = lans.some(l => String(l.VALOR || '').trim() !== '');
+          return state.filtroStatusPreenchimento === 'preenchido' ? hasFill : !hasFill;
+        });
+      }
       const total = rows.length;
       const preenchidos = rows.filter(ind => {
         const lans = byInd.get(ind.ID_INDICADOR) || [];
@@ -991,10 +1022,13 @@
       document.getElementById('indicatorSummary').innerHTML = `
         <div class="summary-card"><b>Total de indicadores</b><strong>${total}</strong><span>Registros após filtros e pesquisa</span></div>
         <div class="summary-card"><b>Com lançamento</b><strong>${preenchidos}</strong><span>Indicadores com algum valor preenchido</span></div>
+        <div class="summary-card"><b>Não preenchidos</b><strong>${pendentes}</strong><span>Sem valor informado para o recorte</span></div>
+        <div class="summary-card"><b>Comparação de período</b><strong>${escapeHtml(buildComparacaoPeriodoGlobal(rows, byInd, state.filtroPeriodoIndicador))}</strong><span>Recorte atual versus período anterior equivalente</span></div>
       `;
       document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · ${pendentes} sem lançamento${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''}</p>`;
 
       if (state.processosIndicadorSelecionados && state.processosIndicadorSelecionados.length) rows = rows.filter(x => state.processosIndicadorSelecionados.includes(x.PROCESSO));
+      rows = rows.slice().sort((a,b)=>(a.NOME_INDICADOR||'').localeCompare((b.NOME_INDICADOR||''), 'pt-BR'));
       const html = rows.map(ind => {
         const lans = byInd.get(ind.ID_INDICADOR) || [];
         const historicoOrdenado = lans
@@ -1005,7 +1039,9 @@
         const metaIndicador = parseNumericValue(ind.META);
         const referenciaStatus = getReferenciaStatus(historicoOrdenado);
         const statusCard = getStatusIndicador(referenciaStatus, metaIndicador, ind.META_OPERADOR);
-        const sparkline = buildMiniSparkline(historicoOrdenado, metaIndicador);
+        const sparkline = buildMiniSparkline(filterByPeriodo(historicoOrdenado, state.filtroPeriodoIndicador), metaIndicador);
+        const mesCritico = getMesesAbaixoMeta(historicoOrdenado, metaIndicador, ind.META_OPERADOR);
+        const comparacaoTxt = buildComparacaoPeriodo(historicoOrdenado, state.filtroCompetenciaIndicador, state.filtroComparacaoCompetencia, state.filtroPeriodoIndicador);
         return `
           <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
             <div class="indicator-main">
@@ -1020,6 +1056,8 @@
             </div>
             <div class="indicator-col"><b>Miniatura de evolução</b>${sparkline}</div>
             <div class="pill-row"><span class="pill ${statusCard.className}">${statusCard.label} (${escapeHtml(referenciaStatus?.comp || 'sem competência')})</span></div>
+            <div class="indicator-col"><b>Comparação entre períodos</b><span>${escapeHtml(comparacaoTxt)}</span></div>
+            <div class="indicator-col"><b>Mês(es) abaixo da meta</b><span style="color:var(--danger);font-weight:800;">${escapeHtml(mesCritico || 'Nenhum')}</span></div>
           </article>
         `;
       }).join('');
@@ -1046,6 +1084,56 @@
     function toggleIndicadorFiltro() { state.indicadorFiltroRecolhido = !state.indicadorFiltroRecolhido; renderIndicadores(); }
     function setTaskFilter(v) { state.taskFilter = v; render(); }
 
+
+    function getPeriodoSize(periodo) {
+      return { 'Mês': 1, 'Trimestre': 3, 'Quadrimestre': 4, 'Semestre': 6, 'Ano': 12 }[periodo] || 12;
+    }
+
+    function filterByPeriodo(items, periodo) {
+      if (!periodo) return items;
+      return items.slice(-getPeriodoSize(periodo));
+    }
+
+    function calcMediaPeriodo(items, size) {
+      const vals = items.slice(-size).filter(x => x.hasData).map(x => x.numericValue);
+      if (!vals.length) return null;
+      return vals.reduce((a,b)=>a+b,0)/vals.length;
+    }
+
+    function buildComparacaoPeriodo(historico, compA, compB, periodoRecorte) {
+      if (compA && compB) {
+        const a = historico.find(h => h.COMPETENCIA === compA);
+        const b = historico.find(h => h.COMPETENCIA === compB);
+        if (!a || !b || !a.hasData || !b.hasData) return 'Dados insuficientes';
+        const diff = a.numericValue - b.numericValue;
+        const sinal = diff > 0 ? '+' : '';
+        return `${compA} vs ${compB}: ${sinal}${diff.toFixed(2)}`;
+      }
+      const size = getPeriodoSize(periodoRecorte || 'Mês');
+      const atual = calcMediaPeriodo(historico, size);
+      const anterior = calcMediaPeriodo(historico.slice(0, Math.max(0, historico.length - size)), size);
+      if (!Number.isFinite(atual) || !Number.isFinite(anterior)) return 'Dados insuficientes';
+      const diff = atual - anterior;
+      const sinal = diff > 0 ? '+' : '';
+      return `${periodoRecorte || 'Período'} atual vs anterior: ${sinal}${diff.toFixed(2)}`;
+    }
+
+    function buildComparacaoPeriodoGlobal(rows, byInd, periodoRecorte) {
+      const size = getPeriodoSize(periodoRecorte || 'Mês');
+      const diffs = rows.map(ind => {
+        const hist = (byInd.get(ind.ID_INDICADOR) || []).map(l => ({ numericValue: parseNumericValue(l.VALOR), hasData: Number.isFinite(parseNumericValue(l.VALOR)) }));
+        const atual = calcMediaPeriodo(hist, size);
+        const anterior = calcMediaPeriodo(hist.slice(0, Math.max(0, hist.length - size)), size);
+        return Number.isFinite(atual) && Number.isFinite(anterior) ? (atual - anterior) : null;
+      }).filter(v => v !== null);
+      if (!diffs.length) return 'Dados insuficientes';
+      const avg = diffs.reduce((a,b)=>a+b,0)/diffs.length;
+      return `${avg > 0 ? '+' : ''}${avg.toFixed(2)}`;
+    }
+
+    function getMesesAbaixoMeta(historico, meta, operador) {
+      return historico.filter(h => h.hasData && !compareAgainstMeta(h.numericValue, meta, operador)).map(h => h.COMPETENCIA).join(', ');
+    }
 
     function showAcompanhamento(item) {
       const unidade = item.UNIDADE || 'Unidade';
@@ -1352,7 +1440,7 @@
             </div>
           </div>
           <div class="history-list">
-            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td>${escapeHtml(h.comp)}</td><td>${escapeHtml(h.valor)}</td><td>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
+            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td class="${h.hasData && !compareAgainstMeta(h.numericValue, metaNumerica, ind.META_OPERADOR) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td>${escapeHtml(h.valor)}</td><td>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
@@ -1568,7 +1656,7 @@
         META_OPERADOR: form.META_OPERADOR.value.trim(),
         RESULTADO_ESPERADO: form.RESULTADO_ESPERADO.value.trim()
       };
-      
+
       const metaValor = Number(payload.META);
       if (!Number.isFinite(metaValor)) {
         alert('A meta precisa ser numérica.');
