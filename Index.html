@@ -102,11 +102,6 @@
     .btn.secondary { background: #fff; color: var(--primary); border: 1px solid var(--primary-3); box-shadow: none; }
 
 
-    .quick-health { margin: 0 0 18px; display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:12px; }
-    .health-card { border:1px solid var(--line); border-radius:14px; background:linear-gradient(180deg,#ffffff 0%,#f7fbff 100%); padding:12px 14px; }
-    .health-card b { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
-    .health-card strong { font-size:20px; color:var(--ink); letter-spacing:-.02em; }
-    .health-card span { display:block; margin-top:4px; font-size:12px; color:var(--muted); }
 
     .view { display: none; }
     .view.active { display: block; }
@@ -468,7 +463,7 @@
       .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .sidebar-note { position: static; margin-top: 18px; }
       .nav { grid-template-columns: repeat(4, 1fr); }
-      .hero, .kpi-grid, .acomp-grid, .quick-health { grid-template-columns: 1fr; }
+      .hero, .kpi-grid, .acomp-grid { grid-template-columns: 1fr; }
       .process-grid, .indicator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .process-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .flow-step::after { display:none; }
@@ -544,11 +539,6 @@
         </div>
       </header>
 
-      <div class="quick-health">
-        <div class="health-card"><b>Nível institucional</b><strong>Excelente</strong><span>Interface otimizada para leitura clínica e gestão.</span></div>
-        <div class="health-card"><b>Experiência de uso</b><strong>Fluxo acelerado</strong><span>Navegação, filtros e estados com feedback visual claro.</span></div>
-        <div class="health-card"><b>Prontidão mobile</b><strong>100% responsivo</strong><span>Cards, tabelas e formulários ajustados para operação em campo.</span></div>
-      </div>
 
       <section id="dashboard" class="view">
         <div class="hero">
