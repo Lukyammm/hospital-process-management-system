@@ -122,6 +122,7 @@
     .btn { border: 1px solid var(--primary); border-radius: 12px; padding: 11px 16px; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-sm); }
     .btn:hover { filter: brightness(.96); }
     .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; pointer-events: none; filter: none; transform: none; }
     .btn.secondary { background: #fff; color: var(--primary); border: 1px solid var(--primary-3); box-shadow: none; }
 
 
@@ -737,7 +738,9 @@
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
       adminData: null,
-      taskFilter: 'all'
+      taskFilter: 'all',
+      batchCorrectionRunning: false,
+      batchCorrectionKey: ''
     };
 
     const ui = {
@@ -1971,7 +1974,7 @@
                     <span>${g.items.length} ocorrência(s)</span>
                   </div>
                   ${g.canApplyBatch
-                    ? `<button class="btn secondary small" onclick='aplicarSugestaoEmLote(${JSON.stringify(g.batchPayload).replace(/'/g,"&apos;")})'>${escapeHtml(g.batchLabel || 'Aplicar sugestão para todo tema')}</button>`
+                    ? `<button class="btn secondary small" ${getBatchButtonStateAttr(g.batchPayload)} onclick='aplicarSugestaoEmLote(${JSON.stringify(g.batchPayload).replace(/'/g,"&apos;")})'>${escapeHtml(getBatchButtonLabel(g.batchPayload, g.batchLabel || 'Aplicar sugestão para todo tema'))}</button>`
                     : '<span class="pill purple">Sem sugestão em lote</span>'}
                 </div>
                 ${g.hints && g.hints.length ? `<div class="pill-row">${g.hints.map(h => `<span class="pill">${escapeHtml(h)}</span>`).join('')}</div>` : ''}
@@ -2088,6 +2091,7 @@
 
     function aplicarSugestaoEmLote(batch) {
       if (!batch || !batch.findings || !batch.findings.length) return;
+      if (state.batchCorrectionRunning) return;
       const mode = batch.mode || 'FIXED_VALUE';
       const isPerRowSuggestion = mode === 'PER_ROW_SUGGESTION';
       if (!isPerRowSuggestion && !batch.suggestedValue) return;
@@ -2101,6 +2105,11 @@
         fieldName: item.fieldName,
         newValue: isPerRowSuggestion ? (item.suggestedValue || '') : batch.suggestedValue
       })).filter(item => String(item.newValue || '').trim());
+
+      const batchKey = getBatchActionKey(batch);
+      state.batchCorrectionRunning = true;
+      state.batchCorrectionKey = batchKey;
+      showAdminDataReview();
 
       google.script.run
         .withSuccessHandler(result => {
@@ -2117,11 +2126,36 @@ Falhas: ${failed}${firstError}`);
           }
           loadAdminData();
           showAdminDataReview();
+          resetBatchCorrectionState();
         })
         .withFailureHandler(err => {
           alert('Falha ao executar correção em lote: ' + (err.message || err));
+          resetBatchCorrectionState();
+          showAdminDataReview();
         })
         .aplicarCorrecaoDadosEmLote({ updates });
+    }
+
+    function getBatchActionKey(batch) {
+      if (!batch) return '';
+      return [batch.title || '-', batch.mode || '-', batch.suggestedValue || '-', (batch.findings || []).length].join('|');
+    }
+
+    function getBatchButtonStateAttr(batch) {
+      if (!state.batchCorrectionRunning) return '';
+      return getBatchActionKey(batch) === state.batchCorrectionKey
+        ? 'disabled aria-busy="true"'
+        : 'disabled';
+    }
+
+    function getBatchButtonLabel(batch, fallback) {
+      if (!state.batchCorrectionRunning) return fallback;
+      return getBatchActionKey(batch) === state.batchCorrectionKey ? 'Aplicando...' : 'Aguarde...';
+    }
+
+    function resetBatchCorrectionState() {
+      state.batchCorrectionRunning = false;
+      state.batchCorrectionKey = '';
     }
 
     function corrigirDadoManual(finding) {
