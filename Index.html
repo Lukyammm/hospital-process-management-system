@@ -187,16 +187,18 @@
     .indicator-filter-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
     .indicator-filter-head h4 { margin:0; font-size:15px; color:var(--ink); }
     .indicator-filter-head p { margin:2px 0 0; font-size:12px; color:var(--muted); }
-    .indicator-filter-grid { display:grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap:10px; }
+    .indicator-filter-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
     .indicator-filter-field { display:grid; gap:5px; }
     .indicator-filter-field b { font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#59718c; }
     .indicator-filter-field select { width:100%; min-width:0; border:1px solid #cbdcf0; background:#fff; border-radius:11px; padding:10px 11px; font-size:13px; }
-    .indicator-quick-filters { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-    .indicator-quick-chip { border:1px solid #c7d8eb; background:#fff; border-radius:999px; padding:7px 11px; font-size:12px; color:#37506d; cursor:pointer; font-weight:600; }
-    .indicator-quick-chip.active { border-color:var(--primary); color:var(--primary); background:#eaf3ff; }
-    .indicator-filter-actions { display:flex; align-items:center; gap:8px; margin-left:auto; }
+    .indicator-filter-actions { display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap; justify-content:flex-end; }
     .btn.muted { border-color:#c7d9ec; color:#46637f; background:#fff; box-shadow:none; }
     .indicator-filter-counter { font-size:12px; color:#5b7390; font-weight:600; }
+    .indicator-group { border:1px solid #d5e4f5; border-radius:12px; padding:10px; background:#fff; }
+    .indicator-group legend{font-size:11px;font-weight:700;color:#48627d;text-transform:uppercase;letter-spacing:.05em;padding:0 6px;}
+    .indicator-active-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+    .active-tag{border:1px solid #bcd2ea;background:#eef5ff;color:#1f4e79;border-radius:999px;padding:6px 10px;font-size:12px;display:inline-flex;align-items:center;gap:8px;}
+    .active-tag button{border:none;background:transparent;cursor:pointer;color:inherit;font-weight:700;padding:0;line-height:1;}
     .content-pad { padding: 18px; }
     .review-shell { display:grid; gap:14px; }
     .review-summary { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; padding:14px; border:1px solid #d7e6f6; border-radius:14px; background:linear-gradient(180deg,#f8fbff 0%, #f1f7ff 100%); }
@@ -658,27 +660,28 @@
                 <div class="indicator-filter-head">
                   <div>
                     <h4>Filtros inteligentes de indicadores</h4>
-                    <p>Combine contexto, período e preenchimento sem perder a visão de resultado.</p>
+                    <p>Busque por processo/indicador e refine por grupos semânticos claros.</p>
                   </div>
                   <div class="indicator-filter-actions">
                     <span class="indicator-filter-counter" id="indicatorFilterCounter">0 filtros ativos</span>
                     <button class="btn muted" onclick="clearIndicadorFilters()">Limpar filtros</button>
                   </div>
                 </div>
+                <label class="indicator-process-search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" id="filtroBuscaIndicador" placeholder="Buscar processo ou indicador..."></label>
                 <div class="indicator-filter-grid">
-                  <label class="indicator-filter-field"><b>Categoria</b><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></label>
-                  <label class="indicator-filter-field"><b>Tipo</b><select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select></label>
-                  <label class="indicator-filter-field"><b>Janela de análise</b><select id="filtroPeriodoIndicador" aria-label="Filtrar indicadores por período"><option value="">Todos os períodos</option></select></label>
-                  <label class="indicator-filter-field"><b>Competência base</b><select id="filtroCompetenciaIndicador" aria-label="Filtrar indicadores por competência"><option value="">Todas as competências</option></select></label>
-                  <label class="indicator-filter-field"><b>Comparar com</b><select id="filtroComparacaoCompetencia" aria-label="Comparar com competência"><option value="">Sem comparação</option></select></label>
-                  <label class="indicator-filter-field"><b>Preenchimento</b><select id="filtroStatusPreenchimento" aria-label="Filtrar preenchimento"><option value="">Todos preenchimentos</option><option value="preenchido">Preenchido</option><option value="nao_preenchido">Não preenchido</option></select></label>
+                  <fieldset class="indicator-group"><legend>O quê</legend>
+                    <label class="indicator-filter-field"><b>Categoria</b><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></label>
+                    <label class="indicator-filter-field"><b>Tipo</b><select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select></label>
+                  </fieldset>
+                  <fieldset class="indicator-group"><legend>Quando</legend>
+                    <label class="indicator-filter-field"><b>Janela de análise</b><select id="filtroPeriodoIndicador" aria-label="Filtrar indicadores por período"><option value="">Todos os períodos</option></select></label>
+                    <label class="indicator-filter-field"><b>Competência base</b><select id="filtroCompetenciaIndicador" aria-label="Filtrar indicadores por competência"><option value="">Todas as competências</option></select></label>
+                  </fieldset>
+                  <fieldset class="indicator-group"><legend>Como está</legend>
+                    <label class="indicator-filter-field"><b>Preenchimento</b><select id="filtroStatusPreenchimento" aria-label="Filtrar preenchimento"><option value="">Todos preenchimentos</option><option value="preenchido">Preenchido</option><option value="nao_preenchido">Não preenchido</option></select></label>
+                  </fieldset>
                 </div>
-                <div class="indicator-quick-filters">
-                  <button class="indicator-quick-chip" data-quick-filter="preenchidos">Somente preenchidos</button>
-                  <button class="indicator-quick-chip" data-quick-filter="pendentes">Somente pendentes</button>
-                  <button class="indicator-quick-chip" data-quick-filter="ultimos3">Últimos 3 meses</button>
-                  <button class="indicator-quick-chip" data-quick-filter="semComparacao">Sem comparação</button>
-                </div>
+                <div class="indicator-active-tags" id="indicatorActiveTags"></div>
               </div>
               <div id="indicatorSummary" class="indicator-summary"></div>
               <div id="indicatorContext" class="indicator-context"></div>
@@ -735,7 +738,7 @@
       filtroStatusPreenchimento: '',
       processosIndicadorSelecionados: [],
       indicadorFiltroRecolhido: false,
-      processoIndicadorBusca: '',
+      buscaIndicador: '',
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
       adminData: null,
@@ -766,18 +769,16 @@
         };
         menuBtn.addEventListener('click', () => toggleSidebar());
         overlay.addEventListener('click', () => toggleSidebar(false));
+        document.getElementById('filtroBuscaIndicador').addEventListener('input', e => { state.buscaIndicador = e.target.value.trim(); renderIndicadores(); });
         document.getElementById('globalSearch').addEventListener('input', e => {
           state.search = e.target.value.toLowerCase().trim();
           render();
         });
-        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador', 'filtroTipoIndicador', 'filtroPeriodoIndicador', 'filtroCompetenciaIndicador', 'filtroComparacaoCompetencia', 'filtroStatusPreenchimento'].forEach(id => {
+        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador', 'filtroTipoIndicador', 'filtroPeriodoIndicador', 'filtroCompetenciaIndicador', 'filtroStatusPreenchimento'].forEach(id => {
           document.getElementById(id).addEventListener('change', e => {
             state[id] = e.target.value;
             render();
           });
-        });
-        document.querySelectorAll('[data-quick-filter]').forEach(btn => {
-          btn.addEventListener('click', () => applyIndicadorQuickFilter(btn.dataset.quickFilter));
         });
         const drawer = document.getElementById('drawer');
         drawer.addEventListener('click', e => {
@@ -871,8 +872,7 @@
       fillSelect('filtroTipoIndicador', unique((data.indicadores || []).map(x => x.TIPO_INDICADOR)), 'Todos os tipos');
       const competencias = unique((data.lancamentos || []).map(x => x.COMPETENCIA).filter(Boolean)).sort((a,b)=>parseCompetencia(a)-parseCompetencia(b));
       fillSelect('filtroCompetenciaIndicador', competencias, 'Todas as competências');
-      fillSelect('filtroComparacaoCompetencia', competencias, 'Sem comparação');
-      const periodos = ['Ano','Semestre','Quadrimestre','Trimestre','Mês'];
+            const periodos = ['Ano','Semestre','Quadrimestre','Trimestre','Mês'];
       fillSelect('filtroPeriodoIndicador', periodos, 'Todos os períodos');
     }
 
@@ -1040,8 +1040,9 @@
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
-      const termoBuscaProcesso = (state.processoIndicadorBusca || '').toLowerCase().trim();
-      const processosFiltrados = termoBuscaProcesso ? processos.filter(p => p.toLowerCase().includes(termoBuscaProcesso)) : processos;
+      const termoBuscaLivre = (state.buscaIndicador || '').toLowerCase().trim();
+      if (termoBuscaLivre) rows = rows.filter(r => String(r.PROCESSO||'').toLowerCase().includes(termoBuscaLivre) || String(r.NOME_INDICADOR||'').toLowerCase().includes(termoBuscaLivre));
+      const processosFiltrados = processos;
       const selecionados = state.processosIndicadorSelecionados || [];
       const selectedHtml = selecionados.length ? `
         <div class="indicator-selected">
@@ -1058,8 +1059,7 @@
           <div style="display:flex;gap:10px;align-items:center;"><button class="indicator-filter-toggle" onclick="toggleIndicadorFiltro()">${state.indicadorFiltroRecolhido ? 'Expandir filtros' : 'Recolher filtros'}</button><span class="indicator-process-count"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" stroke="currentColor" stroke-width="1.6"/></svg>${processos.length} processos encontrados</span></div>
         </div>
         <div class="indicator-process-body">
-          <label class="indicator-process-search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" placeholder="Buscar processo..." value="${escapeHtml(state.processoIndicadorBusca || '')}" oninput="setProcessoIndicadorBusca(this.value)"></label>
-          ${selectedHtml}
+${selectedHtml}
           <div class="indicator-process-tabs">${processTabsHtml}</div>
         </div>
       `;
@@ -1124,7 +1124,7 @@
     }
 
     function clearIndicadorFilters() {
-      ['filtroCategoriaIndicador','filtroTipoIndicador','filtroPeriodoIndicador','filtroCompetenciaIndicador','filtroComparacaoCompetencia','filtroStatusPreenchimento'].forEach(id => {
+      ['filtroCategoriaIndicador','filtroTipoIndicador','filtroPeriodoIndicador','filtroCompetenciaIndicador','filtroStatusPreenchimento'].forEach(id => {
         state[id] = '';
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -1132,7 +1132,7 @@
       renderIndicadores();
     }
 
-    function applyIndicadorQuickFilter(type) {
+    function applyIndicadorQuickFilter(type) { return; 
       if (type === 'preenchidos') state.filtroStatusPreenchimento = 'preenchido';
       if (type === 'pendentes') state.filtroStatusPreenchimento = 'nao_preenchido';
       if (type === 'ultimos3') state.filtroPeriodoIndicador = 'Últimos 3 meses';
@@ -1145,20 +1145,26 @@
     }
 
     function syncIndicadorFilterUi() {
-      const activeCount = ['filtroCategoriaIndicador','filtroTipoIndicador','filtroPeriodoIndicador','filtroCompetenciaIndicador','filtroComparacaoCompetencia','filtroStatusPreenchimento'].filter(k => !!state[k]).length;
+      const activeMap = getActiveIndicatorFilters();
+      const activeCount = activeMap.length;
       const counter = document.getElementById('indicatorFilterCounter');
       if (counter) counter.textContent = `${activeCount} filtro${activeCount === 1 ? '' : 's'} ativo${activeCount === 1 ? '' : 's'}`;
-      document.querySelectorAll('[data-quick-filter]').forEach(btn => {
-        const t = btn.dataset.quickFilter;
-        const active = (t === 'preenchidos' && state.filtroStatusPreenchimento === 'preenchido')
-          || (t === 'pendentes' && state.filtroStatusPreenchimento === 'nao_preenchido')
-          || (t === 'ultimos3' && state.filtroPeriodoIndicador === 'Últimos 3 meses')
-          || (t === 'semComparacao' && !state.filtroComparacaoCompetencia);
-        btn.classList.toggle('active', active);
-      });
+      const tags = document.getElementById('indicatorActiveTags');
+      if (tags) tags.innerHTML = activeMap.map(f => `<span class="active-tag">${escapeHtml(f.label)}: ${escapeHtml(f.value)} <button onclick="removeIndicadorFilter('${f.key}')">×</button></span>`).join('') || '<span class="pill">Nenhum filtro ativo</span>'; 
     }
 
-    function getIndicatorUnit(ind) {
+    
+    function getActiveIndicatorFilters() {
+      const labels = {filtroCategoriaIndicador:'Categoria',filtroTipoIndicador:'Tipo',filtroPeriodoIndicador:'Janela',filtroCompetenciaIndicador:'Competência',filtroStatusPreenchimento:'Preenchimento',buscaIndicador:'Busca'};
+      return Object.keys(labels).filter(k => state[k]).map(k => ({key:k,label:labels[k],value:state[k]}));
+    }
+    function removeIndicadorFilter(key) {
+      state[key] = '';
+      const el = document.getElementById(key);
+      if (el) el.value = '';
+      renderIndicadores();
+    }
+function getIndicatorUnit(ind) {
       return ind.UNIDADE || ind.SETOR || ind.AREA || '';
     }
     function renderFilterList(labelAll, items, selected, handler) {
