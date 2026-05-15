@@ -195,6 +195,16 @@
     .btn.muted { border-color:#c7d9ec; color:#46637f; background:#fff; box-shadow:none; }
     .indicator-filter-counter { font-size:12px; color:#5b7390; font-weight:600; }
     .content-pad { padding: 18px; }
+    .review-shell { display:grid; gap:14px; }
+    .review-summary { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; padding:14px; border:1px solid #d7e6f6; border-radius:14px; background:linear-gradient(180deg,#f8fbff 0%, #f1f7ff 100%); }
+    .review-summary h4 { margin:0; color:var(--ink); font-size:15px; }
+    .review-summary p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+    .review-badges { display:flex; gap:8px; flex-wrap:wrap; }
+    .review-group-list { display:grid; gap:10px; }
+    .review-group { border:1px solid #d8e7f6; border-radius:14px; background:#fff; padding:12px; display:grid; gap:8px; }
+    .review-group-head { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; }
+    .review-group-head b { color:var(--ink); }
+    .review-group-head span { color:var(--muted); font-size:12px; }
 
     .process-grid, .indicator-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .card {
@@ -1932,20 +1942,80 @@
       const review = (state.adminData && state.adminData.review) || { findings: [], totalFindings: 0 };
       const rows = review.findings || [];
       const badge = t => t === 'ALTO' ? 'bad' : (t === 'MEDIO' ? 'warn' : 'ok');
+      const grouped = groupFindingsByTheme(rows);
+      const counts = rows.reduce((acc, item) => {
+        const key = item.severity || 'BAIXO';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
       ui.openDrawer('Central de conferência e saneamento', 'Revise, corrija e confirme dados antes de alimentar filtros, gráficos e indicadores.', `
-        <div class="actions" style="justify-content:space-between;margin-bottom:8px">
-          <strong>${rows.length} inconsistências encontradas</strong>
-          <button class="btn small" onclick="loadAdminData()">Atualizar diagnóstico</button>
+        <div class="review-shell">
+          <div class="review-summary">
+            <div>
+              <h4>${rows.length} inconsistências encontradas</h4>
+              <p>Use ações em lote quando o problema for do mesmo tema e ajuste manualmente os casos específicos.</p>
+            </div>
+            <div class="review-badges">
+              <span class="pill bad">ALTO: ${counts.ALTO || 0}</span>
+              <span class="pill warn">MÉDIO: ${counts.MEDIO || 0}</span>
+              <span class="pill ok">BAIXO: ${counts.BAIXO || 0}</span>
+              <button class="btn small" onclick="loadAdminData()">Atualizar diagnóstico</button>
+            </div>
+          </div>
+          <div class="review-group-list">
+            ${grouped.map(g => `
+              <div class="review-group">
+                <div class="review-group-head">
+                  <div>
+                    <b>${escapeHtml(g.label)}</b>
+                    <span>${g.items.length} ocorrência(s)</span>
+                  </div>
+                  ${g.canApplyBatch ? `<button class="btn secondary small" onclick='aplicarSugestaoEmLote(${JSON.stringify(g.batchPayload).replace(/'/g,"&apos;")})'>Aplicar sugestão para todo tema</button>` : '<span class="pill purple">Sem sugestão em lote</span>'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Severidade</th><th>Aba</th><th>Linha</th><th>Campo</th><th>Problema</th><th>Valor atual</th><th>Sugestão</th><th>Ação</th></tr></thead><tbody>
         ${rows.map(r => `<tr>
           <td><span class="pill ${badge(r.severity)}">${escapeHtml(r.severity || '-')}</span></td>
           <td>${escapeHtml(r.sheetName)}</td><td>${escapeHtml(r.rowNumber)}</td><td>${escapeHtml(r.fieldName)}</td>
           <td>${escapeHtml(r.issue)}</td><td>${escapeHtml(r.currentValue || '-')}</td><td>${escapeHtml(r.suggestedValue || r.recommendation || '-')}</td>
-          <td>${r.suggestedValue ? `<button class="btn secondary small" onclick='aplicarSugestao(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Aplicar</button>` : '-'}</td>
+          <td>
+            ${r.suggestedValue ? `<button class="btn secondary small" onclick='aplicarSugestao(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Aplicar</button>` : ''}
+            <button class="btn secondary small" onclick='corrigirDadoManual(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Digitar valor</button>
+          </td>
         </tr>`).join('') || '<tr><td colspan="8" style="text-align:center">Nenhuma inconsistência encontrada.</td></tr>'}
         </tbody></table></div>
       `);
+    }
+
+    function groupFindingsByTheme(rows) {
+      const bucket = new Map();
+      rows.forEach(item => {
+        const key = [item.sheetName || '-', item.fieldName || '-', item.issue || '-'].join('|');
+        if (!bucket.has(key)) bucket.set(key, []);
+        bucket.get(key).push(item);
+      });
+      return Array.from(bucket.entries()).map(([key, items]) => {
+        const [sheetName, fieldName, issue] = key.split('|');
+        const suggestions = Array.from(new Set(items.map(it => (it.suggestedValue || '').toString().trim()).filter(Boolean)));
+        const canApplyBatch = suggestions.length === 1;
+        return {
+          label: `${sheetName} · ${fieldName} · ${issue}`,
+          items,
+          canApplyBatch,
+          batchPayload: canApplyBatch ? {
+            title: `${sheetName} / ${fieldName}`,
+            suggestedValue: suggestions[0],
+            findings: items.map(it => ({
+              sheetName: it.sheetName,
+              rowNumber: it.rowNumber,
+              fieldName: it.fieldName
+            }))
+          } : null
+        };
+      }).sort((a, b) => b.items.length - a.items.length);
     }
 
     function aplicarSugestao(finding) {
@@ -1960,6 +2030,57 @@
           rowNumber: finding.rowNumber,
           fieldName: finding.fieldName,
           newValue: finding.suggestedValue
+        });
+    }
+
+    function aplicarSugestaoEmLote(batch) {
+      if (!batch || !batch.findings || !batch.findings.length || !batch.suggestedValue) return;
+      if (!confirm(`Aplicar "${batch.suggestedValue}" para ${batch.findings.length} registros de ${batch.title}?`)) return;
+      let pending = batch.findings.length;
+      let failed = 0;
+      batch.findings.forEach(item => {
+        google.script.run
+          .withSuccessHandler(() => {
+            pending -= 1;
+            if (pending === 0) {
+              if (failed) alert(`Correção em lote concluída com ${failed} falha(s).`);
+              loadAdminData();
+              showAdminDataReview();
+            }
+          })
+          .withFailureHandler(() => {
+            failed += 1;
+            pending -= 1;
+            if (pending === 0) {
+              alert(`Correção em lote finalizada com ${failed} falha(s).`);
+              loadAdminData();
+              showAdminDataReview();
+            }
+          })
+          .aplicarCorrecaoDados({
+            sheetName: item.sheetName,
+            rowNumber: item.rowNumber,
+            fieldName: item.fieldName,
+            newValue: batch.suggestedValue
+          });
+      });
+    }
+
+    function corrigirDadoManual(finding) {
+      if (!finding) return;
+      const atual = finding.currentValue || '';
+      const sugestao = finding.suggestedValue || '';
+      const novoValor = prompt(`Digite o novo valor para ${finding.fieldName} (linha ${finding.rowNumber}):`, sugestao || atual);
+      if (novoValor === null) return;
+      google.script.run.withSuccessHandler(() => {
+        loadAdminData();
+        showAdminDataReview();
+      }).withFailureHandler(err => alert('Falha ao salvar correção manual: ' + (err.message || err)))
+        .aplicarCorrecaoDados({
+          sheetName: finding.sheetName,
+          rowNumber: finding.rowNumber,
+          fieldName: finding.fieldName,
+          newValue: novoValor
         });
     }
 window.ui = ui;
