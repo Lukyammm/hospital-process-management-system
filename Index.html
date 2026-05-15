@@ -2162,7 +2162,9 @@ Falhas: ${failed}${firstError}`);
       if (!finding) return;
       const atual = finding.currentValue || '';
       const sugestao = finding.suggestedValue || '';
-      const novoValor = prompt(`Digite o novo valor para ${finding.fieldName} (linha ${finding.rowNumber}):`, sugestao || atual);
+      const hints = buildManualCorrectionHints(finding, sugestao || atual);
+      const hintText = hints.length ? `\nSugestões:\n- ${hints.join('\n- ')}` : '';
+      const novoValor = prompt(`Digite o novo valor para ${finding.fieldName} (linha ${finding.rowNumber}):${hintText}`, sugestao || atual);
       if (novoValor === null) return;
       google.script.run.withSuccessHandler(() => {
         loadAdminData();
@@ -2174,6 +2176,45 @@ Falhas: ${failed}${firstError}`);
           fieldName: finding.fieldName,
           newValue: novoValor
         });
+    }
+
+    function buildManualCorrectionHints(finding, baseValue) {
+      if (!finding) return [];
+      const fieldName = (finding.fieldName || '').toLowerCase();
+      const value = String(baseValue || '').trim().toLowerCase();
+      if (!fieldName.includes('compet') && !value.includes('./')) return [];
+
+      const monthMap = {
+        jan: 'jan',
+        fev: 'fev',
+        mar: 'mar',
+        abr: 'abr',
+        mai: 'mai',
+        jun: 'jun',
+        jul: 'jul',
+        ago: 'ago',
+        set: 'set',
+        out: 'out',
+        nov: 'nov',
+        dez: 'dez'
+      };
+
+      const normalized = value.replace(/\s+/g, '');
+      const match = normalized.match(/^([a-zç]{2,4})\.?\/(\d{1,2})$/i);
+      if (!match) return [];
+
+      const rawMonth = match[1].toLowerCase();
+      const rawYear = match[2];
+      const month = monthMap[rawMonth] || monthMap[rawMonth.slice(0, 3)];
+      if (!month) return [];
+
+      const year2 = rawYear.padStart(2, '0').slice(-2);
+      const suggestions = new Set([
+        `${month}./${year2}`,
+        `${month}/${year2}`,
+        `${month}./20${year2}`
+      ]);
+      return Array.from(suggestions);
     }
 window.ui = ui;
     ui.init();
