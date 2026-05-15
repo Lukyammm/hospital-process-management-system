@@ -1169,18 +1169,16 @@ class AdminService {
     return rows.flatMap(row => {
       const findings = [];
       const comp = String(row.COMPETENCIA || row.COMPETÊNCIA || '').trim();
+      const normalized = this.normalizeCompetencia_(comp);
       if (!comp) {
         findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Campo de competência vazio.', 'ALTO', 'Preencher no formato MM/AAAA.'));
-      } else {
-        const normalized = this.normalizeCompetencia_(comp);
-        if (!normalized.valid) {
-          findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Competência inválida: ' + comp, 'ALTO', 'Use MM/AAAA com mês entre 01 e 12.'));
-        } else if (normalized.value !== comp) {
-          findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Competência fora do padrão: ' + comp, 'MEDIO', 'Padronizar para ' + normalized.value + '.', normalized.value));
-        }
+      } else if (!normalized.valid) {
+        findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Competência inválida: ' + comp, 'ALTO', 'Use MM/AAAA, MM/AA ou mês abreviado (ex.: abr./25).'));
+      } else if (normalized.value !== comp) {
+        findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Competência fora do padrão: ' + comp, 'MEDIO', 'Padronizar para ' + normalized.value + '.', normalized.value));
       }
-      const ano = Number(comp.split('/')[1]);
-      if (comp && (!ano || ano < 2000 || ano > 2100)) {
+      const ano = normalized.year;
+      if (comp && normalized.valid && (ano < 2000 || ano > 2100)) {
         findings.push(this.buildFinding_(SIGEP.sheets.lancamentos, row, 'COMPETENCIA', 'Ano de competência fora da faixa esperada: ' + comp, 'ALTO', 'Ajustar para ano válido (2000-2100).'));
       }
       if (!String(row.ID_INDICADOR || '').trim()) {
@@ -1209,13 +1207,43 @@ class AdminService {
   }
 
   normalizeCompetencia_(raw) {
-    const s = String(raw || '').trim().replace(/\s+/g, '');
-    const m = s.match(/^(\d{1,2})[\/-](\d{4})$/);
-    if (!m) return { valid: false, value: s };
-    const mes = Number(m[1]);
-    const ano = Number(m[2]);
-    if (mes < 1 || mes > 12 || ano < 2000 || ano > 2100) return { valid: false, value: s };
-    return { valid: true, value: String(mes).padStart(2, '0') + '/' + String(ano) };
+    const s = String(raw || '').trim();
+    if (!s) return { valid: false, value: '', month: null, year: null };
+
+    const compact = s.replace(/\s+/g, '');
+    const monthMap = {
+      jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+      jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12
+    };
+
+    let month = null;
+    let year = null;
+
+    const numeric = compact.match(/^(\d{1,2})[\/-](\d{2}|\d{4})$/);
+    if (numeric) {
+      month = Number(numeric[1]);
+      year = Number(numeric[2]);
+    } else {
+      const textual = compact.toLowerCase().match(/^([a-zç]{3})\.?[\/-]?(\d{2}|\d{4})$/i);
+      if (textual && monthMap[textual[1]]) {
+        month = monthMap[textual[1]];
+        year = Number(textual[2]);
+      }
+    }
+
+    if (!month || !year || month < 1 || month > 12) {
+      return { valid: false, value: compact, month: month || null, year: year || null };
+    }
+
+    if (year < 100) {
+      year += year >= 70 ? 1900 : 2000;
+    }
+
+    if (year < 2000 || year > 2100) {
+      return { valid: false, value: compact, month, year };
+    }
+
+    return { valid: true, value: String(month).padStart(2, '0') + '/' + String(year), month, year };
   }
 
   buildFinding_(sheetName, row, fieldName, issue, severity, recommendation, suggestedValue) {
