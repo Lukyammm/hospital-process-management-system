@@ -615,8 +615,16 @@
     .drawer-body::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#c8d9eb,#a8c0d8); border-radius: 999px; border:2px solid #f2f6fb; }
     .drawer-body::-webkit-scrollbar-track { background: transparent; }
     .indicator-modal { display: grid; gap: 14px; }
-    .indicator-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
-    .indicator-code { color: var(--primary); font-size: 13px; font-weight: 700; }
+    .indicator-head { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:start; padding:16px; border:1px solid #d7e5f4; border-radius:16px; background:linear-gradient(130deg,#f7fbff 0%,#eef5ff 100%); }
+    .indicator-head-main { display:grid; gap:8px; }
+    .indicator-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; align-items:flex-start; }
+    .indicator-actions .btn { min-width: 148px; justify-content:center; }
+    .indicator-code { display:inline-flex; align-items:center; gap:8px; width:max-content; padding:6px 10px; border-radius:999px; border:1px solid #caddf3; background:#fff; color:#2f5d8b; font-size:12px; font-weight:700; letter-spacing:.03em; }
+    .indicator-subtitle { margin:0; color:#4f6884; font-size:13px; }
+    .indicator-kpi-ribbon { display:grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap:8px; }
+    .indicator-kpi-chip{ border:1px solid #d2e2f2; background:#fff; border-radius:12px; padding:9px 10px; }
+    .indicator-kpi-chip b{display:block; font-size:10px; color:#617b98; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+    .indicator-kpi-chip span{font-size:14px; font-weight:800; color:#183d62;}
     .meta-grid { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:10px; }
     .meta-item { border:1px solid #d4e2f1; border-radius: 12px; padding:12px; background:linear-gradient(180deg,#fff 0%, #fbfdff 100%); }
     .meta-item b { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; margin-bottom:4px; letter-spacing:.04em; }
@@ -801,6 +809,10 @@
       .search { width: 100%; }
     }
 
+    [data-theme="dark"] .indicator-head { background:linear-gradient(145deg,#13233b 0%,#101f34 100%); border-color:#315072; }
+    [data-theme="dark"] .indicator-code,
+    [data-theme="dark"] .indicator-kpi-chip { background:#14263e; border-color:#365576; color:#cde1fa; }
+    [data-theme="dark"] .indicator-kpi-chip span { color:#f2f7ff; }
     @media (max-width: 1100px) {
       .mobile-menu-btn { display:inline-flex; align-items:center; gap:8px; }
       .app { grid-template-columns: 1fr; }
@@ -1822,12 +1834,20 @@ function getIndicatorUnit(ind) {
       ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
         <div class="indicator-modal">
           <div class="indicator-head">
-            <div>
-              <div class="indicator-code">${escapeHtml(ind.ID_INDICADOR || 'IND')} · ${escapeHtml(ind.PROCESSO || '-')}</div>
+            <div class="indicator-head-main">
+              <div class="indicator-code">Indicador ${escapeHtml(ind.ID_INDICADOR || 'IND')} · ${escapeHtml(ind.PROCESSO || '-')}</div>
               <h4 class="section-title">${escapeHtml(ind.NOME_INDICADOR || 'Indicador')}</h4>
+              <p class="indicator-subtitle">Painel executivo com desempenho atual, variação mensal e tendência histórica.</p>
+              <div class="indicator-kpi-ribbon">
+                <div class="indicator-kpi-chip"><b>Última competência</b><span>${escapeHtml(periodo)}</span></div>
+                <div class="indicator-kpi-chip"><b>Status</b><span>${escapeHtml(status.label)}</span></div>
+                <div class="indicator-kpi-chip"><b>Variação mensal</b><span>${escapeHtml(variacao)}</span></div>
+              </div>
             </div>
-            <button class="btn secondary icon" onclick='abrirEdicaoLancamentoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Lançar dados</button>
-            <button class="btn secondary icon" onclick='abrirEdicaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+            <div class="indicator-actions">
+              <button class="btn secondary icon" onclick='abrirEdicaoLancamentoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Lançar dados</button>
+              <button class="btn secondary icon" onclick='abrirEdicaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar indicador</button>
+            </div>
           </div>
           <div class="meta-grid">
             <div class="meta-item"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
@@ -2046,16 +2066,30 @@ function getIndicatorUnit(ind) {
       if (!host) return;
       host.innerHTML = `
         <form class="edit-form" onsubmit="salvarEdicaoIndicador(event, '${escapeHtml(ind.ID_INDICADOR || '')}')">
-          <h5>Editar indicador</h5>
-          <label>Nome do indicador<input name="NOME_INDICADOR" value="${escapeHtml(ind.NOME_INDICADOR || '')}" required></label>
-          <label>Tipo do indicador<input name="TIPO_INDICADOR" value="${escapeHtml(ind.TIPO_INDICADOR || '')}" required></label>
-          <label>Meta (numérica)<input name="META" type="number" inputmode="decimal" step="any" value="${escapeHtml(ind.META || '')}" required></label>
-          <label>Regra da meta
-            <select name="META_OPERADOR" required>
-              ${['>=', '>', '<=', '<', '='].map(op => `<option value="${op}" ${String(ind.META_OPERADOR || '>=').trim() === op ? 'selected' : ''}>${op}</option>`).join('')}
-            </select>
-          </label>
-          <label>Observações/resultado esperado<textarea name="RESULTADO_ESPERADO">${escapeHtml(ind.RESULTADO_ESPERADO || '')}</textarea></label>
+          <div class="edit-form-head">
+            <div><h5>Editar indicador</h5><p>Ajuste os campos estratégicos para manter leitura clara no painel.</p></div>
+            <span class="edit-badge">Governança</span>
+          </div>
+          <div class="edit-form-grid">
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Identificação</p>
+              <label>Nome do indicador<input name="NOME_INDICADOR" value="${escapeHtml(ind.NOME_INDICADOR || '')}" required></label>
+              <label>Tipo do indicador<input name="TIPO_INDICADOR" value="${escapeHtml(ind.TIPO_INDICADOR || '')}" required></label>
+            </div>
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Meta e regra</p>
+              <label>Meta (numérica)<input name="META" type="number" inputmode="decimal" step="any" value="${escapeHtml(ind.META || '')}" required></label>
+              <label>Regra da meta
+                <select name="META_OPERADOR" required>
+                  ${['>=', '>', '<=', '<', '='].map(op => `<option value="${op}" ${String(ind.META_OPERADOR || '>=').trim() === op ? 'selected' : ''}>${op}</option>`).join('')}
+                </select>
+              </label>
+            </div>
+            <div class="edit-form-group full">
+              <p class="edit-form-group-title">Contexto gerencial</p>
+              <label>Observações/resultado esperado<textarea name="RESULTADO_ESPERADO">${escapeHtml(ind.RESULTADO_ESPERADO || '')}</textarea></label>
+            </div>
+          </div>
           <div class="edit-form-actions">
             <button type="button" class="btn secondary" onclick="fecharEdicaoIndicador()">Cancelar</button>
             <button type="submit" class="btn">Salvar</button>
