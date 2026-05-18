@@ -683,8 +683,6 @@
                 </div>
                 <div class="indicator-active-tags" id="indicatorActiveTags"></div>
               </div>
-              <div id="indicatorSummary" class="indicator-summary"></div>
-              <div id="indicatorContext" class="indicator-context"></div>
               <div id="indicatorProcessTabsShell" class="indicator-process-shell"></div>
               <div id="indicatorGrid" class="indicator-list"></div>
             </div>
@@ -1078,14 +1076,6 @@ ${selectedHtml}
         return lans.some(l => String(l.VALOR || '').trim() !== '');
       }).length;
       const pendentes = Math.max(total - preenchidos, 0);
-      document.getElementById('indicatorSummary').innerHTML = `
-        <div class="summary-card"><b>Total de indicadores</b><strong>${total}</strong><span>Registros após filtros e pesquisa</span></div>
-        <div class="summary-card"><b>Com lançamento</b><strong>${preenchidos}</strong><span>Indicadores com algum valor preenchido</span></div>
-        <div class="summary-card"><b>Não preenchidos</b><strong>${pendentes}</strong><span>Sem valor informado para o recorte</span></div>
-        <div class="summary-card"><b>Comparação de período</b><strong>${escapeHtml(buildComparacaoPeriodoGlobal(rows, byInd, state.filtroPeriodoIndicador))}</strong><span>Recorte atual versus período anterior equivalente</span></div>
-      `;
-      document.getElementById('indicatorContext').innerHTML = `<h4>${escapeHtml(state.unidadeIndicadorSelecionada || 'Visão geral institucional')}</h4><p>${total} indicadores · ${preenchidos} com lançamento · ${pendentes} sem lançamento${state.categoriaIndicadorSelecionada ? ` · categoria ${escapeHtml(state.categoriaIndicadorSelecionada)}` : ''}</p>`;
-
       if (state.processosIndicadorSelecionados && state.processosIndicadorSelecionados.length) rows = rows.filter(x => state.processosIndicadorSelecionados.includes(x.PROCESSO));
       rows = rows.slice().sort((a,b)=>(a.NOME_INDICADOR||'').localeCompare((b.NOME_INDICADOR||''), 'pt-BR'));
       const html = rows.map(ind => {
