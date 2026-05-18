@@ -440,8 +440,8 @@
     .indicator-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .indicator-col b { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px; }
     .indicator-col span { font-size:13px; font-weight:700; color:var(--text); }
-    .sparkline { width:100%; height:168px; border:1px solid #d8e6f7; border-radius:12px; background:linear-gradient(180deg,#fbfdff 0%,#fff 100%); padding:6px 8px; }
-    .sparkline svg { width:100%; height:100%; display:block; }
+    .sparkline { width:100%; min-height:132px; border:1px solid #d8e6f7; border-radius:12px; background:linear-gradient(180deg,#fbfdff 0%,#fff 100%); padding:6px 8px; overflow:hidden; }
+    .sparkline svg { width:100%; height:auto; min-height:118px; display:block; aspect-ratio:440 / 168; }
 
     .drawer-body { max-height: calc(92vh - 120px); overflow: auto; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--modal-scroll) transparent; }
     .drawer-body::-webkit-scrollbar { width: 10px; }
@@ -1678,7 +1678,7 @@ function getIndicatorUnit(ind) {
         const showXLabel = true;
         return `<circle cx="${pt.x}" cy="${pt.y}" r="${pt.comp===periodoAtual?4.4:3.8}" fill="${pt.comp===periodoAtual?'#1f6fbd':'#2b79c2'}" stroke="#fff" stroke-width="1.8"><title>${escapeHtml(label)}: ${escapeHtml(pt.valor)}</title></circle><text x="${pt.x}" y="${pt.y-12}" text-anchor="middle" font-size="11" fill="#294866">${escapeHtml(formatNumberBR(pt.numericValue))}</text>${showXLabel ? `<text x="${pt.x}" y="${h-pY+18}" text-anchor="middle" font-size="11" fill="#6d8199">${escapeHtml(label)}</text>` : ''}`;
       }).join('');
-      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6caee8" stop-opacity=".24"/><stop offset="100%" stop-color="#6caee8" stop-opacity=".02"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h-pY}" x2="${w-pX}" y2="${h-pY}" stroke="#cfdceb" stroke-width="1.2"/>${metaLine}<polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="#2b79c2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>${points}</svg>`;
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6caee8" stop-opacity=".24"/><stop offset="100%" stop-color="#6caee8" stop-opacity=".02"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h-pY}" x2="${w-pX}" y2="${h-pY}" stroke="#cfdceb" stroke-width="1.2"/>${metaLine}<polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="#2b79c2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>${points}</svg>`;
     }
     function formatNumberBR(value) { return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
     function resolvePeriodoLabel(item) {
@@ -1719,7 +1719,7 @@ function getIndicatorUnit(ind) {
 
     function getPeriodoChartLabel(comp) {
       const label = String(comp || '').trim();
-      return label || 'Sem período';
+      return label || '';
     }
 
     function parseNumericValue(raw) { const txt=String(raw||'').trim(); if(!txt) return null; const n=Number(txt.replace(/%/g,'').replace('.', '').replace(',', '.')); return Number.isFinite(n)?n:null; }
@@ -1741,7 +1741,7 @@ function getIndicatorUnit(ind) {
     function buildMiniSparkline(historico, meta){
       const pontos = historico.filter(h => h.hasData);
       if (!pontos.length) {
-        return '<div class="sparkline"><svg viewBox="0 0 320 108" preserveAspectRatio="none"><rect x="44" y="14" width="262" height="74" fill="none" stroke="#e6eef8"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#8da3ba">Aguardando histórico para desenhar tendência</text></svg></div>';
+        return '<div class="sparkline"><svg viewBox="0 0 320 108" preserveAspectRatio="xMidYMid meet"><rect x="44" y="14" width="262" height="74" fill="none" stroke="#e6eef8"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#8da3ba">Aguardando histórico para desenhar tendência</text></svg></div>';
       }
 
       const width = 440, height = 168;
@@ -1802,7 +1802,7 @@ function getIndicatorUnit(ind) {
         ? `<line x1="${pad.left}" y1="${toY(meta).toFixed(2)}" x2="${width - pad.right}" y2="${toY(meta).toFixed(2)}" stroke="#b9891d" stroke-width="1.1" stroke-dasharray="4 3"/>`
         : '';
 
-      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${grid}<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><text x="${pad.left - 6}" y="${pad.top + 4}" text-anchor="end" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelTop)}</text><text x="${pad.left - 6}" y="${height - pad.bottom}" text-anchor="end" dominant-baseline="ideographic" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelBottom)}</text>${metaLine}<path d="${path}" fill="none" stroke="#2b79c2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>${points}</svg></div>`;
+      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${grid}<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><text x="${pad.left - 6}" y="${pad.top + 4}" text-anchor="end" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelTop)}</text><text x="${pad.left - 6}" y="${height - pad.bottom}" text-anchor="end" dominant-baseline="ideographic" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelBottom)}</text>${metaLine}<path d="${path}" fill="none" stroke="#2b79c2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>${points}</svg></div>`;
     }
 
     function abrirEdicaoIndicador(ind) {
