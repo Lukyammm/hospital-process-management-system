@@ -212,20 +212,27 @@
     .filters { display: flex; gap: 12px; flex-wrap: wrap; }
     .panel-head .filters { margin-left: auto; }
     .filters select { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 12px; outline: none; color: var(--text); min-width: 150px; }
-    .indicator-filter-shell { margin-bottom: 18px; border: 1px solid #cfe0f2; border-radius: 16px; background: linear-gradient(180deg, #fafdff 0%, #f3f8ff 100%); padding: 14px; box-shadow: 0 12px 30px rgba(16, 48, 81, .08); }
+    .indicator-head-clean { background:#fff; border:none; box-shadow:none; padding:8px 0 18px; position:static; }
+    .indicator-advanced-toggle { border-color:#d6e3f1; color:#334e68; background:#f8fbff; }
+    .indicator-search-main { position:relative; display:block; margin-bottom:14px; }
+    .indicator-search-main input { width:100%; border:none; background:#fff; border-radius:14px; padding:16px 16px 16px 46px; box-shadow:0 8px 20px rgba(15,39,68,.08); font-size:14px; }
+    .indicator-search-main svg { position:absolute; left:16px; top:50%; transform:translateY(-50%); width:18px; color:#7a8fa8; }
+    .indicator-filter-shell { margin-bottom: 14px; border: 1px solid #e4edf6; border-radius: 14px; background: #fbfdff; padding: 16px; box-shadow:none; }
+    .indicator-filter-shell.is-hidden { display:none; }
+    .indicator-workspace { display:grid; grid-template-columns: 310px 1fr; gap:16px; align-items:start; }
     .indicator-filter-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
     .indicator-filter-head h4 { margin:0; font-size:15px; color:var(--ink); }
     .indicator-filter-head p { margin:2px 0 0; font-size:12px; color:var(--muted); }
-    .indicator-filter-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
+    .indicator-filter-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:12px; }
     .indicator-filter-field { display:grid; gap:5px; }
     .indicator-filter-field b { font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#59718c; }
     .indicator-filter-field select { width:100%; min-width:0; border:1px solid #cbdcf0; background:#fff; border-radius:11px; padding:10px 11px; font-size:13px; }
     .indicator-filter-actions { display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap; justify-content:flex-end; }
     .btn.muted { border-color:#c7d9ec; color:#46637f; background:#fff; box-shadow:none; }
     .indicator-filter-counter { font-size:12px; color:#5b7390; font-weight:600; }
-    .indicator-group { border:1px solid #d5e4f5; border-radius:12px; padding:10px; background:#fff; }
+    
     .indicator-group legend{font-size:11px;font-weight:700;color:#48627d;text-transform:uppercase;letter-spacing:.05em;padding:0 6px;}
-    .indicator-active-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+    .indicator-active-tags{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px;}
     .active-tag{border:1px solid #bcd2ea;background:#eef5ff;color:#1f4e79;border-radius:999px;padding:6px 10px;font-size:12px;display:inline-flex;align-items:center;gap:8px;}
     .active-tag button{border:none;background:transparent;cursor:pointer;color:inherit;font-weight:700;padding:0;line-height:1;}
     .content-pad { padding: 18px; }
@@ -398,7 +405,7 @@
     .indicator-context { border:1px solid var(--line); background:var(--surface-soft); border-radius:14px; padding:14px; }
     .indicator-context h4 { margin:0 0 6px; font-size:17px; color:var(--ink); }
     .indicator-context p { margin:0; color:var(--muted); font-size:13px; }
-    .indicator-list { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:12px; }
+    .indicator-list { display:grid; grid-template-columns: 1fr; gap:10px; }
     .indicator-row { border:1px solid var(--line); border-radius:14px; padding:14px; background:#fff; cursor:pointer; transition:.18s ease; display:grid; gap:10px; }
     .indicator-row:hover { border-color:var(--line-strong); box-shadow:var(--shadow-sm); }
     .indicator-row.hit { border-color:#bfe8d0; background:linear-gradient(180deg,#f6fff9 0%,#ffffff 100%); }
@@ -688,40 +695,28 @@
 
       <section id="indicadores" class="view">
         <div class="panel">
-          <div class="panel-head">
-            <div><h3>Painel de indicadores</h3><span>Visão analítica por categoria, processo e cobertura mensal</span></div>
+          <div class="panel-head indicator-head-clean">
+            <div><h3>Indicadores</h3><span>Monitoramento analítico hospitalar com foco operacional</span></div>
+            <button class="btn secondary indicator-advanced-toggle" onclick="toggleIndicadorFiltro()">Filtros avançados</button>
           </div>
           <div class="content-pad indicators-layout">
             <div class="indicator-main-area">
-              <div class="indicator-filter-shell">
+              <label class="indicator-search-main"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" id="filtroBuscaIndicador" placeholder="Buscar indicador, processo ou unidade..."></label>
+              <div class="indicator-filter-shell" id="indicatorFilterShell">
                 <div class="indicator-filter-head">
-                  <div>
-                    <h4>Filtros inteligentes de indicadores</h4>
-                    <p>Busque por processo/indicador e refine por grupos semânticos claros.</p>
-                  </div>
-                  <div class="indicator-filter-actions">
-                    <span class="indicator-filter-counter" id="indicatorFilterCounter">0 filtros ativos</span>
-                    <button class="btn muted" onclick="clearIndicadorFilters()">Limpar filtros</button>
-                  </div>
+                  <div><h4>Filtros avançados</h4><p>Refine sua visualização sem poluir a tela principal.</p></div>
+                  <div class="indicator-filter-actions"><span class="indicator-filter-counter" id="indicatorFilterCounter">0 filtros ativos</span><button class="btn muted" onclick="clearIndicadorFilters()">Limpar</button></div>
                 </div>
-                <label class="indicator-process-search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" id="filtroBuscaIndicador" placeholder="Buscar processo ou indicador..."></label>
                 <div class="indicator-filter-grid">
-                  <fieldset class="indicator-group"><legend>O quê</legend>
-                    <label class="indicator-filter-field"><b>Categoria</b><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></label>
-                    <label class="indicator-filter-field"><b>Tipo</b><select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select></label>
-                  </fieldset>
-                  <fieldset class="indicator-group"><legend>Quando</legend>
-                    <label class="indicator-filter-field"><b>Janela de análise</b><select id="filtroPeriodoIndicador" aria-label="Filtrar indicadores por período"><option value="">Todos os períodos</option></select></label>
-                    <label class="indicator-filter-field"><b>Competência base</b><select id="filtroCompetenciaIndicador" aria-label="Filtrar indicadores por competência"><option value="">Todas as competências</option></select></label>
-                  </fieldset>
-                  <fieldset class="indicator-group"><legend>Como está</legend>
-                    <label class="indicator-filter-field"><b>Preenchimento</b><select id="filtroStatusPreenchimento" aria-label="Filtrar preenchimento"><option value="">Todos preenchimentos</option><option value="preenchido">Preenchido</option><option value="nao_preenchido">Não preenchido</option></select></label>
-                  </fieldset>
+                  <label class="indicator-filter-field"><b>Categoria</b><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></label>
+                  <label class="indicator-filter-field"><b>Tipo</b><select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select></label>
+                  <label class="indicator-filter-field"><b>Período</b><select id="filtroPeriodoIndicador" aria-label="Filtrar indicadores por período"><option value="">Todos os períodos</option></select></label>
+                  <label class="indicator-filter-field"><b>Competência</b><select id="filtroCompetenciaIndicador" aria-label="Filtrar indicadores por competência"><option value="">Todas as competências</option></select></label>
+                  <label class="indicator-filter-field"><b>Preenchimento</b><select id="filtroStatusPreenchimento" aria-label="Filtrar preenchimento"><option value="">Todos</option><option value="preenchido">Preenchido</option><option value="nao_preenchido">Não preenchido</option></select></label>
                 </div>
-                <div class="indicator-active-tags" id="indicatorActiveTags"></div>
               </div>
-              <div id="indicatorProcessTabsShell" class="indicator-process-shell"></div>
-              <div id="indicatorGrid" class="indicator-list"></div>
+              <div class="indicator-active-tags" id="indicatorActiveTags"></div>
+              <div class="indicator-workspace"><div id="indicatorProcessTabsShell" class="indicator-process-shell"></div><div id="indicatorGrid" class="indicator-list"></div></div>
             </div>
           </div>
         </div>
@@ -1132,17 +1127,9 @@
       const processTabsHtml = processosFiltrados.length
         ? processosFiltrados.map(p => `<button class="indicator-chip ${selecionados.includes(p) ? 'state-selected' : ''}" onclick="toggleProcessoIndicador('${escapeHtml(p)}')"><span class="indicator-chip-label">${escapeHtml(p)}</span><span class="indicator-chip-count">${processoCounts[p] || 0}</span></button>`).join('')
         : '<span class="pill">Sem processos para os filtros atuais</span>';
-      document.getElementById('indicatorProcessTabsShell').className = `indicator-process-shell ${state.indicadorFiltroRecolhido ? 'is-collapsed' : ''}`;
       document.getElementById('indicatorProcessTabsShell').innerHTML = `
-        <div class="indicator-process-head">
-          <div class="indicator-process-title-wrap"><div class="indicator-process-icon">${icons.process}</div><div><h4>Processos</h4><p>Selecione um ou mais processos para focar os indicadores</p></div></div>
-          <div style="display:flex;gap:10px;align-items:center;"><button class="indicator-filter-toggle" onclick="toggleIndicadorFiltro()">${state.indicadorFiltroRecolhido ? 'Expandir filtros' : 'Recolher filtros'}</button><span class="indicator-process-count"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" stroke="currentColor" stroke-width="1.6"/></svg>${processos.length} processos encontrados</span></div>
-        </div>
-        <div class="indicator-process-body">
-${selectedHtml}
-          <div class="indicator-process-tabs">${processTabsHtml}</div>
-        </div>
-      `;
+        <div class="indicator-process-head"><h4>Processos</h4><span class="indicator-process-count">${processos.length} itens</span></div>
+        <div class="indicator-process-body">${selectedHtml}<div class="indicator-process-tabs">${processTabsHtml}</div></div>`;
 
       if (state.filtroStatusPreenchimento) {
         rows = rows.filter(ind => {
@@ -1253,7 +1240,7 @@ function getIndicatorUnit(ind) {
       state.processosIndicadorSelecionados = Array.from(list);
       renderIndicadores();
     }
-    function toggleIndicadorFiltro() { state.indicadorFiltroRecolhido = !state.indicadorFiltroRecolhido; renderIndicadores(); }
+    function toggleIndicadorFiltro() { state.indicadorFiltroRecolhido = !state.indicadorFiltroRecolhido; const shell=document.getElementById("indicatorFilterShell"); if(shell) shell.classList.toggle("is-hidden", state.indicadorFiltroRecolhido); }
     function setTaskFilter(v) { state.taskFilter = v; render(); }
 
 
