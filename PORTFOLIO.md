@@ -1,105 +1,123 @@
-# SIGEP-HUC — Sistema de Gestão Estratégica de Processos Hospitalares
+# SIGEP-HUC 🏥
+## Sistema de Gestão Estratégica de Processos Hospitalares
 
-> Uma solução web operacional construída sobre Google Apps Script + Google Sheets para transformar controle manual em gestão orientada por dados.
-
----
-
-## ✨ Introdução estratégica
-
-O **SIGEP-HUC** foi concebido para resolver um desafio comum em ambientes hospitalares: informações críticas dispersas em planilhas complexas, com alto esforço operacional e baixa previsibilidade para tomada de decisão.
-
-A proposta foi clara: manter a praticidade do ecossistema Google, mas elevar o nível de operação para um produto digital real — com experiência de uso moderna, fluxo padronizado, governança e rastreabilidade.
+> **Uma solução operacional real** para transformar controle manual em gestão inteligente, com dados organizados, automação e experiência de uso moderna.
 
 ---
 
-## 🏥 Contexto do problema operacional
+## ✨ Introdução estratégica e visual
 
-No cenário anterior, as equipes lidavam com:
+O SIGEP-HUC foi estruturado para atender uma realidade comum em instituições de saúde: operação intensa, múltiplos setores e necessidade de decisões rápidas com alto grau de confiabilidade.
 
-- controles em abas extensas e visualmente heterogêneas;
-- dependência de conhecimento tácito para atualizar dados;
-- baixa padronização de status e etapas;
-- dificuldade para consolidar visão executiva entre setores.
+A proposta não foi apenas “digitalizar planilhas”. Foi criar um **produto interno com padrão profissional**, capaz de sustentar rotina diária, governança de dados e leitura executiva clara.
 
-Em um contexto hospitalar, esse tipo de fragilidade afeta diretamente agilidade, qualidade da gestão e segurança da informação operacional.
+---
+
+## 🧩 Contexto do problema operacional
+
+No cenário anterior, os dados estavam espalhados em controles manuais, com baixa padronização entre áreas e forte dependência de conferência humana.  
+Esse formato gerava gargalos práticos:
+
+- atualização inconsistente entre equipes;
+- dificuldade para visualizar pendências em tempo real;
+- retrabalho em consolidação de status;
+- risco de erro humano em processos críticos.
+
+Em ambiente hospitalar, esse tipo de fragilidade compromete agilidade, previsibilidade e qualidade de gestão.
 
 ---
 
 ## 🔄 Como o sistema melhorou o processo
 
-Com o SIGEP-HUC, a operação saiu da lógica “planilha como tela” para “planilha como banco + WebApp como sistema”.
+Com o SIGEP-HUC, a organização passou a operar com uma lógica mais robusta:
 
-### Ganhos práticos
+- **Google Sheets como base de dados** (estrutura e persistência);
+- **WebApp como camada operacional** (uso diário, atualização e monitoramento);
+- **regras de negócio no backend** (permissões, validações e segurança de escrita).
 
-- **Padronização do fluxo operacional** com regras claras de atualização.
-- **Centralização da informação** em módulos organizados por contexto.
-- **Redução de erros manuais** com validação e escrita controlada.
-- **Rastreabilidade das mudanças** por histórico/auditoria.
-- **Leitura executiva mais rápida** via dashboard e filtros inteligentes.
+### Melhorias perceptíveis na rotina
+
+- fluxo de trabalho mais padronizado;
+- redução de falhas manuais;
+- ganho de velocidade para localizar e agir sobre pendências;
+- visão consolidada para coordenação e gestão.
 
 ---
 
-## 🧠 Diferenciais técnicos e funcionais
+## 🛠️ Diferenciais técnicos e funcionais
 
-- Arquitetura com separação entre **migração de dados**, **serviços de negócio** e **interface**.
-- Organização por classes no backend para manutenção sustentável.
-- Uso de **LockService** para evitar concorrência em gravações críticas.
-- Uso de **CacheService** para melhorar performance de leitura.
-- Modelo de permissões com foco em governança por perfil.
-- Interface responsiva, com cards, estados visuais e linguagem de produto.
+- Arquitetura simples, sustentável e aderente ao ecossistema Google;
+- Controle de concorrência em gravações com `LockService`;
+- Otimização de leitura com `CacheService`;
+- Módulos organizados por contexto operacional (processos, acompanhamento, indicadores);
+- Interface administrativa para governança de dados e usuários;
+- Design de interface com linguagem institucional, foco em clareza e produtividade.
 
 ---
 
 ## 🤖 Principais automações
 
-- Normalização das bases a partir de estruturas legadas.
-- Atualizações em lote para operações com volume.
-- Rotinas de verificação de consistência de dados.
-- Snapshot analítico para apoio ao monitoramento gerencial.
-- Registro de eventos relevantes em histórico.
+- Atualizações em lote para tarefas repetitivas;
+- Consolidação de dados para dashboard executivo;
+- Verificações de consistência da base;
+- Rotinas de apoio administrativo;
+- Registro de histórico para rastreabilidade de eventos.
 
 ---
 
 ## 📈 Resultados e impacto
 
-Resultados observados no uso operacional do sistema:
+### Impacto operacional observado
 
-- menor tempo para localizar pendências e atualizar status;
-- redução de retrabalho entre áreas;
-- maior confiança no dado para reuniões de gestão;
-- visibilidade ampliada sobre evolução de processos e indicadores;
-- operação mais estável mesmo com múltiplos usuários.
+- **Menos retrabalho** entre áreas assistenciais e administrativas;
+- **Mais confiabilidade** na informação usada em reuniões gerenciais;
+- **Maior previsibilidade** do andamento de processos;
+- **Redução do esforço manual** em tarefas de acompanhamento;
+- **Melhor experiência de uso** para equipes não técnicas.
 
-> Impacto central: o time passa a gastar menos energia com manutenção manual de planilhas e mais energia com análise e execução.
+### Impacto de produto
+
+- solução com cara de sistema real (não planilha improvisada);
+- escalável para novas regras, módulos e automações;
+- preparada para evolução contínua com baixo custo de manutenção.
 
 ---
 
-## 🛠️ Tecnologias utilizadas
+## 🧰 Tecnologias utilizadas
 
-- **Google Apps Script**
-- **Google Sheets**
-- **HTML5 / CSS3 / JavaScript (Vanilla)**
-- **HtmlService, CacheService e LockService**
+- Google Apps Script
+- Google Sheets
+- HTML5
+- CSS3
+- JavaScript (Vanilla)
+- HtmlService
+- CacheService
+- LockService
 
 ---
 
 ## 🖼️ Prints / mockups destacados
 
-> Espaço reservado para evidências visuais do produto em uso.
+> Substitua pelos prints reais do ambiente para fortalecer a apresentação.
 
-### 1) Visão executiva
-![Visão executiva do SIGEP-HUC](./docs/images/portfolio-dashboard.png)
+### Dashboard executivo 📊
+![Dashboard executivo](./docs/images/portfolio-dashboard-executivo.png)
 
-### 2) Gestão operacional por unidade
-![Gestão operacional por unidade](./docs/images/portfolio-unidades.png)
+### Operação por unidade 🧭
+![Operação por unidade](./docs/images/portfolio-operacao-unidade.png)
 
-### 3) Painel de indicadores
-![Painel de indicadores](./docs/images/portfolio-indicadores.png)
+### Painel de indicadores 🎯
+![Painel de indicadores](./docs/images/portfolio-painel-indicadores.png)
+
+### Gestão administrativa 🔐
+![Gestão administrativa](./docs/images/portfolio-admin.png)
 
 ---
 
 ## ✅ Conclusão (produto e solução real)
 
-O SIGEP-HUC demonstra como é possível construir um sistema corporativo robusto sem stack excessivamente complexa, aproveitando infraestrutura Google já disponível e adicionando camada de produto, governança e experiência do usuário.
+O SIGEP-HUC mostra como construir um sistema institucional sólido usando ferramentas já presentes no ecossistema Google, sem perder qualidade de produto.
 
-Mais do que “automatizar planilha”, a solução estrutura processo, melhora decisão e reduz risco operacional — com aderência ao contexto real de uma instituição de saúde.
+A solução entrega valor onde realmente importa: **organização operacional, redução de falhas, velocidade de gestão e melhor tomada de decisão**.
+
+Em resumo, é uma aplicação pensada para o mundo real: útil para operação, confiável para gestão e sustentável para evolução.
