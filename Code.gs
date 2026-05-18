@@ -180,6 +180,10 @@ function atualizarIndicador(payload) {
   return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.update(payload)));
 }
 
+function atualizarLancamentoIndicador(payload) {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.updateLancamento(payload)));
+}
+
 
 function getAdminData() {
   return withAdminPermission_('ADMIN', app => app.admin.getAdminData());
@@ -725,6 +729,30 @@ class IndicadorService {
     const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch);
     this.audit.logChange({ acao: 'ATUALIZAR_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
+  }
+
+  updateLancamento(payload) {
+    if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
+    PayloadValidator.validateLancamentoIndicadorUpdate(payload);
+    const comp = String(payload.COMPETENCIA || '').trim();
+    const all = this.repo.getObjects(SIGEP.sheets.lancamentos);
+    const row = all.find(item => String(item.ID_INDICADOR || '').trim() === String(payload.ID_INDICADOR).trim() && String(item.COMPETENCIA || '').trim() === comp);
+    if (!row || !row._rowNumber) throw new Error('Lançamento não encontrado para o indicador/competência informados.');
+
+    const patch = {};
+    ['VALOR', 'STATUS', 'OBSERVACAO'].forEach(k => {
+      if (payload[k] !== undefined) patch[k] = payload[k];
+    });
+    const before = Object.assign({}, row);
+    const sheet = this.repo.getSheet(SIGEP.sheets.lancamentos);
+    const headers = this.repo.getHeaders(SIGEP.sheets.lancamentos);
+    Object.keys(patch).forEach(key => {
+      const idx = headers.indexOf(key);
+      if (idx >= 0) sheet.getRange(row._rowNumber, idx + 1).setValue(patch[key]);
+    });
+    const refreshed = this.repo.getObjects(SIGEP.sheets.lancamentos).find(item => item._rowNumber === row._rowNumber) || before;
+    this.audit.logChange({ acao: 'ATUALIZAR_LANCAMENTO_INDICADOR', entidade: 'LANCAMENTO_INDICADOR', id: `${payload.ID_INDICADOR}:${comp}`, before, after: refreshed, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
+    return { ok: true, data: refreshed };
   }
 }
 
@@ -1680,6 +1708,15 @@ class PayloadValidator {
     const aliases = ['META OPERADOR', 'OPERADOR_META'];
     this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed, aliases), 'indicador');
     this.validateRequiredChangeReason_(payload, allowed.concat(aliases), 'indicador');
+  }
+
+  static validateLancamentoIndicadorUpdate(payload) {
+    const allowed = ['COMPETENCIA', 'VALOR', 'STATUS', 'OBSERVACAO'];
+    this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed), 'lançamento de indicador');
+    if (!String(payload.COMPETENCIA || '').trim()) {
+      throw new Error('COMPETENCIA é obrigatória para atualizar lançamento.');
+    }
+    this.validateRequiredChangeReason_(payload, ['VALOR', 'STATUS', 'OBSERVACAO'], 'lançamento de indicador');
   }
 
   static validateAllowedKeys_(payload, allowed, context) {
