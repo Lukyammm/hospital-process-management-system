@@ -503,6 +503,13 @@
     .drawer .history-chart,
     .drawer .history-list,
     .drawer .edit-form { box-shadow: 0 10px 24px rgba(24, 54, 92, .08); }
+    #systemDialog { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:20px; z-index:120; background:var(--modal-overlay); backdrop-filter: blur(8px) saturate(130%); animation: modalFade .2s ease; }
+    #systemDialog.active { display:flex; }
+    .system-dialog-card { width:min(520px, calc(100vw - 32px)); background:var(--modal-surface); border:1px solid var(--modal-line); border-radius:18px; box-shadow:0 24px 54px rgba(8, 24, 43, .32); padding:18px; animation: modalPop .23s cubic-bezier(.2,.9,.3,1); display:grid; gap:12px; }
+    .system-dialog-title { margin:0; font-size:16px; color:var(--modal-title); }
+    .system-dialog-message { margin:0; color:var(--text); font-size:14px; line-height:1.5; }
+    .system-dialog-input { width:100%; border:1px solid #c9daee; border-radius:10px; padding:10px 11px; color:var(--text); background:#fff; }
+    .system-dialog-actions { display:flex; justify-content:flex-end; gap:10px; }
 
     @keyframes modalFade {
       from { opacity: 0; }
@@ -714,6 +721,7 @@
       <div id="drawerContent" class="drawer-body"></div>
     </div>
   </div>
+  <div id="systemDialog" aria-hidden="true"></div>
   <div class="save-feedback" id="saveFeedback"></div>
 
   <script>
@@ -826,6 +834,50 @@
         const drawer = document.getElementById('drawer');
         drawer.classList.remove('active');
         document.body.style.overflow = '';
+      },
+      dialog: {
+        alert(message) {
+          return ui.dialog._open({ type: 'alert', title: 'Aviso', message });
+        },
+        confirm(message) {
+          return ui.dialog._open({ type: 'confirm', title: 'Confirmar ação', message });
+        },
+        prompt(message, defaultValue) {
+          return ui.dialog._open({ type: 'prompt', title: 'Informação necessária', message, defaultValue: defaultValue || '' });
+        },
+        _open({ type, title, message, defaultValue = '' }) {
+          return new Promise(resolve => {
+            const host = document.getElementById('systemDialog');
+            const inputHtml = type === 'prompt' ? `<input class="system-dialog-input" id="systemDialogInput" type="text" value="${escapeHtml(defaultValue)}">` : '';
+            const actionsHtml = type === 'alert'
+              ? `<button class="btn" data-role="confirm">Ok</button>`
+              : `<button class="btn secondary" data-role="cancel">Cancelar</button><button class="btn" data-role="confirm">Confirmar</button>`;
+            host.innerHTML = `<div class="system-dialog-card" role="dialog" aria-modal="true" aria-labelledby="systemDialogTitle"><h4 class="system-dialog-title" id="systemDialogTitle">${escapeHtml(title)}</h4><p class="system-dialog-message">${escapeHtml(message || '')}</p>${inputHtml}<div class="system-dialog-actions">${actionsHtml}</div></div>`;
+            host.classList.add('active');
+            host.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            const card = host.querySelector('.system-dialog-card');
+            const input = host.querySelector('#systemDialogInput');
+            const close = (result) => {
+              host.classList.remove('active');
+              host.setAttribute('aria-hidden', 'true');
+              host.innerHTML = '';
+              document.body.style.overflow = '';
+              document.removeEventListener('keydown', handleKey);
+              resolve(result);
+            };
+            const handleKey = (e) => {
+              if (e.key === 'Escape') close(type === 'prompt' ? null : false);
+              if (e.key === 'Enter' && type === 'prompt' && document.activeElement === input) close(input.value);
+            };
+            document.addEventListener('keydown', handleKey);
+            host.addEventListener('click', (e) => { if (e.target === host) close(type === 'prompt' ? null : false); }, { once: true });
+            host.querySelector('[data-role="confirm"]').addEventListener('click', () => close(type === 'prompt' ? (input ? input.value : '') : true), { once: true });
+            const cancelBtn = host.querySelector('[data-role="cancel"]');
+            if (cancelBtn) cancelBtn.addEventListener('click', () => close(type === 'prompt' ? null : false), { once: true });
+            if (input) input.focus();
+          });
+        }
       }
     };
 
@@ -1363,7 +1415,7 @@ function getIndicatorUnit(ind) {
           fecharEdicaoAcompanhamento();
           loadData();
         })
-        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar acompanhamento.'); alert('Erro ao editar acompanhamento: ' + (err.message || err)); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar acompanhamento.'); await ui.dialog.alert('Erro ao editar acompanhamento: ' + (err.message || err)); })
         .atualizarStatusAcompanhamento(payload);
     }
 
@@ -1404,8 +1456,8 @@ function getIndicatorUnit(ind) {
             <div class="edit-form-group">
               <p class="edit-form-group-title">Dados gerais</p>
               <label>Nome do processo<input name="PROCESSO" value="${escapeHtml(proc.PROCESSO || '')}" required></label>
-              <label>Tipo do processo<input name="TIPO_PROCESSO" value="${escapeHtml(proc.TIPO_PROCESSO || '')}"></label>
-              <label>Status geral<input name="STATUS_GERAL" value="${escapeHtml(proc.STATUS_GERAL || '')}"></label>
+              <label>Tipo do processo<select name="TIPO_PROCESSO">${renderProcessFieldOptions('TIPO_PROCESSO', proc.TIPO_PROCESSO, 'Selecione o tipo')}</select></label>
+              <label>Status geral<select name="STATUS_GERAL">${renderProcessFieldOptions('STATUS_GERAL', proc.STATUS_GERAL, 'Selecione o status')}</select></label>
             </div>
             <div class="edit-form-group">
               <p class="edit-form-group-title">Marcos de validação</p>
@@ -1475,7 +1527,7 @@ function getIndicatorUnit(ind) {
           fecharEdicaoProcesso();
           loadData();
         })
-        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar processo.'); alert('Erro ao editar processo: ' + (err.message || err)); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar processo.'); await ui.dialog.alert('Erro ao editar processo: ' + (err.message || err)); })
         .atualizarProcesso(payload);
     }
 
@@ -1745,7 +1797,7 @@ function getIndicatorUnit(ind) {
       if (host) host.innerHTML = '';
     }
 
-    function salvarEdicaoIndicador(event, idIndicador) {
+    async function salvarEdicaoIndicador(event, idIndicador) {
       event.preventDefault();
       const form = event.target;
       const payload = {
@@ -1759,7 +1811,7 @@ function getIndicatorUnit(ind) {
 
       const metaValor = Number(payload.META);
       if (!Number.isFinite(metaValor)) {
-        alert('A meta precisa ser numérica.');
+        await ui.dialog.alert('A meta precisa ser numérica.');
         return;
       }
       showSaveFeedback('Salvando indicador...');
@@ -1769,8 +1821,14 @@ function getIndicatorUnit(ind) {
           fecharEdicaoIndicador();
           loadData();
         })
-        .withFailureHandler(err => { showSaveFeedback('Falha ao salvar indicador.'); alert('Erro ao editar indicador: ' + (err.message || err)); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar indicador.'); await ui.dialog.alert('Erro ao editar indicador: ' + (err.message || err)); })
         .atualizarIndicador(payload);
+    }
+
+    function renderProcessFieldOptions(fieldName, selected, placeholder) {
+      const values = unique((state.data?.processos || []).map(p => p[fieldName]).filter(Boolean));
+      const current = String(selected || '').trim();
+      return `<option value="">${escapeHtml(placeholder)}</option>` + values.map(v => `<option value="${escapeHtml(v)}" ${String(v).trim() === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
     }
 
     function drawerField(label, value) {
@@ -1887,7 +1945,7 @@ function getIndicatorUnit(ind) {
           state.adminData = payload;
           renderAdmin();
         })
-        .withFailureHandler(err => alert('Erro ao carregar administração: ' + (err.message || err)))
+        .withFailureHandler(async err => await ui.dialog.alert('Erro ao carregar administração: ' + (err.message || err)))
         .getAdminData();
     }
 
@@ -1917,16 +1975,16 @@ function getIndicatorUnit(ind) {
       `);
     }
     function novoUsuario(){ editarUsuario({}); }
-    function editarUsuario(u){
-      const EMAIL = prompt('Email do usuário:', u.EMAIL || ''); if(!EMAIL) return;
-      const NOME = prompt('Nome do usuário:', u.NOME || '') || '';
-      const PERFIL = prompt('Perfil (ADMIN/GESTOR/LEITOR):', u.PERFIL || 'LEITOR') || 'LEITOR';
-      const UNIDADE = prompt('Unidade/Setor:', u.UNIDADE || '') || '';
-      const ATIVO = prompt('Ativo? (SIM/NÃO):', u.ATIVO || 'SIM') || 'SIM';
-      google.script.run.withSuccessHandler(()=>{loadAdminData(); alert('Usuário salvo com sucesso.');}).withFailureHandler(err=>alert(err.message||err)).salvarUsuario({EMAIL,NOME,PERFIL,UNIDADE,ATIVO});
+    async function editarUsuario(u){
+      const EMAIL = await ui.dialog.prompt('Email do usuário:', u.EMAIL || ''); if(!EMAIL) return;
+      const NOME = (await ui.dialog.prompt('Nome do usuário:', u.NOME || '')) || '';
+      const PERFIL = (await ui.dialog.prompt('Perfil (ADMIN/GESTOR/LEITOR):', u.PERFIL || 'LEITOR')) || 'LEITOR';
+      const UNIDADE = (await ui.dialog.prompt('Unidade/Setor:', u.UNIDADE || '')) || '';
+      const ATIVO = (await ui.dialog.prompt('Ativo? (SIM/NÃO):', u.ATIVO || 'SIM')) || 'SIM';
+      google.script.run.withSuccessHandler(async ()=>{loadAdminData(); await ui.dialog.alert('Usuário salvo com sucesso.');}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).salvarUsuario({EMAIL,NOME,PERFIL,UNIDADE,ATIVO});
     }
-    function excluirUsuarioUi(email){ if(!confirm('Excluir usuário '+email+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminUsers();}).withFailureHandler(err=>alert(err.message||err)).excluirUsuario(email); }
-    function resetarSenha(email){ const NOVA_SENHA=prompt('Nova senha temporária para '+email+':'); if(!NOVA_SENHA) return; google.script.run.withSuccessHandler(()=>alert('Senha alterada.')).withFailureHandler(err=>alert(err.message||err)).alterarSenhaUsuario({EMAIL:email,NOVA_SENHA}); }
+    async function excluirUsuarioUi(email){ if(!await ui.dialog.confirm('Excluir usuário '+email+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminUsers();}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).excluirUsuario(email); }
+    async function resetarSenha(email){ const NOVA_SENHA=await ui.dialog.prompt('Nova senha temporária para '+email+':'); if(!NOVA_SENHA) return; google.script.run.withSuccessHandler(async ()=>await ui.dialog.alert('Senha alterada.')).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).alterarSenhaUsuario({EMAIL:email,NOVA_SENHA}); }
 
     function showAdminSetores() {
       const rows = (state.adminData && state.adminData.setores) || [];
@@ -1936,8 +1994,8 @@ function getIndicatorUnit(ind) {
       `);
     }
     function novoSetor(){ editarSetor({}); }
-    function editarSetor(s){ const ID_UNIDADE=prompt('ID do setor/unidade:', s.ID_SETOR || ''); if(!ID_UNIDADE) return; const UNIDADE=prompt('Nome do setor/unidade:', s.NOME_SETOR || '')||''; const SIGLA=prompt('Sigla:', s.SIGLA || '')||''; google.script.run.withSuccessHandler(()=>{loadAdminData(); alert('Setor salvo.');}).withFailureHandler(err=>alert(err.message||err)).salvarSetor({ID_UNIDADE,UNIDADE,SIGLA,idColumn:'ID_UNIDADE'}); }
-    function excluirSetorUi(id){ if(!id||!confirm('Excluir setor '+id+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminSetores();}).withFailureHandler(err=>alert(err.message||err)).excluirSetor(id); }
+    async function editarSetor(s){ const ID_UNIDADE=await ui.dialog.prompt('ID do setor/unidade:', s.ID_SETOR || ''); if(!ID_UNIDADE) return; const UNIDADE=(await ui.dialog.prompt('Nome do setor/unidade:', s.NOME_SETOR || ''))||''; const SIGLA=(await ui.dialog.prompt('Sigla:', s.SIGLA || ''))||''; google.script.run.withSuccessHandler(async ()=>{loadAdminData(); await ui.dialog.alert('Setor salvo.');}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).salvarSetor({ID_UNIDADE,UNIDADE,SIGLA,idColumn:'ID_UNIDADE'}); }
+    async function excluirSetorUi(id){ if(!id||!await ui.dialog.confirm('Excluir setor '+id+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminSetores();}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).excluirSetor(id); }
 
     function showAdminStatus() {
       const rows = (state.adminData && state.adminData.status) || [];
@@ -2081,13 +2139,13 @@ function getIndicatorUnit(ind) {
       return hints;
     }
 
-    function aplicarSugestao(finding) {
+    async function aplicarSugestao(finding) {
       if (!finding || !finding.suggestedValue) return;
-      if (!confirm('Aplicar correção sugerida para ' + finding.fieldName + ' na linha ' + finding.rowNumber + '?')) return;
+      if (!await ui.dialog.confirm('Aplicar correção sugerida para ' + finding.fieldName + ' na linha ' + finding.rowNumber + '?')) return;
       google.script.run.withSuccessHandler(() => {
         loadAdminData();
         showAdminDataReview();
-      }).withFailureHandler(err => alert('Falha ao aplicar correção: ' + (err.message || err)))
+      }).withFailureHandler(async err => await ui.dialog.alert('Falha ao aplicar correção: ' + (err.message || err)))
         .aplicarCorrecaoDados({
           sheetName: finding.sheetName,
           rowNumber: finding.rowNumber,
@@ -2096,13 +2154,13 @@ function getIndicatorUnit(ind) {
         });
     }
 
-    function aplicarSugestaoEmLote(batch) {
+    async function aplicarSugestaoEmLote(batch) {
       if (!batch || !batch.findings || !batch.findings.length) return;
       if (state.batchCorrectionRunning) return;
       const mode = batch.mode || 'FIXED_VALUE';
       const isPerRowSuggestion = mode === 'PER_ROW_SUGGESTION';
       if (!isPerRowSuggestion && !batch.suggestedValue) return;
-      if (!confirm(isPerRowSuggestion
+      if (!await ui.dialog.confirm(isPerRowSuggestion
         ? `Aplicar as sugestões individuais em ${batch.findings.length} registro(s) de ${batch.title}?`
         : `Aplicar "${batch.suggestedValue}" para ${batch.findings.length} registros de ${batch.title}?`)) return;
 
@@ -2119,24 +2177,24 @@ function getIndicatorUnit(ind) {
       showAdminDataReview();
 
       google.script.run
-        .withSuccessHandler(result => {
+        .withSuccessHandler(async result => {
           const failed = Number(result && result.failed || 0);
           const success = Number(result && result.success || 0);
           if (failed > 0) {
             const firstError = (result.errors && result.errors[0] && result.errors[0].message) ? `
 Primeiro erro: ${result.errors[0].message}` : '';
-            alert(`Correção em lote concluída com sucesso parcial.
+            await ui.dialog.alert(`Correção em lote concluída com sucesso parcial.
 Sucessos: ${success}
 Falhas: ${failed}${firstError}`);
           } else {
-            alert(`Correção em lote aplicada com sucesso em ${success} registro(s).`);
+            await ui.dialog.alert(`Correção em lote aplicada com sucesso em ${success} registro(s).`);
           }
           loadAdminData();
           showAdminDataReview();
           resetBatchCorrectionState();
         })
-        .withFailureHandler(err => {
-          alert('Falha ao executar correção em lote: ' + (err.message || err));
+        .withFailureHandler(async err => {
+          await ui.dialog.alert('Falha ao executar correção em lote: ' + (err.message || err));
           resetBatchCorrectionState();
           showAdminDataReview();
         })
@@ -2165,18 +2223,18 @@ Falhas: ${failed}${firstError}`);
       state.batchCorrectionKey = '';
     }
 
-    function corrigirDadoManual(finding) {
+    async function corrigirDadoManual(finding) {
       if (!finding) return;
       const atual = finding.currentValue || '';
       const sugestao = finding.suggestedValue || '';
       const hints = buildManualCorrectionHints(finding, sugestao || atual);
       const hintText = hints.length ? `\nSugestões:\n- ${hints.join('\n- ')}` : '';
-      const novoValor = prompt(`Digite o novo valor para ${finding.fieldName} (linha ${finding.rowNumber}):${hintText}`, sugestao || atual);
+      const novoValor = await ui.dialog.prompt(`Digite o novo valor para ${finding.fieldName} (linha ${finding.rowNumber}):${hintText}`, sugestao || atual);
       if (novoValor === null) return;
       google.script.run.withSuccessHandler(() => {
         loadAdminData();
         showAdminDataReview();
-      }).withFailureHandler(err => alert('Falha ao salvar correção manual: ' + (err.message || err)))
+      }).withFailureHandler(async err => await ui.dialog.alert('Falha ao salvar correção manual: ' + (err.message || err)))
         .aplicarCorrecaoDados({
           sheetName: finding.sheetName,
           rowNumber: finding.rowNumber,
