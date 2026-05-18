@@ -98,6 +98,14 @@
       --line-height-tight: 1.25;
       --line-height-base: 1.5;
       --line-height-loose: 1.65;
+      --chart-grid: #e7eff8;
+      --chart-axis: #cfdceb;
+      --chart-text: #6d8199;
+      --chart-value: #294866;
+      --chart-line: #2b79c2;
+      --chart-line-strong: #1f6fbd;
+      --chart-fill: #6caee8;
+      --chart-meta: #b9891d;
 
     }
     [data-theme="dark"] {
@@ -138,6 +146,14 @@
       --color-border-warning: #685024;
       --color-border-danger: #694048;
       --color-border-info: #4e4a79;
+      --chart-grid: #2a3f5b;
+      --chart-axis: #3d597c;
+      --chart-text: #b9cbe2;
+      --chart-value: #e5f0ff;
+      --chart-line: #71b2ff;
+      --chart-line-strong: #9bcaff;
+      --chart-fill: #4a95e5;
+      --chart-meta: #ffd27e;
     }
 
 
@@ -222,6 +238,18 @@
     [data-theme="dark"] .kpi .icon { color: var(--color-accent); }
     [data-theme="dark"] .table-wrap th { background: #12233a !important; color: var(--color-ink) !important; }
     [data-theme="dark"] .table-wrap td { border-color: var(--color-line) !important; }
+
+    [data-theme="dark"] .table-wrap { background:#0f1a2d !important; border-color:#324965 !important; }
+    [data-theme="dark"] .table-wrap table { color:var(--color-text) !important; }
+    [data-theme="dark"] .table-wrap th { background: #162a45 !important; color: #f1f7ff !important; border-bottom:1px solid #365173 !important; }
+    [data-theme="dark"] .table-wrap tbody tr:nth-child(even) { background: rgba(118, 168, 230, 0.06); }
+    [data-theme="dark"] .table-wrap tbody tr:hover { background: rgba(118, 168, 230, 0.12); }
+    [data-theme="dark"] .table-wrap td { border-color: #324c6d !important; color:#deebfb !important; }
+    [data-theme="dark"] .indicator-head-clean { background:linear-gradient(180deg,#12223a 0%,#101b2e 100%); border:1px solid #2e4868; }
+    [data-theme="dark"] .indicator-head-clean h3 { color:#f3f8ff; }
+    [data-theme="dark"] .indicator-head-clean span { color:#b6c9e2; }
+    [data-theme="dark"] .sparkline { border-color:#3a5578; background:linear-gradient(180deg,#12233b 0%,#0f1e31 100%); }
+    [data-theme="dark"] .history-chart svg { background:linear-gradient(180deg,#112038 0%,#0f1c30 100%); border-color:#385273; }
     [data-theme="dark"] .pill.ok { background: #143428; border-color:#2d5f49; color:#91f3c8; }
     [data-theme="dark"] .pill.warn { background: #3f2f10; border-color:#7e6330; color:#ffe1a3; }
     [data-theme="dark"] .pill.bad { background: #412025; border-color:#7d4b53; color:#ffc6cb; }
@@ -306,7 +334,7 @@
     .hero p { color: var(--muted); margin: 0; line-height: 1.55; }
     .hero-panel { border: 1px solid var(--line); background: #f5f9ff; border-radius: 14px; padding: 16px; }
     .progress-line { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; margin-bottom: 9px; }
-    .bar { height: 11px; background: #e6eef8; border-radius: 999px; overflow: hidden; }
+    .bar { height: 11px; background: var(--chart-grid); border-radius: 999px; overflow: hidden; }
     .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), #4e95da); border-radius: inherit; }
 
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 8px 0 20px; }
@@ -454,7 +482,7 @@
     .unit-top { padding: 18px; display: flex; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--line); background: var(--surface-soft); }
     .unit-top h4 { margin: 0 0 7px; font-size: 18px; letter-spacing: -0.01em; color: var(--ink); }
     .unit-top small { color: var(--muted); }
-    .ring { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--primary) calc(var(--p) * 1%), #e6eef8 0); position: relative; flex: 0 0 auto; }
+    .ring { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--primary) calc(var(--p) * 1%), var(--chart-grid) 0); position: relative; flex: 0 0 auto; }
     .ring::after { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
     .ring span { position: relative; z-index: 1; font-weight: 800; font-size: 14px; color: var(--ink); }
     .unit-body { padding: 16px 18px 18px; }
@@ -1829,8 +1857,8 @@ function getIndicatorUnit(ind) {
             </div>
             ${svg}
             <div class="history-chart-legend">
-              <span><i style="background:#2b79c2"></i>Valor apurado</span>
-              <span><i style="background:#b9891d"></i>Meta de referência</span>
+              <span><i style="background:var(--chart-line)"></i>Valor apurado</span>
+              <span><i style="background:var(--chart-meta)"></i>Meta de referência</span>
             </div>
           </div>
           <div class="history-list">
@@ -1876,15 +1904,15 @@ function getIndicatorUnit(ind) {
         const ratio=i/(ticks-1);
         const v = yMin + (yMax-yMin)*(1-ratio);
         const y = pY + chartH*ratio;
-        grid += `<line x1="${pX}" y1="${y}" x2="${w-pX}" y2="${y}" stroke="#e7eff8" stroke-width="1"/><text x="${pX-12}" y="${y+4}" text-anchor="end" font-size="11" fill="#6d8199">${formatNumberBR(v)}</text>`;
+        grid += `<line x1="${pX}" y1="${y}" x2="${w-pX}" y2="${y}" stroke="var(--chart-grid)" stroke-width="1"/><text x="${pX-12}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--chart-text)">${formatNumberBR(v)}</text>`;
       }
-      const metaLine = Number.isFinite(meta) ? `<line x1="${pX}" y1="${toY(meta)}" x2="${w-pX}" y2="${toY(meta)}" stroke="#b9891d" stroke-width="1.8" stroke-dasharray="6 6"/><text x="${w-pX}" y="${toY(meta)-8}" text-anchor="end" font-size="11" fill="#b9891d">Meta ${formatNumberBR(meta)}</text>` : '';
+      const metaLine = Number.isFinite(meta) ? `<line x1="${pX}" y1="${toY(meta)}" x2="${w-pX}" y2="${toY(meta)}" stroke="var(--chart-meta)" stroke-width="1.8" stroke-dasharray="6 6"/><text x="${w-pX}" y="${toY(meta)-8}" text-anchor="end" font-size="11" fill="var(--chart-meta)">Meta ${formatNumberBR(meta)}</text>` : '';
       const points = mapped.map((pt, idx) => {
         const label = getPeriodoChartLabel(pt.comp);
         const showXLabel = true;
-        return `<circle cx="${pt.x}" cy="${pt.y}" r="${pt.comp===periodoAtual?4.4:3.8}" fill="${pt.comp===periodoAtual?'#1f6fbd':'#2b79c2'}" stroke="#fff" stroke-width="1.8"><title>${escapeHtml(label)}: ${escapeHtml(pt.valor)}</title></circle><text x="${pt.x}" y="${pt.y-12}" text-anchor="middle" font-size="11" fill="#294866">${escapeHtml(formatNumberBR(pt.numericValue))}</text>${showXLabel ? `<text x="${pt.x}" y="${h-pY+18}" text-anchor="middle" font-size="11" fill="#6d8199">${escapeHtml(label)}</text>` : ''}`;
+        return `<circle cx="${pt.x}" cy="${pt.y}" r="${pt.comp===periodoAtual?4.4:3.8}" fill="${pt.comp===periodoAtual?'var(--chart-line-strong)':'var(--chart-line)'}" stroke="#fff" stroke-width="1.8"><title>${escapeHtml(label)}: ${escapeHtml(pt.valor)}</title></circle><text x="${pt.x}" y="${pt.y-12}" text-anchor="middle" font-size="11" fill="var(--chart-value)">${escapeHtml(formatNumberBR(pt.numericValue))}</text>${showXLabel ? `<text x="${pt.x}" y="${h-pY+18}" text-anchor="middle" font-size="11" fill="var(--chart-text)">${escapeHtml(label)}</text>` : ''}`;
       }).join('');
-      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6caee8" stop-opacity=".24"/><stop offset="100%" stop-color="#6caee8" stop-opacity=".02"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h-pY}" x2="${w-pX}" y2="${h-pY}" stroke="#cfdceb" stroke-width="1.2"/>${metaLine}<polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="#2b79c2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>${points}</svg>`;
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="historyFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--chart-fill)" stop-opacity=".24"/><stop offset="100%" stop-color="var(--chart-fill)" stop-opacity=".02"/></linearGradient></defs>${grid}<line x1="${pX}" y1="${h-pY}" x2="${w-pX}" y2="${h-pY}" stroke="var(--chart-axis)" stroke-width="1.2"/>${metaLine}<polygon points="${area}" fill="url(#historyFill)"/><polyline points="${line}" fill="none" stroke="var(--chart-line)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>${points}</svg>`;
     }
     function formatNumberBR(value) { return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
     function resolvePeriodoLabel(item) {
@@ -1947,7 +1975,7 @@ function getIndicatorUnit(ind) {
     function buildMiniSparkline(historico, meta){
       const pontos = historico.filter(h => h.hasData);
       if (!pontos.length) {
-        return '<div class="sparkline"><svg viewBox="0 0 320 108" preserveAspectRatio="xMidYMid meet"><rect x="44" y="14" width="262" height="74" fill="none" stroke="#e6eef8"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="#8da3ba">Aguardando histórico para desenhar tendência</text></svg></div>';
+        return '<div class="sparkline"><svg viewBox="0 0 320 108" preserveAspectRatio="xMidYMid meet"><rect x="44" y="14" width="262" height="74" fill="none" stroke="var(--chart-grid)"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="var(--chart-text)">Aguardando histórico para desenhar tendência</text></svg></div>';
       }
 
       const width = 440, height = 168;
@@ -1973,7 +2001,7 @@ function getIndicatorUnit(ind) {
       for (let i = 0; i < gridTicks; i++) {
         const ratio = i / (gridTicks - 1);
         const y = pad.top + chartH * ratio;
-        grid += `<line x1="${pad.left}" y1="${y.toFixed(2)}" x2="${width - pad.right}" y2="${y.toFixed(2)}" stroke="#ecf2fa" stroke-width="1"/>`;
+        grid += `<line x1="${pad.left}" y1="${y.toFixed(2)}" x2="${width - pad.right}" y2="${y.toFixed(2)}" stroke="var(--chart-grid)" stroke-width="1"/>`;
       }
 
       const yLabelTop = formatNumberBR(yMax);
@@ -1996,19 +2024,19 @@ function getIndicatorUnit(ind) {
         const showXLabel = true;
         return `
           <g>
-            <circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${isLast ? '3.6' : '3'}" fill="${isLast ? '#1f6fbd' : '#2b79c2'}" stroke="#fff" stroke-width="1.4">
+            <circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${isLast ? '3.6' : '3'}" fill="${isLast ? 'var(--chart-line-strong)' : 'var(--chart-line)'}" stroke="#fff" stroke-width="1.4">
               <title>${compLabel}: ${escapeHtml(p.valor || '')}</title>
             </circle>
-            <text x="${x.toFixed(2)}" y="${(y - 8).toFixed(2)}" text-anchor="middle" font-size="8.6" font-weight="700" fill="#2c4f70">${valueLabel}</text>
-            ${showXLabel ? `<text x="${x.toFixed(2)}" y="${(height - 8).toFixed(2)}" text-anchor="middle" font-size="8.4" fill="#748aa3">${compLabel}</text>` : ''}
+            <text x="${x.toFixed(2)}" y="${(y - 8).toFixed(2)}" text-anchor="middle" font-size="8.6" font-weight="700" fill="var(--chart-value)">${valueLabel}</text>
+            ${showXLabel ? `<text x="${x.toFixed(2)}" y="${(height - 8).toFixed(2)}" text-anchor="middle" font-size="8.4" fill="var(--chart-text)">${compLabel}</text>` : ''}
           </g>`;
       }).join('');
 
       const metaLine = Number.isFinite(meta)
-        ? `<line x1="${pad.left}" y1="${toY(meta).toFixed(2)}" x2="${width - pad.right}" y2="${toY(meta).toFixed(2)}" stroke="#b9891d" stroke-width="1.1" stroke-dasharray="4 3"/>`
+        ? `<line x1="${pad.left}" y1="${toY(meta).toFixed(2)}" x2="${width - pad.right}" y2="${toY(meta).toFixed(2)}" stroke="var(--chart-meta)" stroke-width="1.1" stroke-dasharray="4 3"/>`
         : '';
 
-      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${grid}<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#cfdff0" stroke-width="1.2"/><text x="${pad.left - 6}" y="${pad.top + 4}" text-anchor="end" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelTop)}</text><text x="${pad.left - 6}" y="${height - pad.bottom}" text-anchor="end" dominant-baseline="ideographic" font-size="8.8" fill="#6d8199">${escapeHtml(yLabelBottom)}</text>${metaLine}<path d="${path}" fill="none" stroke="#2b79c2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>${points}</svg></div>`;
+      return `<div class="sparkline"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${grid}<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="var(--chart-axis)" stroke-width="1.2"/><line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="var(--chart-axis)" stroke-width="1.2"/><text x="${pad.left - 6}" y="${pad.top + 4}" text-anchor="end" font-size="8.8" fill="var(--chart-text)">${escapeHtml(yLabelTop)}</text><text x="${pad.left - 6}" y="${height - pad.bottom}" text-anchor="end" dominant-baseline="ideographic" font-size="8.8" fill="var(--chart-text)">${escapeHtml(yLabelBottom)}</text>${metaLine}<path d="${path}" fill="none" stroke="var(--chart-line)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>${points}</svg></div>`;
     }
 
     function abrirEdicaoIndicador(ind) {
