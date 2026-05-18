@@ -100,6 +100,45 @@
       --line-height-loose: 1.65;
 
     }
+    [data-theme="dark"] {
+      --color-bg: #0a1220;
+      --color-surface: #111c2f;
+      --color-surface-soft: #16253d;
+      --color-ink: #f2f7ff;
+      --color-text: #d3e2f5;
+      --color-muted: #9bb3cf;
+      --color-line: #263954;
+      --color-line-strong: #345072;
+      --color-primary: #67a8ff;
+      --color-primary-soft: #142741;
+      --color-primary-border: #33527a;
+      --color-accent: #3ed5bf;
+      --color-accent-soft: #163f43;
+      --color-success: #4fc88e;
+      --color-success-bg: #143228;
+      --color-warning: #f2c56c;
+      --color-warning-bg: #3b2d0f;
+      --color-danger: #f58787;
+      --color-danger-bg: #3c1c20;
+      --shadow-sm: 0 6px 16px rgba(2, 8, 20, .45);
+      --shadow-md: 0 18px 34px rgba(2, 8, 20, .56);
+      --focus-ring: #8dc1ff;
+      --modal-overlay: rgba(3, 10, 20, .72);
+      --modal-surface: linear-gradient(165deg, #101b30 0%, #0e182a 100%);
+      --modal-line: #2a3f5f;
+      --modal-soft: #182743;
+      --modal-title: #eff6ff;
+      --modal-scroll: #446084;
+      --color-background-info: #2f2a4a;
+      --color-text-success: #81f1d8;
+      --color-text-warning: #ffd992;
+      --color-text-danger: #ffc0c0;
+      --color-text-info: #d2c1ff;
+      --color-border-success: #295744;
+      --color-border-warning: #685024;
+      --color-border-danger: #694048;
+      --color-border-info: #4e4a79;
+    }
 
     /* =========================
        Base / Reset
@@ -594,6 +633,50 @@
     }
 
     .mobile-menu-btn { display:none; border:1px solid var(--line-strong); background:#fff; color:var(--ink); border-radius:12px; padding:10px 12px; font-weight:700; box-shadow: var(--shadow-sm); }
+    .theme-toggle { width:44px; height:44px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--text); display:grid; place-items:center; cursor:pointer; box-shadow:var(--shadow-sm); transition:transform var(--ease), border-color var(--ease), background-color var(--ease), color var(--ease); }
+    .theme-toggle:hover { transform:translateY(-1px) rotate(-6deg); border-color:var(--primary-border); }
+    .theme-toggle svg { width:20px; height:20px; }
+    [data-theme="dark"] .theme-toggle { color:#ffdb6e; }
+    [data-theme="dark"] body,
+    [data-theme="dark"] .sidebar,
+    [data-theme="dark"] .topbar,
+    [data-theme="dark"] .hero,
+    [data-theme="dark"] .panel,
+    [data-theme="dark"] .unit-card,
+    [data-theme="dark"] .table-wrap,
+    [data-theme="dark"] .kpi,
+    [data-theme="dark"] .summary-card,
+    [data-theme="dark"] .indicator-row,
+    [data-theme="dark"] .process-card,
+    [data-theme="dark"] .history-list,
+    [data-theme="dark"] .history-chart,
+    [data-theme="dark"] .edit-form,
+    [data-theme="dark"] .acomp-section,
+    [data-theme="dark"] .review-group,
+    [data-theme="dark"] .drawer-head,
+    [data-theme="dark"] .drawer-card,
+    [data-theme="dark"] .indicator-filter-shell,
+    [data-theme="dark"] .indicator-process-shell,
+    [data-theme="dark"] .acomp-hero { background: var(--surface) !important; border-color: var(--line) !important; color: var(--text); }
+    [data-theme="dark"] .btn.secondary,
+    [data-theme="dark"] .search input,
+    [data-theme="dark"] .filters select,
+    [data-theme="dark"] .indicator-search-main input,
+    [data-theme="dark"] .indicator-filter-field select,
+    [data-theme="dark"] .task-chip,
+    [data-theme="dark"] .filter-chip,
+    [data-theme="dark"] .indicator-chip,
+    [data-theme="dark"] .system-dialog-input,
+    [data-theme="dark"] .edit-form input,
+    [data-theme="dark"] .edit-form select,
+    [data-theme="dark"] .edit-form textarea { background: var(--surface-soft) !important; border-color: var(--line) !important; color: var(--text) !important; }
+    [data-theme="dark"] .nav button.active,
+    [data-theme="dark"] .active-tag,
+    [data-theme="dark"] .indicator-process-count,
+    [data-theme="dark"] .acomp-status-chip,
+    [data-theme="dark"] .sidebar-note,
+    [data-theme="dark"] .save-feedback { background: var(--surface-soft) !important; border-color: var(--line) !important; color: var(--text) !important; }
+    [data-theme="dark"] .title-kicker { color: var(--accent); }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(10,25,44,.45); z-index:15; }
     .block-skeleton { display:grid; gap:12px; }
     button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .card:focus-visible, .indicator-row:focus-visible, .filter-chip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
@@ -683,6 +766,9 @@
         </div>
         <div class="actions">
           <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu lateral" aria-controls="sidebarNav" aria-expanded="false">☰ Menu</button>
+          <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema escuro" title="Alternar tema">
+            <svg id="themeIcon" viewBox="0 0 24 24" fill="none"><path d="M12 3v2m0 14v2M5.64 5.64l1.41 1.41m9.9 9.9 1.41 1.41M3 12h2m14 0h2M5.64 18.36l1.41-1.41m9.9-9.9 1.41-1.41M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zM16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <input id="globalSearch" type="search" placeholder="Pesquisar unidade, processo ou indicador">
@@ -816,7 +902,8 @@
       adminData: null,
       taskFilter: 'all',
       batchCorrectionRunning: false,
-      batchCorrectionKey: ''
+      batchCorrectionKey: '',
+      theme: 'light'
     };
 
     const ui = {
@@ -831,6 +918,15 @@
           });
         });
         document.getElementById('refreshBtn').addEventListener('click', loadData);
+        const themeToggle = document.getElementById('themeToggle');
+        const preferredTheme = localStorage.getItem('sigep_theme');
+        state.theme = preferredTheme || 'light';
+        ui.applyTheme(state.theme);
+        themeToggle.addEventListener('click', () => {
+          state.theme = state.theme === 'dark' ? 'light' : 'dark';
+          ui.applyTheme(state.theme);
+          localStorage.setItem('sigep_theme', state.theme);
+        });
         const menuBtn = document.getElementById('mobileMenuBtn');
         const appRoot = document.getElementById('appRoot');
         const overlay = document.getElementById('sidebarOverlay');
@@ -860,6 +956,16 @@
           if (e.key === 'Escape') ui.closeDrawer();
         });
         loadData();
+      },
+      applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        const isDark = theme === 'dark';
+        const icon = document.getElementById('themeIcon');
+        if (icon) {
+          icon.innerHTML = isDark
+            ? '<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 1 0 9.8 9.8z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+            : '<path d="M12 3v2m0 14v2M5.64 5.64l1.41 1.41m9.9 9.9 1.41 1.41M3 12h2m14 0h2M5.64 18.36l1.41-1.41m9.9-9.9 1.41-1.41M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
+        }
       },
 
       setView(view) {
