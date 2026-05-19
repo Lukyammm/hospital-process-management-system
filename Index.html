@@ -1185,7 +1185,13 @@
               if (e.key === 'Enter' && type === 'prompt' && document.activeElement === input) close(input.value);
             };
             document.addEventListener('keydown', handleKey);
-            host.addEventListener('click', (e) => { if (e.target === host) close(type === 'prompt' ? null : false); }, { once: true });
+            // Evita fechar imediatamente ao abrir quando o clique original continua propagando.
+            let canCloseByBackdrop = false;
+            setTimeout(() => { canCloseByBackdrop = true; }, 0);
+            host.addEventListener('click', (e) => {
+              if (!canCloseByBackdrop) return;
+              if (e.target === host) close(type === 'prompt' ? null : false);
+            });
             host.querySelector('[data-role="confirm"]').addEventListener('click', () => {
               if (type === 'form') {
                 const form = host.querySelector('#systemDialogForm');
