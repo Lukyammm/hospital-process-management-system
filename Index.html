@@ -929,7 +929,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Acompanhamento por unidade</h3><span>Uma unidade pode aparecer com várias datas no mesmo card</span></div>
-            <div class="filters"><select id="filtroStatusAcomp" aria-label="Filtrar acompanhamento por status"><option value="">Todos os status</option></select></div>
+            <div class="filters"><select id="filtroStatusAcomp" aria-label="Filtrar acompanhamento por status"><option value="">Todos os status</option></select><button class="btn secondary" onclick="novoAcompanhamento()">Novo acompanhamento</button></div>
           </div>
           <div class="content-pad"><div class="acomp-grid" id="acompGrid"></div></div>
         </div>
@@ -939,7 +939,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Modelagem de Processos</h3><span>Pipeline de modelagem, validação e publicação</span></div>
-            <div class="filters"><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select></div>
+            <div class="filters"><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select><button class="btn secondary" onclick="novoProcesso()">Novo processo</button></div>
           </div>
           <div class="content-pad">
             <div id="processSummary" class="indicator-summary"></div>
@@ -952,7 +952,7 @@
         <div class="panel">
           <div class="panel-head indicator-head-clean">
             <div><h3>Indicadores</h3><span>Monitoramento analítico hospitalar com foco operacional</span></div>
-            <button class="btn secondary indicator-advanced-toggle" onclick="toggleIndicadorFiltro()">Filtros avançados</button>
+            <div class="actions"><button class="btn secondary indicator-advanced-toggle" onclick="toggleIndicadorFiltro()">Filtros avançados</button><button class="btn secondary" onclick="novoIndicador()">Novo indicador</button></div>
           </div>
           <div class="content-pad indicators-layout">
             <div class="indicator-main-area">
@@ -1701,6 +1701,20 @@ function getIndicatorUnit(ind) {
         .atualizarStatusAcompanhamento(payload);
     }
 
+    async function novoAcompanhamento() {
+      const UNIDADE = (await ui.dialog.prompt('Unidade (obrigatório):')) || '';
+      if (!UNIDADE.trim()) return;
+      const DATA_AGENDAMENTO = (await ui.dialog.prompt('Data do agendamento (dd/mm/aaaa):')) || '';
+      const STATUS_AGENDAMENTO = (await ui.dialog.prompt('Status do agendamento:')) || '';
+      const MOTIVO_ALTERACAO = (await ui.dialog.prompt('Motivo do cadastro (obrigatório):')) || '';
+      if (!MOTIVO_ALTERACAO.trim()) return;
+      showSaveFeedback('Criando acompanhamento...');
+      google.script.run
+        .withSuccessHandler(async () => { showSaveFeedback('Acompanhamento criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo acompanhamento cadastrado.'); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao criar acompanhamento.'); await ui.dialog.alert('Erro ao criar acompanhamento: ' + (err.message || err)); })
+        .criarAcompanhamento({ UNIDADE: UNIDADE.trim(), DATA_AGENDAMENTO: DATA_AGENDAMENTO.trim(), STATUS_AGENDAMENTO: STATUS_AGENDAMENTO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
+    }
+
     function showProcesso(p) {
       ui.openDrawer(p.PROCESSO || 'Processo', p.SETOR || '', `
         <div class="indicator-head">
@@ -1811,6 +1825,19 @@ function getIndicatorUnit(ind) {
         })
         .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar processo.'); await ui.dialog.alert('Erro ao editar processo: ' + (err.message || err)); })
         .atualizarProcesso(payload);
+    }
+
+    async function novoProcesso() {
+      const PROCESSO = (await ui.dialog.prompt('Nome do processo (obrigatório):')) || '';
+      if (!PROCESSO.trim()) return;
+      const TIPO_PROCESSO = (await ui.dialog.prompt('Tipo do processo:')) || '';
+      const MOTIVO_ALTERACAO = (await ui.dialog.prompt('Motivo do cadastro (obrigatório):')) || '';
+      if (!MOTIVO_ALTERACAO.trim()) return;
+      showSaveFeedback('Criando processo...');
+      google.script.run
+        .withSuccessHandler(async () => { showSaveFeedback('Processo criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo processo cadastrado.'); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao criar processo.'); await ui.dialog.alert('Erro ao criar processo: ' + (err.message || err)); })
+        .criarProcesso({ PROCESSO: PROCESSO.trim(), TIPO_PROCESSO: TIPO_PROCESSO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
 
     function showIndicador(ind) {
@@ -2194,6 +2221,26 @@ function getIndicatorUnit(ind) {
         })
         .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar indicador.'); await ui.dialog.alert('Erro ao editar indicador: ' + (err.message || err)); })
         .atualizarIndicador(payload);
+    }
+
+    async function novoIndicador() {
+      const NOME_INDICADOR = (await ui.dialog.prompt('Nome do indicador (obrigatório):')) || '';
+      if (!NOME_INDICADOR.trim()) return;
+      const TIPO_INDICADOR = (await ui.dialog.prompt('Tipo do indicador (obrigatório):')) || '';
+      if (!TIPO_INDICADOR.trim()) return;
+      const META = (await ui.dialog.prompt('Meta numérica (obrigatória):')) || '';
+      if (!META.trim() || !Number.isFinite(Number(META.replace(',', '.')))) {
+        await ui.dialog.alert('A meta deve ser numérica.');
+        return;
+      }
+      const META_OPERADOR = (await ui.dialog.prompt('Operador da meta (>=, >, <=, <, =):', '>=')) || '>=';
+      const MOTIVO_ALTERACAO = (await ui.dialog.prompt('Motivo do cadastro (obrigatório):')) || '';
+      if (!MOTIVO_ALTERACAO.trim()) return;
+      showSaveFeedback('Criando indicador...');
+      google.script.run
+        .withSuccessHandler(async () => { showSaveFeedback('Indicador criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo indicador cadastrado.'); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao criar indicador.'); await ui.dialog.alert('Erro ao criar indicador: ' + (err.message || err)); })
+        .criarIndicador({ NOME_INDICADOR: NOME_INDICADOR.trim(), TIPO_INDICADOR: TIPO_INDICADOR.trim(), META: META.trim().replace(',', '.'), META_OPERADOR: META_OPERADOR.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
 
     function renderProcessFieldOptions(fieldName, selected, placeholder) {

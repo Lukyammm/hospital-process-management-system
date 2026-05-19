@@ -172,12 +172,24 @@ function atualizarStatusAcompanhamento(payload) {
   return runWithWriteLock_(() => withWritePermission_('ACOMPANHAMENTO', app => app.acompanhamento.updateStatus(payload)));
 }
 
+function criarAcompanhamento(payload) {
+  return runWithWriteLock_(() => withWritePermission_('ACOMPANHAMENTO', app => app.acompanhamento.create(payload)));
+}
+
 function atualizarProcesso(payload) {
   return runWithWriteLock_(() => withWritePermission_('PROCESSOS', app => app.processos.update(payload)));
 }
 
+function criarProcesso(payload) {
+  return runWithWriteLock_(() => withWritePermission_('PROCESSOS', app => app.processos.create(payload)));
+}
+
 function atualizarIndicador(payload) {
   return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.update(payload)));
+}
+
+function criarIndicador(payload) {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.create(payload)));
 }
 
 function atualizarLancamentoIndicador(payload) {
@@ -601,6 +613,13 @@ class SheetRepository {
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   }
 
+  insertObject(sheetName, obj) {
+    const headers = this.getHeaders(sheetName);
+    const row = headers.map(h => (obj[h] !== undefined ? obj[h] : ''));
+    this.appendRows(sheetName, [row]);
+    return this.getById(sheetName, headers[0], obj[headers[0]]);
+  }
+
   deleteById(sheetName, idColumn, id) {
     const sh = this.getSheet(sheetName);
     const values = sh.getDataRange().getValues();
@@ -622,6 +641,26 @@ class ProcessoService {
 
   list() {
     return this.repo.getObjects(SIGEP.sheets.processos).map(DomainNormalizer.processo.bind(DomainNormalizer));
+  }
+
+  create(payload) {
+    payload = this.normalizePayload_(payload);
+    const processo = String(payload.PROCESSO || '').trim();
+    if (!processo) throw new Error('PROCESSO é obrigatório para cadastro.');
+    const row = {
+      ID_PROCESSO: this.generateId_(),
+      PROCESSO: processo,
+      TIPO_PROCESSO: String(payload.TIPO_PROCESSO || '').trim(),
+      STATUS_GERAL: String(payload.STATUS_GERAL || '').trim(),
+      MODELAGEM_REALIZADA: String(payload.MODELAGEM_REALIZADA || '').trim(),
+      VALIDACAO_NUGESP: String(payload.VALIDACAO_NUGESP || '').trim(),
+      VALIDACAO_DIRECAO: String(payload.VALIDACAO_DIRECAO || '').trim(),
+      PUBLICACAO: String(payload.PUBLICACAO || '').trim()
+    };
+    if (!row.STATUS_GERAL) row.STATUS_GERAL = this.calcularStatus_(row);
+    const saved = this.repo.insertObject(SIGEP.sheets.processos, row);
+    this.audit.logChange({ acao: 'CRIAR_PROCESSO', entidade: 'PROCESSO', id: saved.ID_PROCESSO, before: null, after: saved, patch: row, origem: 'PROCESSOS', motivo: payload.MOTIVO_ALTERACAO || '' });
+    return { ok: true, data: saved };
   }
 
   update(payload) {
@@ -660,6 +699,16 @@ class ProcessoService {
     if (sim > 0) return 'Em andamento';
     return 'Pendente';
   }
+
+  generateId_() {
+    const ids = this.repo.getObjects(SIGEP.sheets.processos).map(r => String(r.ID_PROCESSO || '').trim());
+    let max = 0;
+    ids.forEach(id => {
+      const match = id.match(/(\d+)$/);
+      if (match) max = Math.max(max, Number(match[1]));
+    });
+    return `PROC-${String(max + 1).padStart(4, '0')}`;
+  }
 }
 
 class AcompanhamentoService {
@@ -670,6 +719,29 @@ class AcompanhamentoService {
 
   list() {
     return this.repo.getObjects(SIGEP.sheets.acompanhamento).map(DomainNormalizer.acompanhamento.bind(DomainNormalizer));
+  }
+
+  create(payload) {
+    const unidade = String(payload.UNIDADE || '').trim();
+    if (!unidade) throw new Error('UNIDADE é obrigatória para cadastro.');
+    const now = new Date();
+    const row = {
+      ID_ACOMPANHAMENTO: this.generateId_(),
+      UNIDADE: unidade,
+      DATA_AGENDAMENTO: String(payload.DATA_AGENDAMENTO || '').trim(),
+      STATUS_AGENDAMENTO: String(payload.STATUS_AGENDAMENTO || '').trim(),
+      INTRODUCAO: String(payload.INTRODUCAO || '').trim(),
+      PERFIL: String(payload.PERFIL || '').trim(),
+      FLUXO_PROCESSO: String(payload.FLUXO_PROCESSO || '').trim(),
+      MODELAGEM: String(payload.MODELAGEM || '').trim(),
+      INDICADORES: String(payload.INDICADORES || '').trim(),
+      FICHA_TECNICA_INDICADORES: String(payload.FICHA_TECNICA_INDICADORES || '').trim(),
+      ORDEM_AGENDAMENTO_UNIDADE: Number(payload.ORDEM_AGENDAMENTO_UNIDADE || now.getTime())
+    };
+    this.computeProgress_(row);
+    const saved = this.repo.insertObject(SIGEP.sheets.acompanhamento, row);
+    this.audit.logChange({ acao: 'CRIAR_ACOMPANHAMENTO', entidade: 'ACOMPANHAMENTO', id: saved.ID_ACOMPANHAMENTO, before: null, after: saved, patch: row, origem: 'ACOMPANHAMENTO', motivo: payload.MOTIVO_ALTERACAO || '' });
+    return { ok: true, data: saved };
   }
 
   updateStatus(payload) {
@@ -698,6 +770,26 @@ class AcompanhamentoService {
   isConcluida_(value) {
     return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().includes('CONCLUIDA');
   }
+
+  computeProgress_(target) {
+    const etapas = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'].map(k => target[k] || '');
+    const concluidas = etapas.filter(v => this.isConcluida_(v)).length;
+    const total = etapas.filter(Boolean).length || 6;
+    target.ETAPAS_CONCLUIDAS = concluidas;
+    target.ETAPAS_TOTAL = total;
+    target.PROGRESSO_PERCENTUAL = Math.round((concluidas / total) * 100);
+    target.STATUS_GERAL = concluidas === total ? 'Concluída' : concluidas === 0 ? 'Não iniciada' : 'Em andamento';
+  }
+
+  generateId_() {
+    const ids = this.repo.getObjects(SIGEP.sheets.acompanhamento).map(r => String(r.ID_ACOMPANHAMENTO || '').trim());
+    let max = 0;
+    ids.forEach(id => {
+      const match = id.match(/(\d+)$/);
+      if (match) max = Math.max(max, Number(match[1]));
+    });
+    return `ACOMP-${String(max + 1).padStart(4, '0')}`;
+  }
 }
 
 class IndicadorService {
@@ -712,6 +804,27 @@ class IndicadorService {
 
   listLancamentos() {
     return this.repo.getObjects(SIGEP.sheets.lancamentos);
+  }
+
+  create(payload) {
+    const nome = String(payload.NOME_INDICADOR || '').trim();
+    const tipo = String(payload.TIPO_INDICADOR || '').trim();
+    const meta = String(payload.META || '').trim();
+    if (!nome || !tipo || !meta) throw new Error('NOME_INDICADOR, TIPO_INDICADOR e META são obrigatórios para cadastro.');
+    const row = {
+      ID_INDICADOR: this.generateId_(),
+      NOME_INDICADOR: nome,
+      TIPO_INDICADOR: tipo,
+      META: meta,
+      META_OPERADOR: String(payload.META_OPERADOR || '>=').trim(),
+      RESULTADO_ESPERADO: String(payload.RESULTADO_ESPERADO || '').trim(),
+      PROCESSO: String(payload.PROCESSO || '').trim(),
+      CATEGORIA: String(payload.CATEGORIA || '').trim(),
+      UNIDADE: String(payload.UNIDADE || '').trim()
+    };
+    const saved = this.repo.insertObject(SIGEP.sheets.indicadores, row);
+    this.audit.logChange({ acao: 'CRIAR_INDICADOR', entidade: 'INDICADOR', id: saved.ID_INDICADOR, before: null, after: saved, patch: row, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
+    return { ok: true, data: saved };
   }
 
   update(payload) {
@@ -753,6 +866,16 @@ class IndicadorService {
     const refreshed = this.repo.getObjects(SIGEP.sheets.lancamentos).find(item => item._rowNumber === row._rowNumber) || before;
     this.audit.logChange({ acao: 'ATUALIZAR_LANCAMENTO_INDICADOR', entidade: 'LANCAMENTO_INDICADOR', id: `${payload.ID_INDICADOR}:${comp}`, before, after: refreshed, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: refreshed };
+  }
+
+  generateId_() {
+    const ids = this.repo.getObjects(SIGEP.sheets.indicadores).map(r => String(r.ID_INDICADOR || '').trim());
+    let max = 0;
+    ids.forEach(id => {
+      const match = id.match(/(\d+)$/);
+      if (match) max = Math.max(max, Number(match[1]));
+    });
+    return `IND-${String(max + 1).padStart(4, '0')}`;
   }
 }
 
