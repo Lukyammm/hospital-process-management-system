@@ -196,6 +196,18 @@ function atualizarLancamentoIndicador(payload) {
   return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.updateLancamento(payload)));
 }
 
+function excluirAcompanhamento(payload) {
+  return runWithWriteLock_(() => withWritePermission_('ACOMPANHAMENTO', app => app.acompanhamento.remove(payload)));
+}
+
+function excluirProcesso(payload) {
+  return runWithWriteLock_(() => withWritePermission_('PROCESSOS', app => app.processos.remove(payload)));
+}
+
+function excluirIndicador(payload) {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.remove(payload)));
+}
+
 
 function getAdminData() {
   return withAdminPermission_('ADMIN', app => app.admin.getAdminData());
@@ -681,6 +693,16 @@ class ProcessoService {
     return { ok: true, data: updated };
   }
 
+  remove(payload) {
+    if (!payload || !payload.ID_PROCESSO) throw new Error('ID_PROCESSO obrigatório para exclusão.');
+    const motivo = String(payload.MOTIVO_ALTERACAO || '').trim();
+    if (!motivo) throw new Error('MOTIVO_ALTERACAO obrigatório para exclusão.');
+    const current = this.repo.getById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO);
+    this.repo.deleteById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO);
+    this.audit.logChange({ acao: 'EXCLUIR_PROCESSO', entidade: 'PROCESSO', id: payload.ID_PROCESSO, before: current, after: null, patch: null, origem: 'PROCESSOS', motivo });
+    return { ok: true };
+  }
+
 
   normalizePayload_(payload) {
     const source = payload || {};
@@ -767,6 +789,16 @@ class AcompanhamentoService {
     return { ok: true, data: updated };
   }
 
+  remove(payload) {
+    if (!payload || !payload.ID_ACOMPANHAMENTO) throw new Error('ID_ACOMPANHAMENTO obrigatório para exclusão.');
+    const motivo = String(payload.MOTIVO_ALTERACAO || '').trim();
+    if (!motivo) throw new Error('MOTIVO_ALTERACAO obrigatório para exclusão.');
+    const current = this.repo.getById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO);
+    this.repo.deleteById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO);
+    this.audit.logChange({ acao: 'EXCLUIR_ACOMPANHAMENTO', entidade: 'ACOMPANHAMENTO', id: payload.ID_ACOMPANHAMENTO, before: current, after: null, patch: null, origem: 'ACOMPANHAMENTO', motivo });
+    return { ok: true };
+  }
+
   isConcluida_(value) {
     return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().includes('CONCLUIDA');
   }
@@ -842,6 +874,16 @@ class IndicadorService {
     const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch);
     this.audit.logChange({ acao: 'ATUALIZAR_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
+  }
+
+  remove(payload) {
+    if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório para exclusão.');
+    const motivo = String(payload.MOTIVO_ALTERACAO || '').trim();
+    if (!motivo) throw new Error('MOTIVO_ALTERACAO obrigatório para exclusão.');
+    const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
+    this.repo.deleteById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
+    this.audit.logChange({ acao: 'EXCLUIR_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: null, patch: null, origem: 'INDICADORES', motivo });
+    return { ok: true };
   }
 
   updateLancamento(payload) {

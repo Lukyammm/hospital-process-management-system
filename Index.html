@@ -1621,6 +1621,7 @@ function getIndicatorUnit(ind) {
             <div class="acomp-actions">
               <span class="acomp-status-chip ${statusClass(item.STATUS_AGENDAMENTO)}">${escapeHtml(item.STATUS_AGENDAMENTO || 'Sem status')}</span>
               <button class="btn secondary icon" onclick='abrirEdicaoAcompanhamento(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+              <button class="btn secondary icon" onclick='excluirAcompanhamentoUi(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V5h6v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Excluir</button>
             </div>
           </section>
 
@@ -1752,6 +1753,23 @@ function getIndicatorUnit(ind) {
         .criarAcompanhamento({ UNIDADE: UNIDADE.trim(), DATA_AGENDAMENTO: DATA_AGENDAMENTO.trim(), STATUS_AGENDAMENTO: STATUS_AGENDAMENTO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
 
+    async function excluirAcompanhamentoUi(item) {
+      if (!item || !item.ID_ACOMPANHAMENTO) return;
+      if (!await ui.dialog.confirm(`Excluir o acompanhamento ${item.ID_ACOMPANHAMENTO}? Esta ação não pode ser desfeita.`)) return;
+      const values = await ui.dialog.form({
+        title: 'Excluir acompanhamento',
+        description: 'Informe o motivo da exclusão para auditoria.',
+        confirmText: 'Excluir registro',
+        fields: [{ name: 'MOTIVO_ALTERACAO', label: 'Motivo da exclusão', type: 'textarea', required: true }]
+      });
+      if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
+      showSaveFeedback('Excluindo acompanhamento...');
+      google.script.run
+        .withSuccessHandler(async () => { showSaveFeedback('Acompanhamento excluído com sucesso.', true); loadData(); await ui.dialog.alert('Acompanhamento excluído.'); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao excluir acompanhamento.'); await ui.dialog.alert('Erro ao excluir acompanhamento: ' + (err.message || err)); })
+        .excluirAcompanhamento({ ID_ACOMPANHAMENTO: item.ID_ACOMPANHAMENTO, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
+    }
+
     function showProcesso(p) {
       ui.openDrawer(p.PROCESSO || 'Processo', p.SETOR || '', `
         <div class="indicator-head">
@@ -1760,6 +1778,7 @@ function getIndicatorUnit(ind) {
             <h4 class="section-title">${escapeHtml(p.PROCESSO || 'Processo')}</h4>
           </div>
           <button class="btn secondary icon" onclick='abrirEdicaoProcesso(${JSON.stringify(p).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+          <button class="btn secondary icon" onclick='excluirProcessoUi(${JSON.stringify(p).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V5h6v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Excluir</button>
         </div>
         <div class="steps">
           ${drawerField('Tipo', p.TIPO_PROCESSO)}
@@ -1885,6 +1904,23 @@ function getIndicatorUnit(ind) {
         .criarProcesso({ PROCESSO: PROCESSO.trim(), TIPO_PROCESSO: TIPO_PROCESSO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
 
+    async function excluirProcessoUi(item) {
+      if (!item || !item.ID_PROCESSO) return;
+      if (!await ui.dialog.confirm(`Excluir o processo ${item.ID_PROCESSO}? Esta ação não pode ser desfeita.`)) return;
+      const values = await ui.dialog.form({
+        title: 'Excluir processo',
+        description: 'Informe o motivo da exclusão para auditoria.',
+        confirmText: 'Excluir registro',
+        fields: [{ name: 'MOTIVO_ALTERACAO', label: 'Motivo da exclusão', type: 'textarea', required: true }]
+      });
+      if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
+      showSaveFeedback('Excluindo processo...');
+      google.script.run
+        .withSuccessHandler(async () => { showSaveFeedback('Processo excluído com sucesso.', true); loadData(); await ui.dialog.alert('Processo excluído.'); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao excluir processo.'); await ui.dialog.alert('Erro ao excluir processo: ' + (err.message || err)); })
+        .excluirProcesso({ ID_PROCESSO: item.ID_PROCESSO, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
+    }
+
     function showIndicador(ind) {
       const lans = (state.data.lancamentos || []).filter(l => l.ID_INDICADOR === ind.ID_INDICADOR);
       const ordem = lans.slice().sort((a, b) => parseCompetencia(resolvePeriodoLabel(a)) - parseCompetencia(resolvePeriodoLabel(b)));
@@ -1919,6 +1955,7 @@ function getIndicatorUnit(ind) {
             <div class="indicator-actions">
               <button class="btn secondary icon" onclick='abrirEdicaoLancamentoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Lançar dados</button>
               <button class="btn secondary icon" onclick='abrirEdicaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar indicador</button>
+              <button class="btn secondary icon" onclick='excluirIndicadorUi(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V5h6v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Excluir indicador</button>
             </div>
           </div>
           <div class="meta-grid">
@@ -2294,6 +2331,23 @@ function getIndicatorUnit(ind) {
         .withSuccessHandler(async () => { showSaveFeedback('Indicador criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo indicador cadastrado.'); })
         .withFailureHandler(async err => { showSaveFeedback('Falha ao criar indicador.'); await ui.dialog.alert('Erro ao criar indicador: ' + (err.message || err)); })
         .criarIndicador({ NOME_INDICADOR: NOME_INDICADOR.trim(), TIPO_INDICADOR: TIPO_INDICADOR.trim(), META: META.trim().replace(',', '.'), META_OPERADOR: META_OPERADOR.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
+    }
+
+    async function excluirIndicadorUi(item) {
+      if (!item || !item.ID_INDICADOR) return;
+      if (!await ui.dialog.confirm(`Excluir o indicador ${item.ID_INDICADOR}? Esta ação não pode ser desfeita.`)) return;
+      const values = await ui.dialog.form({
+        title: 'Excluir indicador',
+        description: 'Informe o motivo da exclusão para auditoria.',
+        confirmText: 'Excluir registro',
+        fields: [{ name: 'MOTIVO_ALTERACAO', label: 'Motivo da exclusão', type: 'textarea', required: true }]
+      });
+      if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
+      showSaveFeedback('Excluindo indicador...');
+      google.script.run
+        .withSuccessHandler(async () => { showSaveFeedback('Indicador excluído com sucesso.', true); loadData(); await ui.dialog.alert('Indicador excluído.'); })
+        .withFailureHandler(async err => { showSaveFeedback('Falha ao excluir indicador.'); await ui.dialog.alert('Erro ao excluir indicador: ' + (err.message || err)); })
+        .excluirIndicador({ ID_INDICADOR: item.ID_INDICADOR, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
 
     function renderProcessFieldOptions(fieldName, selected, placeholder) {
