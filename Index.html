@@ -745,6 +745,8 @@
     .system-dialog-title { margin:0; font-size:16px; color:var(--modal-title); }
     .system-dialog-message { margin:0; color:var(--text); font-size:14px; line-height:1.5; }
     .system-dialog-input { width:100%; border:1px solid #c9daee; border-radius:10px; padding:10px 11px; color:var(--text); background:#fff; }
+    .system-dialog-form { display:grid; gap:10px; }
+    .system-dialog-form label { display:grid; gap:6px; color:var(--text-muted); font-size:12px; font-weight:700; }
     .system-dialog-actions { display:flex; justify-content:flex-end; gap:10px; }
 
     @keyframes modalFade {
@@ -1143,14 +1145,28 @@
         prompt(message, defaultValue) {
           return ui.dialog._open({ type: 'prompt', title: 'Informação necessária', message, defaultValue: defaultValue || '' });
         },
-        _open({ type, title, message, defaultValue = '' }) {
+
+        form({ title = 'Novo cadastro', description = '', fields = [], confirmText = 'Salvar' } = {}) {
+          return ui.dialog._open({ type: 'form', title, message: description, fields, confirmText });
+        },
+        _open({ type, title, message, defaultValue = '', fields = [], confirmText = 'Confirmar' }) {
           return new Promise(resolve => {
             const host = document.getElementById('systemDialog');
+            const isForm = type === 'form';
             const inputHtml = type === 'prompt' ? `<input class="system-dialog-input" id="systemDialogInput" type="text" value="${escapeHtml(defaultValue)}">` : '';
+            const formHtml = isForm ? `<form id="systemDialogForm" class="system-dialog-form">${(fields || []).map(field => {
+              const fType = (field.type || 'text').toLowerCase();
+              const fName = escapeHtml(field.name || 'campo');
+              const fLabel = escapeHtml(field.label || field.name || 'Campo');
+              const fRequired = field.required ? 'required' : '';
+              if (fType === 'textarea') return `<label>${fLabel}<textarea class="system-dialog-input" name="${fName}" ${fRequired} placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(field.value || '')}</textarea></label>`;
+              if (fType === 'select') return `<label>${fLabel}<select class="system-dialog-input" name="${fName}" ${fRequired}>${(field.options || []).map(opt => { const v = String(opt || ''); return `<option value="${escapeHtml(v)}" ${String(field.value || '')===v?'selected':''}>${escapeHtml(v || 'Selecione')}</option>`; }).join('')}</select></label>`;
+              return `<label>${fLabel}<input class="system-dialog-input" name="${fName}" type="${escapeHtml(fType)}" value="${escapeHtml(field.value || '')}" ${fRequired} placeholder="${escapeHtml(field.placeholder || '')}"></label>`;
+            }).join('')}</form>` : '';
             const actionsHtml = type === 'alert'
               ? `<button class="btn" data-role="confirm">Ok</button>`
-              : `<button class="btn secondary" data-role="cancel">Cancelar</button><button class="btn" data-role="confirm">Confirmar</button>`;
-            host.innerHTML = `<div class="system-dialog-card" role="dialog" aria-modal="true" aria-labelledby="systemDialogTitle"><h4 class="system-dialog-title" id="systemDialogTitle">${escapeHtml(title)}</h4><p class="system-dialog-message">${escapeHtml(message || '')}</p>${inputHtml}<div class="system-dialog-actions">${actionsHtml}</div></div>`;
+              : `<button class="btn secondary" data-role="cancel">Cancelar</button><button class="btn" data-role="confirm">${escapeHtml(confirmText || 'Confirmar')}</button>`;
+            host.innerHTML = `<div class="system-dialog-card" role="dialog" aria-modal="true" aria-labelledby="systemDialogTitle"><h4 class="system-dialog-title" id="systemDialogTitle">${escapeHtml(title)}</h4><p class="system-dialog-message">${escapeHtml(message || '')}</p>${inputHtml}${formHtml}<div class="system-dialog-actions">${actionsHtml}</div></div>`;
             host.classList.add('active');
             host.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
@@ -1170,7 +1186,15 @@
             };
             document.addEventListener('keydown', handleKey);
             host.addEventListener('click', (e) => { if (e.target === host) close(type === 'prompt' ? null : false); }, { once: true });
-            host.querySelector('[data-role="confirm"]').addEventListener('click', () => close(type === 'prompt' ? (input ? input.value : '') : true), { once: true });
+            host.querySelector('[data-role="confirm"]').addEventListener('click', () => {
+              if (type === 'form') {
+                const form = host.querySelector('#systemDialogForm');
+                if (form && !form.reportValidity()) return;
+                close(form ? Object.fromEntries(new FormData(form).entries()) : {});
+                return;
+              }
+              close(type === 'prompt' ? (input ? input.value : '') : true);
+            }, { once: true });
             const cancelBtn = host.querySelector('[data-role="cancel"]');
             if (cancelBtn) cancelBtn.addEventListener('click', () => close(type === 'prompt' ? null : false), { once: true });
             if (input) input.focus();
@@ -1702,12 +1726,19 @@ function getIndicatorUnit(ind) {
     }
 
     async function novoAcompanhamento() {
-      const UNIDADE = (await ui.dialog.prompt('Unidade (obrigatório):')) || '';
-      if (!UNIDADE.trim()) return;
-      const DATA_AGENDAMENTO = (await ui.dialog.prompt('Data do agendamento (dd/mm/aaaa):')) || '';
-      const STATUS_AGENDAMENTO = (await ui.dialog.prompt('Status do agendamento:')) || '';
-      const MOTIVO_ALTERACAO = (await ui.dialog.prompt('Motivo do cadastro (obrigatório):')) || '';
-      if (!MOTIVO_ALTERACAO.trim()) return;
+      const values = await ui.dialog.form({
+        title: 'Novo acompanhamento',
+        description: 'Preencha os dados obrigatórios para criar o acompanhamento.',
+        confirmText: 'Criar',
+        fields: [
+          { name: 'UNIDADE', label: 'Unidade', required: true, placeholder: 'Unidade responsável' },
+          { name: 'DATA_AGENDAMENTO', label: 'Data do agendamento', placeholder: 'dd/mm/aaaa' },
+          { name: 'STATUS_AGENDAMENTO', label: 'Status do agendamento' },
+          { name: 'MOTIVO_ALTERACAO', label: 'Motivo do cadastro', type: 'textarea', required: true }
+        ]
+      });
+      if (!values) return;
+      const { UNIDADE = '', DATA_AGENDAMENTO = '', STATUS_AGENDAMENTO = '', MOTIVO_ALTERACAO = '' } = values;
       showSaveFeedback('Criando acompanhamento...');
       google.script.run
         .withSuccessHandler(async () => { showSaveFeedback('Acompanhamento criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo acompanhamento cadastrado.'); })
@@ -1828,11 +1859,19 @@ function getIndicatorUnit(ind) {
     }
 
     async function novoProcesso() {
-      const PROCESSO = (await ui.dialog.prompt('Nome do processo (obrigatório):')) || '';
-      if (!PROCESSO.trim()) return;
-      const TIPO_PROCESSO = (await ui.dialog.prompt('Tipo do processo:')) || '';
-      const MOTIVO_ALTERACAO = (await ui.dialog.prompt('Motivo do cadastro (obrigatório):')) || '';
-      if (!MOTIVO_ALTERACAO.trim()) return;
+      const values = await ui.dialog.form({
+        title: 'Novo processo',
+        description: 'Cadastre o processo com as informações iniciais.',
+        confirmText: 'Criar',
+        fields: [
+          { name: 'PROCESSO', label: 'Nome do processo', required: true },
+          { name: 'TIPO_PROCESSO', label: 'Tipo do processo' },
+          { name: 'MOTIVO_ALTERACAO', label: 'Motivo do cadastro', type: 'textarea', required: true }
+        ]
+      });
+      if (!values) return;
+      const { PROCESSO = '', TIPO_PROCESSO = '', MOTIVO_ALTERACAO = '' } = values;
+      if (!PROCESSO.trim() || !MOTIVO_ALTERACAO.trim()) return;
       showSaveFeedback('Criando processo...');
       google.script.run
         .withSuccessHandler(async () => { showSaveFeedback('Processo criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo processo cadastrado.'); })
@@ -2224,17 +2263,25 @@ function getIndicatorUnit(ind) {
     }
 
     async function novoIndicador() {
-      const NOME_INDICADOR = (await ui.dialog.prompt('Nome do indicador (obrigatório):')) || '';
-      if (!NOME_INDICADOR.trim()) return;
-      const TIPO_INDICADOR = (await ui.dialog.prompt('Tipo do indicador (obrigatório):')) || '';
-      if (!TIPO_INDICADOR.trim()) return;
-      const META = (await ui.dialog.prompt('Meta numérica (obrigatória):')) || '';
+      const values = await ui.dialog.form({
+        title: 'Novo indicador',
+        description: 'Informe identificação, meta e rastreabilidade para criar o indicador.',
+        confirmText: 'Criar',
+        fields: [
+          { name: 'NOME_INDICADOR', label: 'Nome do indicador', required: true },
+          { name: 'TIPO_INDICADOR', label: 'Tipo do indicador', required: true },
+          { name: 'META', label: 'Meta numérica', required: true, placeholder: 'Ex.: 95,5' },
+          { name: 'META_OPERADOR', label: 'Operador da meta', type: 'select', value: '>=', options: ['>=', '>', '<=', '<', '='] },
+          { name: 'MOTIVO_ALTERACAO', label: 'Motivo do cadastro', type: 'textarea', required: true }
+        ]
+      });
+      if (!values) return;
+      const { NOME_INDICADOR = '', TIPO_INDICADOR = '', META = '', META_OPERADOR = '>=', MOTIVO_ALTERACAO = '' } = values;
+      if (!NOME_INDICADOR.trim() || !TIPO_INDICADOR.trim()) return;
       if (!META.trim() || !Number.isFinite(Number(META.replace(',', '.')))) {
         await ui.dialog.alert('A meta deve ser numérica.');
         return;
       }
-      const META_OPERADOR = (await ui.dialog.prompt('Operador da meta (>=, >, <=, <, =):', '>=')) || '>=';
-      const MOTIVO_ALTERACAO = (await ui.dialog.prompt('Motivo do cadastro (obrigatório):')) || '';
       if (!MOTIVO_ALTERACAO.trim()) return;
       showSaveFeedback('Criando indicador...');
       google.script.run
