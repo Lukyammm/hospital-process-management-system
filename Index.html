@@ -2501,12 +2501,42 @@ function getIndicatorUnit(ind) {
     }
     function novoUsuario(){ editarUsuario({}); }
     async function editarUsuario(u){
-      const EMAIL = await ui.dialog.prompt('Email do usuário:', u.EMAIL || ''); if(!EMAIL) return;
-      const NOME = (await ui.dialog.prompt('Nome do usuário:', u.NOME || '')) || '';
-      const PERFIL = (await ui.dialog.prompt('Perfil (ADMIN/GESTOR/LEITOR):', u.PERFIL || 'LEITOR')) || 'LEITOR';
-      const UNIDADE = (await ui.dialog.prompt('Unidade/Setor:', u.UNIDADE || '')) || '';
-      const ATIVO = (await ui.dialog.prompt('Ativo? (SIM/NÃO):', u.ATIVO || 'SIM')) || 'SIM';
-      google.script.run.withSuccessHandler(async ()=>{loadAdminData(); await ui.dialog.alert('Usuário salvo com sucesso.');}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).salvarUsuario({EMAIL,NOME,PERFIL,UNIDADE,ATIVO});
+      const isEditing = Boolean(u && u.EMAIL);
+      const values = await ui.dialog.form({
+        title: isEditing ? 'Editar usuário' : 'Novo usuário',
+        description: 'Preencha os dados em um único formulário para salvar o usuário.',
+        confirmText: isEditing ? 'Salvar alterações' : 'Cadastrar usuário',
+        fields: [
+          { name: 'EMAIL', label: 'Email do usuário', type: 'email', required: true, value: u.EMAIL || '', placeholder: 'usuario@huc.gov.br' },
+          { name: 'NOME', label: 'Nome completo', type: 'text', required: true, value: u.NOME || '', placeholder: 'Ex: Maria da Silva' },
+          { name: 'PERFIL', label: 'Perfil de acesso', type: 'select', required: true, value: (u.PERFIL || 'LEITOR').toUpperCase(), options: ['ADMIN', 'GESTOR', 'LEITOR'] },
+          { name: 'UNIDADE', label: 'Unidade/Setor', type: 'text', value: u.UNIDADE || '', placeholder: 'Ex: Farmácia Central' },
+          { name: 'ATIVO', label: 'Status do usuário', type: 'select', required: true, value: (u.ATIVO || 'SIM').toUpperCase(), options: ['SIM', 'NÃO'] }
+        ]
+      });
+      if (!values) return;
+
+      const payload = {
+        EMAIL: String(values.EMAIL || '').trim(),
+        NOME: String(values.NOME || '').trim(),
+        PERFIL: String(values.PERFIL || 'LEITOR').trim().toUpperCase(),
+        UNIDADE: String(values.UNIDADE || '').trim(),
+        ATIVO: String(values.ATIVO || 'SIM').trim().toUpperCase()
+      };
+
+      if (!payload.EMAIL || !payload.NOME) {
+        await ui.dialog.alert('Email e nome são obrigatórios.');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(async ()=>{
+          loadAdminData();
+          showAdminUsers();
+          await ui.dialog.alert('Usuário salvo com sucesso.');
+        })
+        .withFailureHandler(async err=>await ui.dialog.alert(err.message||err))
+        .salvarUsuario(payload);
     }
     async function excluirUsuarioUi(email){ if(!await ui.dialog.confirm('Excluir usuário '+email+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminUsers();}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).excluirUsuario(email); }
     async function resetarSenha(email){ const NOVA_SENHA=await ui.dialog.prompt('Nova senha temporária para '+email+':'); if(!NOVA_SENHA) return; google.script.run.withSuccessHandler(async ()=>await ui.dialog.alert('Senha alterada.')).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).alterarSenhaUsuario({EMAIL:email,NOVA_SENHA}); }
