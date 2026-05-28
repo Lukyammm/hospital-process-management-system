@@ -257,9 +257,20 @@ function runWithWriteLock_(callback) {
     throw new Error('Sistema ocupado no momento. Tente novamente em alguns segundos.');
   }
   try {
-    return callback();
+    const result = callback();
+    SpreadsheetApp.flush();
+    clearSigepRuntimeCache_();
+    return result;
   } finally {
     lock.releaseLock();
+  }
+}
+
+function clearSigepRuntimeCache_() {
+  try {
+    CacheService.getScriptCache().remove(['sigep', SIGEP.cache.version, 'initial_data'].join(':'));
+  } catch (err) {
+    console.warn('Falha ao limpar cache operacional:', err && err.message ? err.message : err);
   }
 }
 
@@ -523,6 +534,7 @@ class SheetRepository {
       if (col !== -1) updatedRow[col] = patch[key];
     });
     sh.getRange(rowIndex + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
+    SpreadsheetApp.flush();
     return this.getObjects(sheetName).find(obj => String(obj[idColumn]) === String(id));
   }
 
@@ -535,6 +547,7 @@ class SheetRepository {
 
   append(sheetName, row) {
     this.getSheet(sheetName).appendRow(row);
+    SpreadsheetApp.flush();
   }
 
   getHeaders(sheetName) {
@@ -623,13 +636,29 @@ class SheetRepository {
     if (!rows || !rows.length) return;
     const sh = this.getSheet(sheetName);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+    SpreadsheetApp.flush();
   }
 
-  insertObject(sheetName, obj) {
+  insertObject(sheetName, obj, idColumn) {
     const headers = this.getHeaders(sheetName);
     const row = headers.map(h => (obj[h] !== undefined ? obj[h] : ''));
+    const resolvedIdColumn = this.resolveIdColumn_(sheetName, obj, idColumn, headers);
+    const resolvedIdValue = obj[resolvedIdColumn];
+    if (!resolvedIdColumn || resolvedIdValue === undefined || resolvedIdValue === '') {
+      throw new Error('Não foi possível identificar o ID do registro para gravar em ' + sheetName + '.');
+    }
     this.appendRows(sheetName, [row]);
-    return this.getById(sheetName, headers[0], obj[headers[0]]);
+    return this.getById(sheetName, resolvedIdColumn, resolvedIdValue);
+  }
+
+  resolveIdColumn_(sheetName, obj, preferred, headers) {
+    const candidates = [
+      preferred,
+      ...((SIGEP.schema.required || {})[sheetName] || []),
+      ...Object.keys(obj || {}).filter(key => /^ID(_|$)/.test(String(key || '').toUpperCase())),
+      headers && headers[0]
+    ].filter(Boolean);
+    return candidates.find(column => headers.includes(column) && obj[column] !== undefined) || '';
   }
 
   deleteById(sheetName, idColumn, id) {
@@ -641,6 +670,7 @@ class SheetRepository {
     const rowIndex = values.findIndex((row, i) => i > 0 && String(row[idIndex]) === String(id));
     if (rowIndex === -1) throw new Error('Registro não encontrado: ' + id);
     sh.deleteRow(rowIndex + 1);
+    SpreadsheetApp.flush();
     return { ok: true };
   }
 }
@@ -670,7 +700,7 @@ class ProcessoService {
       PUBLICACAO: String(payload.PUBLICACAO || '').trim()
     };
     if (!row.STATUS_GERAL) row.STATUS_GERAL = this.calcularStatus_(row);
-    const saved = this.repo.insertObject(SIGEP.sheets.processos, row);
+    const saved = this.repo.insertObject(SIGEP.sheets.processos, row, 'ID_PROCESSO');
     this.audit.logChange({ acao: 'CRIAR_PROCESSO', entidade: 'PROCESSO', id: saved.ID_PROCESSO, before: null, after: saved, patch: row, origem: 'PROCESSOS', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: saved };
   }
@@ -761,7 +791,7 @@ class AcompanhamentoService {
       ORDEM_AGENDAMENTO_UNIDADE: Number(payload.ORDEM_AGENDAMENTO_UNIDADE || now.getTime())
     };
     this.computeProgress_(row);
-    const saved = this.repo.insertObject(SIGEP.sheets.acompanhamento, row);
+    const saved = this.repo.insertObject(SIGEP.sheets.acompanhamento, row, 'ID_ACOMPANHAMENTO');
     this.audit.logChange({ acao: 'CRIAR_ACOMPANHAMENTO', entidade: 'ACOMPANHAMENTO', id: saved.ID_ACOMPANHAMENTO, before: null, after: saved, patch: row, origem: 'ACOMPANHAMENTO', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: saved };
   }
@@ -854,7 +884,7 @@ class IndicadorService {
       CATEGORIA: String(payload.CATEGORIA || '').trim(),
       UNIDADE: String(payload.UNIDADE || '').trim()
     };
-    const saved = this.repo.insertObject(SIGEP.sheets.indicadores, row);
+    const saved = this.repo.insertObject(SIGEP.sheets.indicadores, row, 'ID_INDICADOR');
     this.audit.logChange({ acao: 'CRIAR_INDICADOR', entidade: 'INDICADOR', id: saved.ID_INDICADOR, before: null, after: saved, patch: row, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: saved };
   }
@@ -905,6 +935,7 @@ class IndicadorService {
       const idx = headers.indexOf(key);
       if (idx >= 0) sheet.getRange(row._rowNumber, idx + 1).setValue(patch[key]);
     });
+    SpreadsheetApp.flush();
     const refreshed = this.repo.getObjects(SIGEP.sheets.lancamentos).find(item => item._rowNumber === row._rowNumber) || before;
     this.audit.logChange({ acao: 'ATUALIZAR_LANCAMENTO_INDICADOR', entidade: 'LANCAMENTO_INDICADOR', id: `${payload.ID_INDICADOR}:${comp}`, before, after: refreshed, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: refreshed };
