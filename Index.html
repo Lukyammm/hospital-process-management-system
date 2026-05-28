@@ -770,9 +770,9 @@
     .toast-close { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 0; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    #systemDialog { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:20px; z-index:120; background:var(--modal-overlay); backdrop-filter: blur(8px) saturate(130%); animation: modalFade var(--duration-base) var(--ease-standard); }
+    #systemDialog { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; z-index:220; background:var(--modal-overlay); backdrop-filter: blur(8px) saturate(130%); animation: modalFade var(--duration-base) var(--ease-standard); }
     #systemDialog.active { display:flex; }
-    .system-dialog-card { width:min(520px, calc(100vw - 32px)); background:var(--modal-surface); border:1px solid var(--modal-line); border-radius:18px; box-shadow:0 24px 54px rgba(8, 24, 43, .32); padding:18px; animation: modalPop var(--duration-base) var(--ease-emphasized); display:grid; gap:12px; }
+    .system-dialog-card { position:relative; z-index:221; width:min(520px, calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; background:var(--modal-surface); border:1px solid var(--modal-line); border-radius:18px; box-shadow:0 24px 54px rgba(8, 24, 43, .32); padding:18px; animation: modalPop var(--duration-base) var(--ease-emphasized); display:grid; gap:12px; }
     .system-dialog-title { margin:0; font-size:16px; color:var(--modal-title); }
     .system-dialog-message { margin:0; color:var(--text); font-size:14px; line-height:1.5; }
     .system-dialog-input { width:100%; border:1px solid #c9daee; border-radius:10px; padding:10px 11px; color:var(--text); background:#fff; }
@@ -1365,8 +1365,9 @@
               host.classList.remove('active');
               host.setAttribute('aria-hidden', 'true');
               host.innerHTML = '';
-              document.body.style.overflow = '';
+              document.body.style.overflow = document.getElementById('drawer')?.classList.contains('active') ? 'hidden' : '';
               document.removeEventListener('keydown', handleKey);
+              host.removeEventListener('click', handleBackdropClick);
               resolve(result);
             };
             const handleKey = (e) => {
@@ -1377,10 +1378,11 @@
             // Evita fechar imediatamente ao abrir quando o clique original continua propagando.
             let canCloseByBackdrop = false;
             setTimeout(() => { canCloseByBackdrop = true; }, 0);
-            host.addEventListener('click', (e) => {
+            const handleBackdropClick = (e) => {
               if (!canCloseByBackdrop) return;
               if (e.target === host) close(type === 'prompt' ? null : false);
-            });
+            };
+            host.addEventListener('click', handleBackdropClick);
             host.querySelector('[data-role="confirm"]').addEventListener('click', () => {
               if (type === 'form') {
                 const form = host.querySelector('#systemDialogForm');
