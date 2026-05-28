@@ -474,6 +474,7 @@ class DomainNormalizer {
 class SheetRepository {
   constructor() {
     this.ss = SpreadsheetApp.getActiveSpreadsheet();
+    this.headersCache = {};
   }
 
   cachePutSafe(key, value, ttlSeconds) {
@@ -500,11 +501,7 @@ class SheetRepository {
     const headers = values[0].map(h => String(h).trim());
     return values.slice(1)
       .filter(row => row.some(cell => String(cell).trim() !== ''))
-      .map((row, index) => {
-        const obj = { _rowNumber: index + 2 };
-        headers.forEach((h, i) => obj[h] = row[i] || '');
-        return obj;
-      });
+      .map((row, index) => this.rowToObject_(headers, row, index + 2));
   }
 
   getObjectsSafe(sheetName, fallback) {
@@ -519,46 +516,55 @@ class SheetRepository {
     }
   }
 
-  updateById(sheetName, idColumn, id, patch) {
+  updateById(sheetName, idColumn, id, patch, currentRow) {
     const sh = this.getSheet(sheetName);
-    const values = sh.getDataRange().getValues();
-    const headers = values[0];
-    const idIndex = headers.indexOf(idColumn);
-    if (idIndex === -1) throw new Error('Coluna ID não encontrada: ' + idColumn);
-    const rowIndex = values.findIndex((row, i) => i > 0 && String(row[idIndex]) === String(id));
-    if (rowIndex === -1) throw new Error('Registro não encontrado: ' + id);
+    const headers = this.getHeaders(sheetName);
+    const rowNumber = currentRow && currentRow._rowNumber
+      ? Number(currentRow._rowNumber)
+      : this.findRowNumberById_(sheetName, idColumn, id, headers);
+    if (!rowNumber) throw new Error('Registro não encontrado: ' + id);
 
-    const updatedRow = values[rowIndex].slice();
-    Object.keys(patch).forEach(key => {
-      const col = headers.indexOf(key);
-      if (col !== -1) updatedRow[col] = patch[key];
+    const updatedRow = sh.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+    const indexByHeader = this.indexHeaders_(headers);
+    Object.keys(patch || {}).forEach(key => {
+      const col = indexByHeader[key];
+      if (col !== undefined) updatedRow[col] = patch[key];
     });
-    sh.getRange(rowIndex + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
-    SpreadsheetApp.flush();
-    return this.getObjects(sheetName).find(obj => String(obj[idColumn]) === String(id));
+    sh.getRange(rowNumber, 1, 1, updatedRow.length).setValues([updatedRow]);
+    const displayRow = sh.getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
+    return this.rowToObject_(headers, displayRow, rowNumber);
   }
 
   getById(sheetName, idColumn, id) {
-    const rows = this.getObjects(sheetName);
-    const found = rows.find(obj => String(obj[idColumn]) === String(id));
-    if (!found) throw new Error('Registro não encontrado: ' + id);
-    return found;
+    const headers = this.getHeaders(sheetName);
+    const rowNumber = this.findRowNumberById_(sheetName, idColumn, id, headers);
+    if (!rowNumber) throw new Error('Registro não encontrado: ' + id);
+    const row = this.getSheet(sheetName).getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
+    return this.rowToObject_(headers, row, rowNumber);
   }
 
   append(sheetName, row) {
-    this.getSheet(sheetName).appendRow(row);
-    SpreadsheetApp.flush();
+    this.appendRows(sheetName, [row]);
   }
 
   getHeaders(sheetName) {
-    return this.getSheet(sheetName).getDataRange().getValues()[0] || [];
+    if (this.headersCache[sheetName]) return this.headersCache[sheetName].slice();
+    const sh = this.getSheet(sheetName);
+    const lastColumn = Math.max(1, sh.getLastColumn());
+    const headers = sh.getRange(1, 1, 1, lastColumn).getValues()[0].map(h => String(h || '').trim());
+    this.headersCache[sheetName] = headers;
+    return headers.slice();
   }
 
   ensureSchemaColumns() {
+    const cacheKey = this.getCacheKey('schema_columns_ok');
+    const cache = CacheService.getScriptCache();
+    if (cache.get(cacheKey) === '1') return;
     const requiredBySheet = SIGEP.schema.required || {};
     Object.keys(requiredBySheet).forEach(sheetName => this.ensureColumnsForSheet_(sheetName, requiredBySheet[sheetName] || []));
     const autoCreateBySheet = SIGEP.schema.autoCreate || {};
     Object.keys(autoCreateBySheet).forEach(sheetName => this.ensureColumnsForSheet_(sheetName, autoCreateBySheet[sheetName] || []));
+    cache.put(cacheKey, '1', 21600);
   }
 
   ensureColumnsForSheet_(sheetName, columns) {
@@ -571,6 +577,7 @@ class SheetRepository {
       sh.insertColumnAfter(sh.getLastColumn());
       sh.getRange(1, sh.getLastColumn()).setValue(col);
     });
+    delete this.headersCache[sheetName];
   }
 
   validateSchemas() {
@@ -636,7 +643,6 @@ class SheetRepository {
     if (!rows || !rows.length) return;
     const sh = this.getSheet(sheetName);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
-    SpreadsheetApp.flush();
   }
 
   insertObject(sheetName, obj, idColumn) {
@@ -647,8 +653,9 @@ class SheetRepository {
     if (!resolvedIdColumn || resolvedIdValue === undefined || resolvedIdValue === '') {
       throw new Error('Não foi possível identificar o ID do registro para gravar em ' + sheetName + '.');
     }
+    const rowNumber = this.getSheet(sheetName).getLastRow() + 1;
     this.appendRows(sheetName, [row]);
-    return this.getById(sheetName, resolvedIdColumn, resolvedIdValue);
+    return this.rowToObject_(headers, row, rowNumber);
   }
 
   resolveIdColumn_(sheetName, obj, preferred, headers) {
@@ -662,16 +669,78 @@ class SheetRepository {
   }
 
   deleteById(sheetName, idColumn, id) {
+    const rowNumber = this.findRowNumberById_(sheetName, idColumn, id);
+    if (!rowNumber) throw new Error('Registro não encontrado: ' + id);
+    this.getSheet(sheetName).deleteRow(rowNumber);
+    return { ok: true };
+  }
+
+  findRowNumberById_(sheetName, idColumn, id, headers) {
     const sh = this.getSheet(sheetName);
-    const values = sh.getDataRange().getValues();
-    const headers = values[0];
+    const effectiveHeaders = headers || this.getHeaders(sheetName);
+    const idIndex = effectiveHeaders.indexOf(idColumn);
+    if (idIndex === -1) throw new Error('Coluna ID não encontrada: ' + idColumn);
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) return 0;
+    const ids = sh.getRange(2, idIndex + 1, lastRow - 1, 1).getDisplayValues();
+    const target = String(id);
+    for (let i = 0; i < ids.length; i += 1) {
+      if (String(ids[i][0]) === target) return i + 2;
+    }
+    return 0;
+  }
+
+  findRowNumberByCriteria_(sheetName, criteria, headers) {
+    const sh = this.getSheet(sheetName);
+    const effectiveHeaders = headers || this.getHeaders(sheetName);
+    const keys = Object.keys(criteria || {});
+    if (!keys.length) return 0;
+    const indexes = keys.map(key => {
+      const index = effectiveHeaders.indexOf(key);
+      if (index === -1) throw new Error('Coluna não encontrada: ' + key);
+      return index;
+    });
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) return 0;
+    const minIndex = Math.min.apply(null, indexes);
+    const maxIndex = Math.max.apply(null, indexes);
+    const values = sh.getRange(2, minIndex + 1, lastRow - 1, maxIndex - minIndex + 1).getDisplayValues();
+    for (let rowIndex = 0; rowIndex < values.length; rowIndex += 1) {
+      const matches = keys.every((key, keyIndex) => {
+        const localIndex = indexes[keyIndex] - minIndex;
+        return String(values[rowIndex][localIndex]).trim() === String(criteria[key]).trim();
+      });
+      if (matches) return rowIndex + 2;
+    }
+    return 0;
+  }
+
+  rowToObject_(headers, row, rowNumber) {
+    const obj = { _rowNumber: rowNumber };
+    headers.forEach((h, i) => obj[h] = row[i] !== undefined && row[i] !== null ? row[i] : '');
+    return obj;
+  }
+
+  indexHeaders_(headers) {
+    const out = {};
+    headers.forEach((header, index) => {
+      out[header] = index;
+    });
+    return out;
+  }
+
+  getMaxNumericSuffix_(sheetName, idColumn) {
+    const headers = this.getHeaders(sheetName);
     const idIndex = headers.indexOf(idColumn);
     if (idIndex === -1) throw new Error('Coluna ID não encontrada: ' + idColumn);
-    const rowIndex = values.findIndex((row, i) => i > 0 && String(row[idIndex]) === String(id));
-    if (rowIndex === -1) throw new Error('Registro não encontrado: ' + id);
-    sh.deleteRow(rowIndex + 1);
-    SpreadsheetApp.flush();
-    return { ok: true };
+    const sh = this.getSheet(sheetName);
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) return 0;
+    const ids = sh.getRange(2, idIndex + 1, lastRow - 1, 1).getDisplayValues();
+    return ids.reduce((max, row) => {
+      const match = String(row[0] || '').trim().match(/(\d+)$/);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
   }
 }
 
@@ -718,7 +787,7 @@ class ProcessoService {
     if (payload.STATUS_GERAL === undefined) {
       patch.STATUS_GERAL = this.calcularStatus_({ ...current, ...patch });
     }
-    const updated = this.repo.updateById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO, patch);
+    const updated = this.repo.updateById(SIGEP.sheets.processos, 'ID_PROCESSO', payload.ID_PROCESSO, patch, current);
     this.audit.logChange({ acao: 'ATUALIZAR_PROCESSO', entidade: 'PROCESSO', id: payload.ID_PROCESSO, before: current, after: updated, patch, origem: 'PROCESSOS', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
   }
@@ -753,12 +822,7 @@ class ProcessoService {
   }
 
   generateId_() {
-    const ids = this.repo.getObjects(SIGEP.sheets.processos).map(r => String(r.ID_PROCESSO || '').trim());
-    let max = 0;
-    ids.forEach(id => {
-      const match = id.match(/(\d+)$/);
-      if (match) max = Math.max(max, Number(match[1]));
-    });
+    const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.processos, 'ID_PROCESSO');
     return `PROC-${String(max + 1).padStart(4, '0')}`;
   }
 }
@@ -814,7 +878,7 @@ class AcompanhamentoService {
       patch.PROGRESSO_PERCENTUAL = Math.round((concluidas / total) * 100);
       patch.STATUS_GERAL = concluidas === total ? 'Concluída' : concluidas === 0 ? 'Não iniciada' : 'Em andamento';
     }
-    const updated = this.repo.updateById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO, patch);
+    const updated = this.repo.updateById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO, patch, current);
     this.audit.logChange({ acao: 'ATUALIZAR_ACOMPANHAMENTO', entidade: 'ACOMPANHAMENTO', id: payload.ID_ACOMPANHAMENTO, before: current, after: updated, patch, origem: 'ACOMPANHAMENTO', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
   }
@@ -844,12 +908,7 @@ class AcompanhamentoService {
   }
 
   generateId_() {
-    const ids = this.repo.getObjects(SIGEP.sheets.acompanhamento).map(r => String(r.ID_ACOMPANHAMENTO || '').trim());
-    let max = 0;
-    ids.forEach(id => {
-      const match = id.match(/(\d+)$/);
-      if (match) max = Math.max(max, Number(match[1]));
-    });
+    const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO');
     return `ACOMP-${String(max + 1).padStart(4, '0')}`;
   }
 }
@@ -901,7 +960,7 @@ class IndicadorService {
       if (normalizedPayload[k] !== undefined) patch[k] = normalizedPayload[k];
     });
     const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
-    const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch);
+    const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch, current);
     this.audit.logChange({ acao: 'ATUALIZAR_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: updated };
   }
@@ -920,34 +979,36 @@ class IndicadorService {
     if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
     PayloadValidator.validateLancamentoIndicadorUpdate(payload);
     const comp = String(payload.COMPETENCIA || '').trim();
-    const all = this.repo.getObjects(SIGEP.sheets.lancamentos);
-    const row = all.find(item => String(item.ID_INDICADOR || '').trim() === String(payload.ID_INDICADOR).trim() && String(item.COMPETENCIA || '').trim() === comp);
-    if (!row || !row._rowNumber) throw new Error('Lançamento não encontrado para o indicador/competência informados.');
+    const sheetName = SIGEP.sheets.lancamentos;
+    const sheet = this.repo.getSheet(sheetName);
+    const headers = this.repo.getHeaders(sheetName);
+    const rowNumber = this.repo.findRowNumberByCriteria_(sheetName, {
+      ID_INDICADOR: String(payload.ID_INDICADOR).trim(),
+      COMPETENCIA: comp
+    }, headers);
+    if (!rowNumber) throw new Error('Lançamento não encontrado para o indicador/competência informados.');
 
+    const beforeValues = sheet.getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
+    const before = this.repo.rowToObject_(headers, beforeValues, rowNumber);
     const patch = {};
     ['VALOR', 'STATUS', 'OBSERVACAO'].forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
-    const before = Object.assign({}, row);
-    const sheet = this.repo.getSheet(SIGEP.sheets.lancamentos);
-    const headers = this.repo.getHeaders(SIGEP.sheets.lancamentos);
+    const updatedRow = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+    const indexByHeader = this.repo.indexHeaders_(headers);
     Object.keys(patch).forEach(key => {
-      const idx = headers.indexOf(key);
-      if (idx >= 0) sheet.getRange(row._rowNumber, idx + 1).setValue(patch[key]);
+      const idx = indexByHeader[key];
+      if (idx !== undefined) updatedRow[idx] = patch[key];
     });
-    SpreadsheetApp.flush();
-    const refreshed = this.repo.getObjects(SIGEP.sheets.lancamentos).find(item => item._rowNumber === row._rowNumber) || before;
+    sheet.getRange(rowNumber, 1, 1, updatedRow.length).setValues([updatedRow]);
+    const refreshedValues = sheet.getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
+    const refreshed = this.repo.rowToObject_(headers, refreshedValues, rowNumber);
     this.audit.logChange({ acao: 'ATUALIZAR_LANCAMENTO_INDICADOR', entidade: 'LANCAMENTO_INDICADOR', id: `${payload.ID_INDICADOR}:${comp}`, before, after: refreshed, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: refreshed };
   }
 
   generateId_() {
-    const ids = this.repo.getObjects(SIGEP.sheets.indicadores).map(r => String(r.ID_INDICADOR || '').trim());
-    let max = 0;
-    ids.forEach(id => {
-      const match = id.match(/(\d+)$/);
-      if (match) max = Math.max(max, Number(match[1]));
-    });
+    const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.indicadores, 'ID_INDICADOR');
     return `IND-${String(max + 1).padStart(4, '0')}`;
   }
 }
