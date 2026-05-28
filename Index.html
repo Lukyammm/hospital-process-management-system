@@ -728,7 +728,22 @@
     .result-box b { display:block; font-size:11px; color:#4d6c5d; text-transform:uppercase; margin-bottom:4px; }
     .result-box span { font-size:14px; font-weight:700; color:#1d6142; }
     .result-main { font-size:36px !important; letter-spacing:-.04em; }
-     .history-list { border:1px solid var(--line); border-radius:12px; background:#fff; overflow:hidden; }
+    .history-list {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,251,255,.96) 100%);
+      overflow: hidden;
+      box-shadow: 0 14px 34px rgba(20, 40, 70, .08);
+    }
+    .history-list::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(31, 78, 121, .28), transparent);
+      pointer-events: none;
+    }
     .history-chart { border:1px solid #d7e4f2; border-radius:16px; padding:16px; background:#fff; box-shadow:0 8px 20px rgba(20,40,70,.06); display:grid; gap:12px; }
     .history-chart-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
     .history-chart-head h5 { margin:0; font-size:15px; color:var(--ink); }
@@ -746,15 +761,54 @@
     .btn.icon svg { width:14px; height:14px; }
     .save-feedback { position: fixed; right: 20px; bottom: 20px; z-index: 60; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text); box-shadow: var(--shadow-sm); font-size: 12px; display:none; }
     .save-feedback.show { display:block; }
-    .history-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .history-table th, .history-table td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; }
-    .history-table th { background:#f6f9fd; color:#4d6580; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
-    .history-table tr.current td { background:#eef6ff; font-weight:600; }
+    .history-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .history-table th,
+    .history-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      transition: background-color var(--ease), color var(--ease), border-color var(--ease);
+    }
+    .history-table th {
+      background: linear-gradient(180deg, #f6f9fd 0%, #eef5fc 100%);
+      color: #4d6580;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 800;
+    }
+    .history-table tbody tr:nth-child(even) td { background: rgba(31, 78, 121, .025); }
+    .history-table tbody tr:hover td { background: rgba(31, 78, 121, .07); }
+    .history-table tbody tr:last-child td { border-bottom: 0; }
+    .history-table tr.current td {
+      background: linear-gradient(90deg, rgba(31, 78, 121, .12), rgba(20, 184, 166, .08));
+      font-weight: 700;
+    }
+    .history-table tr.current td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
     .history-table td.competencia-miss { color: var(--danger); font-weight: 800; }
-    .history-status { font-weight:700; }
-    .history-status.ok { color:var(--success); }
-    .history-status.warn { color:var(--warning); }
-    .history-status.bad { color:var(--danger); }
+    .history-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 26px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid currentColor;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .01em;
+      white-space: nowrap;
+    }
+    .history-status.ok { color:var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+    .history-status.warn { color:var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); }
+    .history-status.bad { color:var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
     .state-success { background: var(--success-bg) !important; border-color: #cfeedd !important; color: var(--success) !important; }
     .state-warning { background: var(--warning-bg) !important; border-color: #f3e2b5 !important; color: var(--warning) !important; }
     .state-error { background: var(--danger-bg) !important; border-color: #f3cccc !important; color: var(--danger) !important; }
@@ -1089,6 +1143,63 @@
       border-color: #834c55 !important;
       color: #ffc7cc !important;
     }
+    [data-theme="dark"] .history-list {
+      background:
+        linear-gradient(180deg, rgba(18, 31, 51, .96) 0%, rgba(11, 20, 34, .98) 100%),
+        radial-gradient(circle at 12% 0%, rgba(103, 168, 255, .16), transparent 32%) !important;
+      border-color: rgba(88, 128, 172, .72) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 24px 58px rgba(0,0,0,.34) !important;
+    }
+    [data-theme="dark"] .history-list::before {
+      background: linear-gradient(90deg, transparent, rgba(113, 178, 255, .5), rgba(69, 219, 198, .32), transparent);
+    }
+    [data-theme="dark"] .history-table {
+      background: transparent !important;
+      color: var(--color-text) !important;
+    }
+    [data-theme="dark"] .history-table thead,
+    [data-theme="dark"] .history-table tbody,
+    [data-theme="dark"] .history-table tr {
+      background: transparent !important;
+    }
+    [data-theme="dark"] .history-table th {
+      background: linear-gradient(180deg, rgba(27, 46, 75, .98) 0%, rgba(20, 36, 60, .98) 100%) !important;
+      border-bottom-color: rgba(93, 132, 174, .72) !important;
+      color: #dfeeff !important;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,.035);
+    }
+    [data-theme="dark"] .history-table td {
+      background: rgba(13, 24, 40, .2) !important;
+      border-bottom-color: rgba(58, 83, 115, .76) !important;
+      color: #dce9fa !important;
+    }
+    [data-theme="dark"] .history-table tbody tr:nth-child(even) td { background: rgba(103, 168, 255, .045) !important; }
+    [data-theme="dark"] .history-table tbody tr:hover td { background: rgba(103, 168, 255, .11) !important; }
+    [data-theme="dark"] .history-table tbody tr:last-child td { border-bottom: 0 !important; }
+    [data-theme="dark"] .history-table tr.current td {
+      background: linear-gradient(90deg, rgba(103, 168, 255, .2), rgba(69, 219, 198, .1)) !important;
+      color: #f5f9ff !important;
+    }
+    [data-theme="dark"] .history-table tr.current td:first-child { box-shadow: inset 3px 0 0 var(--color-primary); }
+    [data-theme="dark"] .history-table td.competencia-miss { color: #ff9ca4 !important; }
+    [data-theme="dark"] .history-status {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
+    }
+    [data-theme="dark"] .history-status.ok {
+      color: #9ff7cf !important;
+      background: rgba(91, 214, 155, .13) !important;
+      border-color: rgba(91, 214, 155, .42) !important;
+    }
+    [data-theme="dark"] .history-status.warn {
+      color: #ffe0a2 !important;
+      background: rgba(242, 197, 108, .13) !important;
+      border-color: rgba(242, 197, 108, .42) !important;
+    }
+    [data-theme="dark"] .history-status.bad {
+      color: #ffc4c8 !important;
+      background: rgba(245, 135, 135, .13) !important;
+      border-color: rgba(245, 135, 135, .42) !important;
+    }
 
     @media (max-width: 1100px) {
       .mobile-menu-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; }
@@ -1183,6 +1294,45 @@
       .table-wrap tr { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; overflow:hidden; background:#fff; }
       .table-wrap td { border-bottom:1px solid var(--line); display:grid; grid-template-columns:120px 1fr; gap:8px; }
       .table-wrap td::before { content: attr(data-label); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+      .history-list { border-radius: 14px; overflow: visible; background: transparent; border: 0; box-shadow: none; }
+      .history-list::before { display: none; }
+      .history-table,
+      .history-table thead,
+      .history-table tbody,
+      .history-table th,
+      .history-table td,
+      .history-table tr { display: block; }
+      .history-table thead { display: none; }
+      .history-table { display: grid; gap: 10px; }
+      .history-table tr {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--surface);
+        box-shadow: 0 10px 24px rgba(20,40,70,.07);
+      }
+      .history-table td {
+        display: grid;
+        grid-template-columns: minmax(104px, .62fr) minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        padding: 11px 12px;
+      }
+      .history-table td::before {
+        content: attr(data-label);
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: .06em;
+      }
+      .history-table tr.current td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+      [data-theme="dark"] .history-table tr {
+        background: linear-gradient(180deg, rgba(18, 31, 51, .98), rgba(13, 24, 40, .98)) !important;
+        border-color: rgba(88, 128, 172, .7) !important;
+        box-shadow: 0 18px 34px rgba(0,0,0,.28) !important;
+      }
+      [data-theme="dark"] .history-table td::before { color: #9fb6d1; }
     }
     @media (max-width: 480px) {
       .main { padding: 10px; }
@@ -2515,7 +2665,7 @@ function getIndicatorUnit(ind) {
             </div>
           </div>
           <div class="history-list">
-            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td class="${h.hasData && !compareAgainstMeta(h.numericValue, metaNumerica, ind.META_OPERADOR) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td>${escapeHtml(h.valor)}</td><td>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
+            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td data-label="Competência" class="${h.hasData && !compareAgainstMeta(h.numericValue, metaNumerica, ind.META_OPERADOR) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td data-label="Valor">${escapeHtml(h.valor)}</td><td data-label="Meta">${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td data-label="Status"><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
