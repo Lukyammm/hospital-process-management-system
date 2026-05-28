@@ -8,6 +8,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['class', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+          boxShadow: { premium: '0 24px 80px rgba(15, 34, 61, .18)' }
+        }
+      }
+    };
+  </script>
   <style>
     :root {
       /* =========================
@@ -739,6 +751,21 @@
     .drawer .history-chart,
     .drawer .history-list,
     .drawer .edit-form { box-shadow: 0 10px 24px rgba(24, 54, 92, .08); }
+    #globalLoader { position: fixed; inset: 0; z-index: 110; display: none; align-items: center; justify-content: center; pointer-events: none; background: radial-gradient(circle at 50% 32%, rgba(31,78,121,.16), transparent 34%), rgba(245, 248, 252, .42); backdrop-filter: blur(3px); }
+    #globalLoader.active { display: flex; }
+    .loader-card { display:flex; align-items:center; gap:12px; padding: 14px 18px; border-radius: 999px; background: rgba(255,255,255,.86); border: 1px solid rgba(197,217,238,.9); box-shadow: 0 20px 54px rgba(12,29,55,.18); color: var(--ink); font-weight: 800; letter-spacing: -.01em; }
+    .loader-spinner { width: 22px; height: 22px; border-radius: 999px; border: 3px solid rgba(31,78,121,.16); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+    #toastStack { position: fixed; right: 22px; bottom: 22px; z-index: 160; display: grid; gap: 12px; width: min(420px, calc(100vw - 28px)); pointer-events: none; }
+    .toast { pointer-events: auto; display: grid; grid-template-columns: 10px 1fr auto; gap: 12px; align-items: start; padding: 15px 16px; border-radius: 18px; background: rgba(255,255,255,.92); border: 1px solid rgba(197,217,238,.96); box-shadow: 0 22px 58px rgba(12,29,55,.18); backdrop-filter: blur(18px) saturate(150%); animation: toastIn .28s var(--ease-emphasized); }
+    .toast::before { content: ''; width: 10px; height: 10px; margin-top: 6px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 5px rgba(20,184,166,.14); }
+    .toast.success::before { background: var(--success); box-shadow: 0 0 0 5px rgba(47,158,109,.14); }
+    .toast.error::before { background: var(--danger); box-shadow: 0 0 0 5px rgba(191,76,76,.14); }
+    .toast.warning::before { background: var(--warning); box-shadow: 0 0 0 5px rgba(185,137,29,.14); }
+    .toast-title { margin: 0 0 3px; font-size: 14px; font-weight: 850; color: var(--ink); }
+    .toast-message { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+    .toast-close { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
     #systemDialog { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:20px; z-index:120; background:var(--modal-overlay); backdrop-filter: blur(8px) saturate(130%); animation: modalFade var(--duration-base) var(--ease-standard); }
     #systemDialog.active { display:flex; }
     .system-dialog-card { width:min(520px, calc(100vw - 32px)); background:var(--modal-surface); border:1px solid var(--modal-line); border-radius:18px; box-shadow:0 24px 54px rgba(8, 24, 43, .32); padding:18px; animation: modalPop var(--duration-base) var(--ease-emphasized); display:grid; gap:12px; }
@@ -871,10 +898,10 @@
     }
 </style>
 </head>
-<body>
-  <div class="app" id="appRoot">
+<body class="min-h-screen bg-slate-50 font-sans antialiased selection:bg-teal-200/70 selection:text-slate-950">
+  <div class="app relative overflow-hidden" id="appRoot">
     <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
-    <aside class="sidebar">
+    <aside class="sidebar shadow-premium">
       <div class="brand">
         <div class="mark" aria-hidden="true"><img src="https://i.ibb.co/tTGkBCXj/oie-transparent.png" alt="Logo do sistema"></div>
         <div class="brand-logo"><div class="brand-icon">S</div><div class="brand-text"><span class="brand-name">SIGEP</span><span class="brand-subtitle">HUC</span></div></div>
@@ -888,7 +915,7 @@
     </aside>
 
     <main class="main">
-      <header class="topbar">
+      <header class="topbar backdrop-blur-xl">
         <div class="title">
           <div class="title-kicker">Hospital Universitário do Ceará</div>
           <h2 id="pageTitle">Acompanhamento por unidade</h2>
@@ -909,7 +936,7 @@
 
 
       <section id="dashboard" class="view">
-        <div class="hero">
+        <div class="hero shadow-premium ring-1 ring-white/50">
           <div>
             <h3>Central de gestão do SIGEP-HUC</h3>
           </div>
@@ -1001,6 +1028,8 @@
       <div id="drawerContent" class="drawer-body"></div>
     </div>
   </div>
+  <div id="globalLoader" aria-live="polite" aria-busy="false"><div class="loader-card"><span class="loader-spinner" aria-hidden="true"></span><span id="globalLoaderText">Processando...</span></div></div>
+  <div id="toastStack" aria-live="polite" aria-atomic="false"></div>
   <div id="systemDialog" aria-hidden="true"></div>
   <div class="save-feedback" id="saveFeedback"></div>
 
@@ -1011,6 +1040,49 @@
       calendar: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 3v4M17 3v4M4 9h16M5 5h14v15H5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       chart: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
     };
+
+
+
+    const asyncUi = {
+      pending: 0,
+      start(message = 'Processando solicitação no Google Sheets...') {
+        this.pending += 1;
+        const loader = document.getElementById('globalLoader');
+        const label = document.getElementById('globalLoaderText');
+        if (label) label.textContent = message;
+        if (loader) {
+          loader.classList.add('active');
+          loader.setAttribute('aria-busy', 'true');
+        }
+      },
+      finish() {
+        this.pending = Math.max(0, this.pending - 1);
+        if (this.pending > 0) return;
+        const loader = document.getElementById('globalLoader');
+        if (loader) {
+          loader.classList.remove('active');
+          loader.setAttribute('aria-busy', 'false');
+        }
+      }
+    };
+
+    function showToast(message, variant = 'info', title = '') {
+      const stack = document.getElementById('toastStack');
+      if (!stack) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${variant}`;
+      const resolvedTitle = title || ({ success: 'Sucesso', error: 'Erro', warning: 'Atenção', info: 'SIGEP-HUC' }[variant] || 'SIGEP-HUC');
+      toast.innerHTML = `<div></div><div><p class="toast-title">${escapeHtml(resolvedTitle)}</p><p class="toast-message">${escapeHtml(message || '')}</p></div><button class="toast-close" aria-label="Fechar aviso">×</button>`;
+      const close = () => toast.remove();
+      toast.querySelector('.toast-close').addEventListener('click', close);
+      stack.appendChild(toast);
+      setTimeout(close, variant === 'error' ? 7200 : 4200);
+    }
+
+    function runServerAction(label, configureRunner) {
+      asyncUi.start(label);
+      return configureRunner(google.script.run);
+    }
 
     const state = {
       data: null,
@@ -1137,7 +1209,8 @@
       },
       dialog: {
         alert(message) {
-          return ui.dialog._open({ type: 'alert', title: 'Aviso', message });
+          showToast(message, 'info', 'Aviso');
+          return Promise.resolve(true);
         },
         confirm(message) {
           return ui.dialog._open({ type: 'confirm', title: 'Confirmar ação', message });
@@ -1225,13 +1298,16 @@
     function loadData() {
       setLoading();
       showSectionSkeletons();
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
         .withSuccessHandler(payload => {
+          asyncUi.finish();
           state.data = payload;
           hydrateFilters();
           render();
         })
         .withFailureHandler(err => {
+          asyncUi.finish();
           document.querySelector('.main').innerHTML = `<div class="panel"><div class="empty"><strong>Erro ao carregar o SIGEP-HUC</strong><br>${escapeHtml(err.message || err)}</div></div>`;
         })
         .getSigepData();
@@ -1722,13 +1798,15 @@ function getIndicatorUnit(ind) {
         MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
       };
       showSaveFeedback('Salvando acompanhamento...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
         .withSuccessHandler(() => {
+          asyncUi.finish();
           showSaveFeedback('Acompanhamento salvo com sucesso.', true);
           fecharEdicaoAcompanhamento();
           loadData();
         })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar acompanhamento.'); await ui.dialog.alert('Erro ao editar acompanhamento: ' + (err.message || err)); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar acompanhamento.'); await ui.dialog.alert('Erro ao editar acompanhamento: ' + (err.message || err)); })
         .atualizarStatusAcompanhamento(payload);
     }
 
@@ -1747,9 +1825,10 @@ function getIndicatorUnit(ind) {
       if (!values) return;
       const { UNIDADE = '', DATA_AGENDAMENTO = '', STATUS_AGENDAMENTO = '', MOTIVO_ALTERACAO = '' } = values;
       showSaveFeedback('Criando acompanhamento...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { showSaveFeedback('Acompanhamento criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo acompanhamento cadastrado.'); })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao criar acompanhamento.'); await ui.dialog.alert('Erro ao criar acompanhamento: ' + (err.message || err)); })
+        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Acompanhamento criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo acompanhamento cadastrado.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao criar acompanhamento.'); await ui.dialog.alert('Erro ao criar acompanhamento: ' + (err.message || err)); })
         .criarAcompanhamento({ UNIDADE: UNIDADE.trim(), DATA_AGENDAMENTO: DATA_AGENDAMENTO.trim(), STATUS_AGENDAMENTO: STATUS_AGENDAMENTO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
 
@@ -1764,9 +1843,10 @@ function getIndicatorUnit(ind) {
       });
       if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
       showSaveFeedback('Excluindo acompanhamento...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { showSaveFeedback('Acompanhamento excluído com sucesso.', true); loadData(); await ui.dialog.alert('Acompanhamento excluído.'); })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao excluir acompanhamento.'); await ui.dialog.alert('Erro ao excluir acompanhamento: ' + (err.message || err)); })
+        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Acompanhamento excluído com sucesso.', true); loadData(); await ui.dialog.alert('Acompanhamento excluído.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao excluir acompanhamento.'); await ui.dialog.alert('Erro ao excluir acompanhamento: ' + (err.message || err)); })
         .excluirAcompanhamento({ ID_ACOMPANHAMENTO: item.ID_ACOMPANHAMENTO, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
 
@@ -1873,13 +1953,15 @@ function getIndicatorUnit(ind) {
         MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
       };
       showSaveFeedback('Salvando processo...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
         .withSuccessHandler(() => {
+          asyncUi.finish();
           showSaveFeedback('Processo salvo com sucesso.', true);
           fecharEdicaoProcesso();
           loadData();
         })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar processo.'); await ui.dialog.alert('Erro ao editar processo: ' + (err.message || err)); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar processo.'); await ui.dialog.alert('Erro ao editar processo: ' + (err.message || err)); })
         .atualizarProcesso(payload);
     }
 
@@ -1898,9 +1980,10 @@ function getIndicatorUnit(ind) {
       const { PROCESSO = '', TIPO_PROCESSO = '', MOTIVO_ALTERACAO = '' } = values;
       if (!PROCESSO.trim() || !MOTIVO_ALTERACAO.trim()) return;
       showSaveFeedback('Criando processo...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { showSaveFeedback('Processo criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo processo cadastrado.'); })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao criar processo.'); await ui.dialog.alert('Erro ao criar processo: ' + (err.message || err)); })
+        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Processo criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo processo cadastrado.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao criar processo.'); await ui.dialog.alert('Erro ao criar processo: ' + (err.message || err)); })
         .criarProcesso({ PROCESSO: PROCESSO.trim(), TIPO_PROCESSO: TIPO_PROCESSO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
 
@@ -1915,9 +1998,10 @@ function getIndicatorUnit(ind) {
       });
       if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
       showSaveFeedback('Excluindo processo...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { showSaveFeedback('Processo excluído com sucesso.', true); loadData(); await ui.dialog.alert('Processo excluído.'); })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao excluir processo.'); await ui.dialog.alert('Erro ao excluir processo: ' + (err.message || err)); })
+        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Processo excluído com sucesso.', true); loadData(); await ui.dialog.alert('Processo excluído.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao excluir processo.'); await ui.dialog.alert('Erro ao excluir processo: ' + (err.message || err)); })
         .excluirProcesso({ ID_PROCESSO: item.ID_PROCESSO, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
 
@@ -2262,13 +2346,15 @@ function getIndicatorUnit(ind) {
         MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
       };
       showSaveFeedback('Salvando lançamento...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
         .withSuccessHandler(() => {
+          asyncUi.finish();
           showSaveFeedback('Lançamento salvo com sucesso.', true);
           fecharEdicaoLancamentoIndicador();
           loadData();
         })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar lançamento.'); await ui.dialog.alert('Erro ao salvar lançamento: ' + (err.message || err)); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar lançamento.'); await ui.dialog.alert('Erro ao salvar lançamento: ' + (err.message || err)); })
         .atualizarLancamentoIndicador(payload);
     }
 
@@ -2295,13 +2381,15 @@ function getIndicatorUnit(ind) {
         return;
       }
       showSaveFeedback('Salvando indicador...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
         .withSuccessHandler(() => {
+          asyncUi.finish();
           showSaveFeedback('Indicador salvo com sucesso.', true);
           fecharEdicaoIndicador();
           loadData();
         })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao salvar indicador.'); await ui.dialog.alert('Erro ao editar indicador: ' + (err.message || err)); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar indicador.'); await ui.dialog.alert('Erro ao editar indicador: ' + (err.message || err)); })
         .atualizarIndicador(payload);
     }
 
@@ -2327,9 +2415,10 @@ function getIndicatorUnit(ind) {
       }
       if (!MOTIVO_ALTERACAO.trim()) return;
       showSaveFeedback('Criando indicador...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { showSaveFeedback('Indicador criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo indicador cadastrado.'); })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao criar indicador.'); await ui.dialog.alert('Erro ao criar indicador: ' + (err.message || err)); })
+        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Indicador criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo indicador cadastrado.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao criar indicador.'); await ui.dialog.alert('Erro ao criar indicador: ' + (err.message || err)); })
         .criarIndicador({ NOME_INDICADOR: NOME_INDICADOR.trim(), TIPO_INDICADOR: TIPO_INDICADOR.trim(), META: META.trim().replace(',', '.'), META_OPERADOR: META_OPERADOR.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
 
@@ -2344,9 +2433,10 @@ function getIndicatorUnit(ind) {
       });
       if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
       showSaveFeedback('Excluindo indicador...');
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { showSaveFeedback('Indicador excluído com sucesso.', true); loadData(); await ui.dialog.alert('Indicador excluído.'); })
-        .withFailureHandler(async err => { showSaveFeedback('Falha ao excluir indicador.'); await ui.dialog.alert('Erro ao excluir indicador: ' + (err.message || err)); })
+        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Indicador excluído com sucesso.', true); loadData(); await ui.dialog.alert('Indicador excluído.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao excluir indicador.'); await ui.dialog.alert('Erro ao excluir indicador: ' + (err.message || err)); })
         .excluirIndicador({ ID_INDICADOR: item.ID_INDICADOR, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
 
@@ -2465,12 +2555,17 @@ function getIndicatorUnit(ind) {
 
 
     function loadAdminData() {
+      asyncUi.start('Carregando administração...');
       google.script.run
         .withSuccessHandler(payload => {
+          asyncUi.finish();
           state.adminData = payload;
           renderAdmin();
         })
-        .withFailureHandler(async err => await ui.dialog.alert('Erro ao carregar administração: ' + (err.message || err)))
+        .withFailureHandler(async err => {
+          asyncUi.finish();
+          await ui.dialog.alert('Erro ao carregar administração: ' + (err.message || err));
+        })
         .getAdminData();
     }
 
@@ -2499,7 +2594,9 @@ function getIndicatorUnit(ind) {
         <tbody>${users.map(u => `<tr><td data-label="Email">${escapeHtml(u.EMAIL)}</td><td data-label="Nome">${escapeHtml(u.NOME||'-')}</td><td data-label="Perfil">${escapeHtml(u.PERFIL||'-')}</td><td data-label="Unidade">${escapeHtml(u.UNIDADE||'-')}</td><td data-label="Ativo">${escapeHtml(u.ATIVO||'-')}</td><td data-label="Ações"><button class="btn secondary small" onclick='editarUsuario(${JSON.stringify(u).replace(/'/g,"&apos;")})'>Editar</button> <button class="btn secondary small" onclick='resetarSenha("${escapeHtml(u.EMAIL)}")'>Senha</button> <button class="btn secondary small" onclick='excluirUsuarioUi("${escapeHtml(u.EMAIL)}")'>Excluir</button></td></tr>`).join('')}</tbody></table></div>
       `);
     }
+
     function novoUsuario(){ editarUsuario({}); }
+
     async function editarUsuario(u){
       const isEditing = Boolean(u && u.EMAIL);
       const values = await ui.dialog.form({
@@ -2511,7 +2608,7 @@ function getIndicatorUnit(ind) {
           { name: 'NOME', label: 'Nome completo', type: 'text', required: true, value: u.NOME || '', placeholder: 'Ex: Maria da Silva' },
           { name: 'PERFIL', label: 'Perfil de acesso', type: 'select', required: true, value: (u.PERFIL || 'LEITOR').toUpperCase(), options: ['ADMIN', 'GESTOR', 'LEITOR'] },
           { name: 'UNIDADE', label: 'Unidade/Setor', type: 'text', value: u.UNIDADE || '', placeholder: 'Ex: Farmácia Central' },
-          { name: 'ATIVO', label: 'Status do usuário', type: 'select', required: true, value: (u.ATIVO || 'SIM').toUpperCase(), options: ['SIM', 'NÃO'] }
+          { name: 'ATIVO', label: 'Status do usuário', type: 'select', required: true, value: (u.ATIVO || 'SIM').trim().toUpperCase(), options: ['SIM', 'NÃO'] }
         ]
       });
       if (!values) return;
@@ -2529,17 +2626,39 @@ function getIndicatorUnit(ind) {
         return;
       }
 
+      asyncUi.start('Salvando usuário...');
       google.script.run
         .withSuccessHandler(async ()=>{
+          asyncUi.finish();
           loadAdminData();
           showAdminUsers();
           await ui.dialog.alert('Usuário salvo com sucesso.');
         })
-        .withFailureHandler(async err=>await ui.dialog.alert(err.message||err))
+        .withFailureHandler(async err=>{
+          asyncUi.finish();
+          await ui.dialog.alert(err.message||err);
+        })
         .salvarUsuario(payload);
     }
-    async function excluirUsuarioUi(email){ if(!await ui.dialog.confirm('Excluir usuário '+email+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminUsers();}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).excluirUsuario(email); }
-    async function resetarSenha(email){ const NOVA_SENHA=await ui.dialog.prompt('Nova senha temporária para '+email+':'); if(!NOVA_SENHA) return; google.script.run.withSuccessHandler(async ()=>await ui.dialog.alert('Senha alterada.')).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).alterarSenhaUsuario({EMAIL:email,NOVA_SENHA}); }
+
+    async function excluirUsuarioUi(email){
+      if(!await ui.dialog.confirm('Excluir usuário '+email+'?')) return;
+      asyncUi.start('Excluindo usuário...');
+      google.script.run
+        .withSuccessHandler(()=>{ asyncUi.finish(); loadAdminData(); showAdminUsers(); showToast('Usuário excluído com sucesso.', 'success'); })
+        .withFailureHandler(async err=>{ asyncUi.finish(); await ui.dialog.alert(err.message||err); })
+        .excluirUsuario(email);
+    }
+
+    async function resetarSenha(email){
+      const NOVA_SENHA=await ui.dialog.prompt('Nova senha temporária para '+email+':');
+      if(!NOVA_SENHA) return;
+      asyncUi.start('Alterando senha temporária...');
+      google.script.run
+        .withSuccessHandler(async ()=>{ asyncUi.finish(); await ui.dialog.alert('Senha alterada.'); })
+        .withFailureHandler(async err=>{ asyncUi.finish(); await ui.dialog.alert(err.message||err); })
+        .alterarSenhaUsuario({EMAIL:email,NOVA_SENHA});
+    }
 
     function showAdminSetores() {
       const rows = (state.adminData && state.adminData.setores) || [];
@@ -2548,9 +2667,29 @@ function getIndicatorUnit(ind) {
         <div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome</th><th>Sigla</th><th>Ações</th></tr></thead><tbody>${rows.map(r=>`<tr><td data-label="ID">${escapeHtml(r.ID_SETOR||'-')}</td><td data-label="Nome">${escapeHtml(r.NOME_SETOR||'-')}</td><td data-label="Sigla">${escapeHtml(r.SIGLA||'-')}</td><td data-label="Ações"><button class="btn secondary small" onclick='editarSetor(${JSON.stringify(r).replace(/'/g,"&apos;")})'>Editar</button> <button class="btn secondary small" onclick='excluirSetorUi("${escapeHtml(r.ID_SETOR||'')}")'>Excluir</button></td></tr>`).join('')}</tbody></table></div>
       `);
     }
+
     function novoSetor(){ editarSetor({}); }
-    async function editarSetor(s){ const ID_UNIDADE=await ui.dialog.prompt('ID do setor/unidade:', s.ID_SETOR || ''); if(!ID_UNIDADE) return; const UNIDADE=(await ui.dialog.prompt('Nome do setor/unidade:', s.NOME_SETOR || ''))||''; const SIGLA=(await ui.dialog.prompt('Sigla:', s.SIGLA || ''))||''; google.script.run.withSuccessHandler(async ()=>{loadAdminData(); await ui.dialog.alert('Setor salvo.');}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).salvarSetor({ID_UNIDADE,UNIDADE,SIGLA,idColumn:'ID_UNIDADE'}); }
-    async function excluirSetorUi(id){ if(!id||!await ui.dialog.confirm('Excluir setor '+id+'?')) return; google.script.run.withSuccessHandler(()=>{loadAdminData(); showAdminSetores();}).withFailureHandler(async err=>await ui.dialog.alert(err.message||err)).excluirSetor(id); }
+
+    async function editarSetor(s){
+      const ID_UNIDADE=await ui.dialog.prompt('ID do setor/unidade:', s.ID_SETOR || '');
+      if(!ID_UNIDADE) return;
+      const UNIDADE=(await ui.dialog.prompt('Nome do setor/unidade:', s.NOME_SETOR || ''))||'';
+      const SIGLA=(await ui.dialog.prompt('Sigla:', s.SIGLA || ''))||'';
+      asyncUi.start('Salvando setor...');
+      google.script.run
+        .withSuccessHandler(async ()=>{ asyncUi.finish(); loadAdminData(); await ui.dialog.alert('Setor salvo.'); })
+        .withFailureHandler(async err=>{ asyncUi.finish(); await ui.dialog.alert(err.message||err); })
+        .salvarSetor({ID_UNIDADE,UNIDADE,SIGLA,idColumn:'ID_UNIDADE'});
+    }
+
+    async function excluirSetorUi(id){
+      if(!id||!await ui.dialog.confirm('Excluir setor '+id+'?')) return;
+      asyncUi.start('Excluindo setor...');
+      google.script.run
+        .withSuccessHandler(()=>{ asyncUi.finish(); loadAdminData(); showAdminSetores(); showToast('Setor excluído com sucesso.', 'success'); })
+        .withFailureHandler(async err=>{ asyncUi.finish(); await ui.dialog.alert(err.message||err); })
+        .excluirSetor(id);
+    }
 
     function showAdminStatus() {
       const rows = (state.adminData && state.adminData.status) || [];
@@ -2697,10 +2836,12 @@ function getIndicatorUnit(ind) {
     async function aplicarSugestao(finding) {
       if (!finding || !finding.suggestedValue) return;
       if (!await ui.dialog.confirm('Aplicar correção sugerida para ' + finding.fieldName + ' na linha ' + finding.rowNumber + '?')) return;
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run.withSuccessHandler(() => {
+          asyncUi.finish();
         loadAdminData();
         showAdminDataReview();
-      }).withFailureHandler(async err => await ui.dialog.alert('Falha ao aplicar correção: ' + (err.message || err)))
+      }).withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Falha ao aplicar correção: ' + (err.message || err)); })
         .aplicarCorrecaoDados({
           sheetName: finding.sheetName,
           rowNumber: finding.rowNumber,
@@ -2731,8 +2872,10 @@ function getIndicatorUnit(ind) {
       state.batchCorrectionKey = batchKey;
       showAdminDataReview();
 
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
         .withSuccessHandler(async result => {
+          asyncUi.finish();
           const failed = Number(result && result.failed || 0);
           const success = Number(result && result.success || 0);
           if (failed > 0) {
@@ -2749,6 +2892,7 @@ Falhas: ${failed}${firstError}`);
           resetBatchCorrectionState();
         })
         .withFailureHandler(async err => {
+          asyncUi.finish();
           await ui.dialog.alert('Falha ao executar correção em lote: ' + (err.message || err));
           resetBatchCorrectionState();
           showAdminDataReview();
@@ -2786,10 +2930,12 @@ Falhas: ${failed}${firstError}`);
       const hintText = hints.length ? `\nSugestões:\n- ${hints.join('\n- ')}` : '';
       const novoValor = await ui.dialog.prompt(`Digite o novo valor para ${finding.fieldName} (linha ${finding.rowNumber}):${hintText}`, sugestao || atual);
       if (novoValor === null) return;
+      asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run.withSuccessHandler(() => {
+          asyncUi.finish();
         loadAdminData();
         showAdminDataReview();
-      }).withFailureHandler(async err => await ui.dialog.alert('Falha ao salvar correção manual: ' + (err.message || err)))
+      }).withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Falha ao salvar correção manual: ' + (err.message || err)); })
         .aplicarCorrecaoDados({
           sheetName: finding.sheetName,
           rowNumber: finding.rowNumber,

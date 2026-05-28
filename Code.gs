@@ -56,7 +56,7 @@ const SIGEP = {
 
 function doGet() {
   const output = HtmlService
-    .createTemplateFromFile('Index')
+    .createTemplateFromFile('index')
     .evaluate()
     .setTitle('SIGEP-HUC');
 
@@ -252,7 +252,7 @@ function excluirSetor(setorId) {
 }
 
 function runWithWriteLock_(callback) {
-  const lock = LockService.getDocumentLock();
+  const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) {
     throw new Error('Sistema ocupado no momento. Tente novamente em alguns segundos.');
   }
@@ -475,6 +475,8 @@ class SheetRepository {
   constructor() {
     this.ss = SpreadsheetApp.getActiveSpreadsheet();
     this.headersCache = {};
+    this.objectsCache = {};
+    this.parameterCache = null;
   }
 
   cachePutSafe(key, value, ttlSeconds) {
@@ -495,13 +497,23 @@ class SheetRepository {
   }
 
   getObjects(sheetName) {
+    if (this.objectsCache[sheetName]) {
+      return this.cloneRows_(this.objectsCache[sheetName]);
+    }
+
     const sh = this.getSheet(sheetName);
     const values = sh.getDataRange().getDisplayValues();
-    if (values.length < 2) return [];
+    if (values.length < 2) {
+      this.objectsCache[sheetName] = [];
+      return [];
+    }
+
     const headers = values[0].map(h => String(h).trim());
-    return values.slice(1)
+    const rows = values.slice(1)
       .filter(row => row.some(cell => String(cell).trim() !== ''))
       .map((row, index) => this.rowToObject_(headers, row, index + 2));
+    this.objectsCache[sheetName] = rows;
+    return this.cloneRows_(rows);
   }
 
   getObjectsSafe(sheetName, fallback) {
@@ -531,6 +543,8 @@ class SheetRepository {
       if (col !== undefined) updatedRow[col] = patch[key];
     });
     sh.getRange(rowNumber, 1, 1, updatedRow.length).setValues([updatedRow]);
+    delete this.objectsCache[sheetName];
+    if (String(sheetName).indexOf('CONFIG_') === 0 || sheetName === SIGEP.appConfig.sheet) this.parameterCache = null;
     const displayRow = sh.getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
     return this.rowToObject_(headers, displayRow, rowNumber);
   }
@@ -573,11 +587,12 @@ class SheetRepository {
     const headers = this.getHeaders(sheetName).map(h => String(h || '').trim());
     const missing = columns.filter(col => col && !headers.includes(col));
     if (!missing.length) return;
-    missing.forEach(col => {
-      sh.insertColumnAfter(sh.getLastColumn());
-      sh.getRange(1, sh.getLastColumn()).setValue(col);
-    });
+    const lastColumn = sh.getLastColumn();
+    sh.insertColumnsAfter(lastColumn, missing.length);
+    sh.getRange(1, lastColumn + 1, 1, missing.length).setValues([missing]);
     delete this.headersCache[sheetName];
+    delete this.objectsCache[sheetName];
+    this.parameterCache = null;
   }
 
   validateSchemas() {
@@ -599,17 +614,36 @@ class SheetRepository {
 
   getFeatureFlags() {
     const flags = {};
+    const parameterSheets = this.getParameterSheets_();
     Object.keys(SIGEP.featureFlags || {}).forEach(name => {
-      flags[name] = this.getFeatureFlag(name);
+      flags[name] = this.resolveFeatureFlag_(name, parameterSheets);
     });
     return flags;
   }
 
   getFeatureFlag(name) {
+    return this.resolveFeatureFlag_(name, this.getParameterSheets_());
+  }
+
+  getParameterSheets_() {
+    if (this.parameterCache) return this.parameterCache;
+    const sheetNames = new Set(['CONFIG_STATUS', 'CONFIG_TIPOS_PROCESSO', SIGEP.appConfig.sheet]);
+    Object.keys(SIGEP.featureFlags || {}).forEach(name => {
+      const cfg = SIGEP.featureFlags[name];
+      if (cfg && cfg.sheet) sheetNames.add(cfg.sheet);
+    });
+    this.parameterCache = {};
+    sheetNames.forEach(sheetName => {
+      this.parameterCache[sheetName] = this.getObjectsSafe(sheetName, []);
+    });
+    return this.parameterCache;
+  }
+
+  resolveFeatureFlag_(name, parameterSheets) {
     const cfg = (SIGEP.featureFlags || {})[name];
     if (!cfg) return false;
     try {
-      const rows = this.getObjects(cfg.sheet);
+      const rows = (parameterSheets && parameterSheets[cfg.sheet]) || this.getObjectsSafe(cfg.sheet, []);
       const hit = rows.find(r => String(r.CHAVE || '').trim().toUpperCase() === String(cfg.key || '').trim().toUpperCase());
       if (!hit) return !!cfg.defaultValue;
       const value = String(hit.VALOR || '').trim().toUpperCase();
@@ -620,6 +654,8 @@ class SheetRepository {
   }
 
   clearCache() {
+    this.objectsCache = {};
+    this.parameterCache = null;
     CacheService.getScriptCache().remove(this.getCacheKey('initial_data'));
   }
 
@@ -643,6 +679,8 @@ class SheetRepository {
     if (!rows || !rows.length) return;
     const sh = this.getSheet(sheetName);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+    delete this.objectsCache[sheetName];
+    if (String(sheetName).indexOf('CONFIG_') === 0 || sheetName === SIGEP.appConfig.sheet) this.parameterCache = null;
   }
 
   insertObject(sheetName, obj, idColumn) {
@@ -672,6 +710,8 @@ class SheetRepository {
     const rowNumber = this.findRowNumberById_(sheetName, idColumn, id);
     if (!rowNumber) throw new Error('Registro não encontrado: ' + id);
     this.getSheet(sheetName).deleteRow(rowNumber);
+    delete this.objectsCache[sheetName];
+    if (String(sheetName).indexOf('CONFIG_') === 0 || sheetName === SIGEP.appConfig.sheet) this.parameterCache = null;
     return { ok: true };
   }
 
@@ -713,6 +753,10 @@ class SheetRepository {
       if (matches) return rowIndex + 2;
     }
     return 0;
+  }
+
+  cloneRows_(rows) {
+    return (rows || []).map(row => ({ ...row }));
   }
 
   rowToObject_(headers, row, rowNumber) {
@@ -1219,7 +1263,7 @@ class OperationalHardeningService {
       }, {})
     };
     const sh = this.ensureBackupSheet_();
-    sh.appendRow([payload.generatedAtLocal, JSON.stringify(summary), 0, 'OK']);
+    this.repo.appendRows(SIGEP.sheets.backups, [[payload.generatedAtLocal, JSON.stringify(summary), 0, 'OK']]);
     return summary;
   }
 
@@ -1437,7 +1481,7 @@ class ConfigService {
     const headers = this.repo.getHeaders(sheetName).map(h => String(h).trim());
     if (headers.includes(columnName)) return;
     sh.insertColumnAfter(headers.length);
-    sh.getRange(1, headers.length + 1).setValue(columnName);
+    sh.getRange(1, headers.length + 1, 1, 1).setValues([[columnName]]);
   }
 }
 
@@ -1451,12 +1495,13 @@ class AdminService {
   getAdminData() {
     const usuarios = this.repo.getObjects(SIGEP.sheets.usuarios);
     const unidades = this.repo.getObjects(SIGEP.sheets.unidades);
+    const parameterSheets = this.repo.getParameterSheets_();
     return {
       ok: true,
       usuarios,
-      status: this.repo.getObjects('CONFIG_STATUS'),
-      tiposProcesso: this.repo.getObjects('CONFIG_TIPOS_PROCESSO'),
-      featureFlags: this.repo.getObjectsSafe('CONFIG_FEATURE_FLAGS', []),
+      status: parameterSheets.CONFIG_STATUS || [],
+      tiposProcesso: parameterSheets.CONFIG_TIPOS_PROCESSO || [],
+      featureFlags: parameterSheets.CONFIG_FEATURE_FLAGS || [],
       unidades,
       review: this.getDataReviewReport(),
       setores: unidades.map(x => ({
