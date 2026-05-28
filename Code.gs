@@ -916,7 +916,7 @@ class AcompanhamentoService {
     const etapas = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'].map(k => (patch[k] !== undefined ? patch[k] : current[k]) || '');
     if (etapas.some(Boolean) || patch.STATUS_AGENDAMENTO !== undefined || patch.DATA_AGENDAMENTO !== undefined) {
       const concluidas = etapas.filter(v => this.isConcluida_(v)).length;
-      const total = etapas.filter(Boolean).length || 6;
+      const total = this.getEtapasTotal_();
       patch.ETAPAS_CONCLUIDAS = concluidas;
       patch.ETAPAS_TOTAL = total;
       patch.PROGRESSO_PERCENTUAL = Math.round((concluidas / total) * 100);
@@ -938,13 +938,18 @@ class AcompanhamentoService {
   }
 
   isConcluida_(value) {
-    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().includes('CONCLUIDA');
+    const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    return normalized.includes('CONCLUID');
+  }
+
+  getEtapasTotal_() {
+    return 6;
   }
 
   computeProgress_(target) {
     const etapas = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'].map(k => target[k] || '');
     const concluidas = etapas.filter(v => this.isConcluida_(v)).length;
-    const total = etapas.filter(Boolean).length || 6;
+    const total = this.getEtapasTotal_();
     target.ETAPAS_CONCLUIDAS = concluidas;
     target.ETAPAS_TOTAL = total;
     target.PROGRESSO_PERCENTUAL = Math.round((concluidas / total) * 100);

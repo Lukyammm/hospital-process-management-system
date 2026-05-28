@@ -751,10 +751,14 @@
     .drawer .history-chart,
     .drawer .history-list,
     .drawer .edit-form { box-shadow: 0 10px 24px rgba(24, 54, 92, .08); }
-    #globalLoader { position: fixed; inset: 0; z-index: 110; display: none; align-items: center; justify-content: center; pointer-events: none; background: radial-gradient(circle at 50% 32%, rgba(31,78,121,.16), transparent 34%), rgba(245, 248, 252, .42); backdrop-filter: blur(3px); }
+    #globalLoader { position: fixed; inset: auto 20px 20px auto; z-index: 150; display: none; align-items: center; justify-content: center; pointer-events: none; }
     #globalLoader.active { display: flex; }
-    .loader-card { display:flex; align-items:center; gap:12px; padding: 14px 18px; border-radius: 999px; background: rgba(255,255,255,.86); border: 1px solid rgba(197,217,238,.9); box-shadow: 0 20px 54px rgba(12,29,55,.18); color: var(--ink); font-weight: 800; letter-spacing: -.01em; }
+    .loader-card { min-width:min(360px, calc(100vw - 32px)); display:grid; grid-template-columns:auto 1fr; gap:10px 12px; padding: 13px 15px; border-radius: 18px; background: rgba(255,255,255,.9); border: 1px solid rgba(197,217,238,.92); box-shadow: 0 20px 54px rgba(12,29,55,.18); color: var(--ink); font-weight: 800; letter-spacing: -.01em; backdrop-filter: blur(18px) saturate(150%); }
+    .loader-card small { grid-column:2; color:var(--muted); font-size:11px; font-weight:700; }
+    .loader-progress { grid-column:1 / -1; height:3px; overflow:hidden; border-radius:999px; background:#e7eff8; }
+    .loader-progress span { display:block; width:42%; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--primary),var(--accent)); animation:loaderSlide 1.1s ease-in-out infinite; }
     .loader-spinner { width: 22px; height: 22px; border-radius: 999px; border: 3px solid rgba(31,78,121,.16); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+    @keyframes loaderSlide { 0% { transform:translateX(-110%); } 55% { transform:translateX(120%); } 100% { transform:translateX(240%); } }
     #toastStack { position: fixed; right: 22px; bottom: 22px; z-index: 160; display: grid; gap: 12px; width: min(420px, calc(100vw - 28px)); pointer-events: none; }
     .toast { pointer-events: auto; display: grid; grid-template-columns: 10px 1fr auto; gap: 12px; align-items: start; padding: 15px 16px; border-radius: 18px; background: rgba(255,255,255,.92); border: 1px solid rgba(197,217,238,.96); box-shadow: 0 22px 58px rgba(12,29,55,.18); backdrop-filter: blur(18px) saturate(150%); animation: toastIn .28s var(--ease-emphasized); }
     .toast::before { content: ''; width: 10px; height: 10px; margin-top: 6px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 5px rgba(20,184,166,.14); }
@@ -1028,7 +1032,7 @@
       <div id="drawerContent" class="drawer-body"></div>
     </div>
   </div>
-  <div id="globalLoader" aria-live="polite" aria-busy="false"><div class="loader-card"><span class="loader-spinner" aria-hidden="true"></span><span id="globalLoaderText">Processando...</span></div></div>
+  <div id="globalLoader" aria-live="polite" aria-busy="false"><div class="loader-card"><span class="loader-spinner" aria-hidden="true"></span><span id="globalLoaderText">Processando...</span><small id="globalLoaderHint">A interface continua disponível enquanto o Sheets confirma.</small><div class="loader-progress"><span></span></div></div></div>
   <div id="toastStack" aria-live="polite" aria-atomic="false"></div>
   <div id="systemDialog" aria-hidden="true"></div>
   <div class="save-feedback" id="saveFeedback"></div>
@@ -1105,8 +1109,120 @@
       taskFilter: 'all',
       batchCorrectionRunning: false,
       batchCorrectionKey: '',
-      theme: 'light'
+      theme: 'light',
+      syncTimer: null
     };
+
+
+
+    const ACOMP_STEP_FIELDS = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'];
+    const ACOMP_STEP_TOTAL = ACOMP_STEP_FIELDS.length;
+
+    function getById(list, idField, idValue) {
+      return (list || []).find(item => String(item[idField] || '') === String(idValue || '')) || null;
+    }
+
+    function upsertLocal(collection, idField, item) {
+      if (!state.data || !item || !item[idField]) return;
+      const list = state.data[collection] || [];
+      const index = list.findIndex(row => String(row[idField] || '') === String(item[idField] || ''));
+      if (index >= 0) list[index] = { ...list[index], ...item };
+      else list.unshift(item);
+      state.data[collection] = list;
+    }
+
+    function removeLocal(collection, idField, idValue) {
+      if (!state.data) return;
+      state.data[collection] = (state.data[collection] || []).filter(row => String(row[idField] || '') !== String(idValue || ''));
+    }
+
+    function isDoneStatus(value) {
+      const n = normalize(value);
+      return n.includes('CONCLUID') || n.includes('REALIZAD') || n === 'SIM';
+    }
+
+    function calculateAcompanhamentoProgress(row) {
+      const done = ACOMP_STEP_FIELDS.filter(field => isDoneStatus(row && row[field])).length;
+      return {
+        ETAPAS_CONCLUIDAS: done,
+        ETAPAS_TOTAL: ACOMP_STEP_TOTAL,
+        PROGRESSO_PERCENTUAL: Math.round((done / ACOMP_STEP_TOTAL) * 100),
+        STATUS_GERAL: done === ACOMP_STEP_TOTAL ? 'Concluído' : done === 0 ? 'Não iniciada' : 'Em andamento'
+      };
+    }
+
+    function normalizeAcompanhamentoRow(row) {
+      const base = { ...(row || {}) };
+      return { ...base, ...calculateAcompanhamentoProgress(base) };
+    }
+
+    function calculateProcessStatus(row) {
+      const done = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'].filter(field => normalize(row && row[field]) === 'SIM').length;
+      if (done === 4) return 'Concluído';
+      if (done > 0) return 'Em andamento';
+      return 'Pendente';
+    }
+
+    function normalizeProcessRow(row) {
+      const base = { ...(row || {}) };
+      if (!base.STATUS_GERAL || ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'].some(field => base[field] !== undefined)) {
+        base.STATUS_GERAL = calculateProcessStatus(base);
+      }
+      return base;
+    }
+
+    function normalizeDataPayload(payload) {
+      const data = payload || {};
+      data.acompanhamento = (data.acompanhamento || []).map(normalizeAcompanhamentoRow);
+      data.processos = (data.processos || []).map(normalizeProcessRow);
+      return data;
+    }
+
+    function refreshDashboardFromLocal() {
+      if (!state.data) return;
+      const acompanhamento = state.data.acompanhamento || [];
+      const processos = state.data.processos || [];
+      const indicadores = state.data.indicadores || [];
+      const lancamentos = state.data.lancamentos || [];
+      const progressoMedio = acompanhamento.length
+        ? Math.round(acompanhamento.reduce((sum, row) => sum + calculateAcompanhamentoProgress(row).PROGRESSO_PERCENTUAL, 0) / acompanhamento.length)
+        : 0;
+      const processosConcluidos = processos.filter(p => normalize(p.STATUS_GERAL || calculateProcessStatus(p)).includes('CONCLUID') || normalize(p.PUBLICACAO) === 'SIM').length;
+      state.data.dashboard = {
+        ...(state.data.dashboard || {}),
+        progressoMedio,
+        acompanhamentoLinhas: acompanhamento.length,
+        unidadesAcompanhadas: unique(acompanhamento.map(row => row.UNIDADE)).length,
+        agendamentosRealizados: acompanhamento.filter(row => String(row.DATA_AGENDAMENTO || '').trim()).length,
+        reagendados: acompanhamento.filter(row => normalize(row.STATUS_AGENDAMENTO).includes('REAGEND')).length,
+        processosTotal: processos.length,
+        processosConcluidos,
+        indicadoresTotal: indicadores.length,
+        lancamentosTotal: lancamentos.length
+      };
+    }
+
+    function renderAfterLocalMutation({ toast = '', variant = 'success' } = {}) {
+      refreshDashboardFromLocal();
+      hydrateFilters();
+      render();
+      if (toast) showToast(toast, variant);
+    }
+
+    function scheduleBackgroundRefresh() {
+      if (state.syncTimer) clearTimeout(state.syncTimer);
+      state.syncTimer = setTimeout(() => {
+        google.script.run
+          .withSuccessHandler(payload => {
+            state.data = normalizeDataPayload(payload);
+            refreshDashboardFromLocal();
+            hydrateFilters();
+            render();
+          })
+          .withFailureHandler(err => showToast('Não foi possível confirmar a atualização completa agora: ' + (err.message || err), 'warning'))
+          .getSigepData();
+      }, 900);
+    }
 
     const ui = {
       init() {
@@ -1302,7 +1418,8 @@
       google.script.run
         .withSuccessHandler(payload => {
           asyncUi.finish();
-          state.data = payload;
+          state.data = normalizeDataPayload(payload);
+          refreshDashboardFromLocal();
           hydrateFilters();
           render();
         })
@@ -1381,7 +1498,7 @@
     }
 
     function getGroupedAcompanhamento() {
-      let rows = state.data.acompanhamento || [];
+      let rows = (state.data.acompanhamento || []).map(normalizeAcompanhamentoRow);
       rows = filterRows(rows, ['UNIDADE', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES']);
       if (state.filtroStatusAcomp) rows = rows.filter(x => x.STATUS_AGENDAMENTO === state.filtroStatusAcomp);
       const map = new Map();
@@ -1391,15 +1508,16 @@
       });
       return Array.from(map.entries()).map(([unidade, items]) => {
         items.sort((a, b) => Number(a.ORDEM_AGENDAMENTO_UNIDADE || 0) - Number(b.ORDEM_AGENDAMENTO_UNIDADE || 0));
-        const base = items[items.length - 1] || items[0];
-        return { unidade, items, base, progresso: Number(base.PROGRESSO_PERCENTUAL || 0) };
+        const base = normalizeAcompanhamentoRow(items[items.length - 1] || items[0]);
+        const progress = calculateAcompanhamentoProgress(base).PROGRESSO_PERCENTUAL;
+        return { unidade, items: items.map(normalizeAcompanhamentoRow), base, progresso: progress };
       }).filter(g => passTaskFilter(g.base, 'acomp')).sort((a, b) => b.progresso - a.progresso || a.unidade.localeCompare(b.unidade));
     }
 
     function renderUnitCards(groups) {
       if (!groups.length) return '<div class="empty"><strong>Nenhum acompanhamento encontrado.</strong><br>Tente ampliar o período ou revisar os filtros para visualizar o fluxo assistencial.</div>';
       return groups.map(group => {
-        const b = group.base;
+        const b = normalizeAcompanhamentoRow(group.base);
         const steps = [
           ['Introdução', b.INTRODUCAO],
           ['Perfil', b.PERFIL],
@@ -1412,7 +1530,7 @@
           <article class="unit-card" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showAcompanhamento(${JSON.stringify(group.base).replace(/'/g, "&apos;")})'>
             <div class="unit-top">
               <div><h4>${escapeHtml(group.unidade)}</h4><small>${group.items.length} data(s) registrada(s) · ${escapeHtml(b.STATUS_GERAL || '')}</small></div>
-              <div class="ring" style="--p:${group.progresso}"><span>${group.progresso}%</span></div>
+              <div class="ring" style="--p:${Math.max(0, Math.min(100, group.progresso))}" aria-label="${group.progresso}% concluído"><span>${group.progresso}%</span></div>
             </div>
             <div class="unit-body">
               <div class="steps">
@@ -1676,6 +1794,7 @@ function getIndicatorUnit(ind) {
     }
 
     function showAcompanhamento(item) {
+      item = normalizeAcompanhamentoRow(item || {});
       const unidade = item.UNIDADE || 'Unidade';
       const subtitulo = `${item.STATUS_AGENDAMENTO || 'Sem status'} · ${item.DATA_AGENDAMENTO || 'Sem data'}`;
       const etapas = [
@@ -1800,11 +1919,15 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Salvando acompanhamento...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(() => {
+        .withSuccessHandler(result => {
           asyncUi.finish();
+          const serverRow = normalizeAcompanhamentoRow((result && result.data) || { ...getById(state.data?.acompanhamento, 'ID_ACOMPANHAMENTO', idAcompanhamento), ...payload });
+          upsertLocal('acompanhamento', 'ID_ACOMPANHAMENTO', serverRow);
           showSaveFeedback('Acompanhamento salvo com sucesso.', true);
           fecharEdicaoAcompanhamento();
-          loadData();
+          renderAfterLocalMutation({ toast: 'Acompanhamento atualizado em tempo real.' });
+          showAcompanhamento(serverRow);
+          scheduleBackgroundRefresh();
         })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar acompanhamento.'); await ui.dialog.alert('Erro ao editar acompanhamento: ' + (err.message || err)); })
         .atualizarStatusAcompanhamento(payload);
@@ -1827,7 +1950,7 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Criando acompanhamento...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Acompanhamento criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo acompanhamento cadastrado.'); })
+        .withSuccessHandler(async result => { const row = normalizeAcompanhamentoRow((result && result.data) || {}); asyncUi.finish(); upsertLocal('acompanhamento', 'ID_ACOMPANHAMENTO', row); showSaveFeedback('Acompanhamento criado com sucesso.', true); renderAfterLocalMutation({ toast: 'Novo acompanhamento disponível no painel.' }); scheduleBackgroundRefresh(); await ui.dialog.alert('Novo acompanhamento cadastrado.'); })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao criar acompanhamento.'); await ui.dialog.alert('Erro ao criar acompanhamento: ' + (err.message || err)); })
         .criarAcompanhamento({ UNIDADE: UNIDADE.trim(), DATA_AGENDAMENTO: DATA_AGENDAMENTO.trim(), STATUS_AGENDAMENTO: STATUS_AGENDAMENTO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
@@ -1845,7 +1968,7 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Excluindo acompanhamento...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Acompanhamento excluído com sucesso.', true); loadData(); await ui.dialog.alert('Acompanhamento excluído.'); })
+        .withSuccessHandler(async () => { asyncUi.finish(); removeLocal('acompanhamento', 'ID_ACOMPANHAMENTO', item.ID_ACOMPANHAMENTO); showSaveFeedback('Acompanhamento excluído com sucesso.', true); ui.closeDrawer(); renderAfterLocalMutation({ toast: 'Acompanhamento removido do painel.' }); scheduleBackgroundRefresh(); await ui.dialog.alert('Acompanhamento excluído.'); })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao excluir acompanhamento.'); await ui.dialog.alert('Erro ao excluir acompanhamento: ' + (err.message || err)); })
         .excluirAcompanhamento({ ID_ACOMPANHAMENTO: item.ID_ACOMPANHAMENTO, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
@@ -1955,11 +2078,15 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Salvando processo...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(() => {
+        .withSuccessHandler(result => {
           asyncUi.finish();
+          const serverRow = normalizeProcessRow((result && result.data) || { ...getById(state.data?.processos, 'ID_PROCESSO', idProcesso), ...payload });
+          upsertLocal('processos', 'ID_PROCESSO', serverRow);
           showSaveFeedback('Processo salvo com sucesso.', true);
           fecharEdicaoProcesso();
-          loadData();
+          renderAfterLocalMutation({ toast: 'Processo atualizado em tempo real.' });
+          showProcesso(serverRow);
+          scheduleBackgroundRefresh();
         })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar processo.'); await ui.dialog.alert('Erro ao editar processo: ' + (err.message || err)); })
         .atualizarProcesso(payload);
@@ -1982,7 +2109,7 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Criando processo...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Processo criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo processo cadastrado.'); })
+        .withSuccessHandler(async result => { const row = normalizeProcessRow((result && result.data) || {}); asyncUi.finish(); upsertLocal('processos', 'ID_PROCESSO', row); showSaveFeedback('Processo criado com sucesso.', true); renderAfterLocalMutation({ toast: 'Novo processo disponível no painel.' }); scheduleBackgroundRefresh(); await ui.dialog.alert('Novo processo cadastrado.'); })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao criar processo.'); await ui.dialog.alert('Erro ao criar processo: ' + (err.message || err)); })
         .criarProcesso({ PROCESSO: PROCESSO.trim(), TIPO_PROCESSO: TIPO_PROCESSO.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
@@ -2000,7 +2127,7 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Excluindo processo...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Processo excluído com sucesso.', true); loadData(); await ui.dialog.alert('Processo excluído.'); })
+        .withSuccessHandler(async () => { asyncUi.finish(); removeLocal('processos', 'ID_PROCESSO', item.ID_PROCESSO); showSaveFeedback('Processo excluído com sucesso.', true); ui.closeDrawer(); renderAfterLocalMutation({ toast: 'Processo removido do painel.' }); scheduleBackgroundRefresh(); await ui.dialog.alert('Processo excluído.'); })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao excluir processo.'); await ui.dialog.alert('Erro ao excluir processo: ' + (err.message || err)); })
         .excluirProcesso({ ID_PROCESSO: item.ID_PROCESSO, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
@@ -2348,11 +2475,21 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Salvando lançamento...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(() => {
+        .withSuccessHandler(result => {
           asyncUi.finish();
+          const serverRow = (result && result.data) || payload;
+          upsertLocal('lancamentos', 'ID_LANCAMENTO', serverRow);
+          if (!serverRow.ID_LANCAMENTO) {
+            const list = state.data?.lancamentos || [];
+            const idx = list.findIndex(row => String(row.ID_INDICADOR || '') === String(payload.ID_INDICADOR) && String(resolvePeriodoLabel(row) || row.COMPETENCIA || '') === String(payload.COMPETENCIA));
+            if (idx >= 0) list[idx] = { ...list[idx], ...serverRow };
+          }
           showSaveFeedback('Lançamento salvo com sucesso.', true);
           fecharEdicaoLancamentoIndicador();
-          loadData();
+          renderAfterLocalMutation({ toast: 'Indicador atualizado em tempo real.' });
+          const ind = getById(state.data?.indicadores, 'ID_INDICADOR', idIndicador);
+          if (ind) showIndicador(ind);
+          scheduleBackgroundRefresh();
         })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar lançamento.'); await ui.dialog.alert('Erro ao salvar lançamento: ' + (err.message || err)); })
         .atualizarLancamentoIndicador(payload);
@@ -2383,11 +2520,15 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Salvando indicador...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(() => {
+        .withSuccessHandler(result => {
           asyncUi.finish();
+          const serverRow = (result && result.data) || { ...getById(state.data?.indicadores, 'ID_INDICADOR', idIndicador), ...payload };
+          upsertLocal('indicadores', 'ID_INDICADOR', serverRow);
           showSaveFeedback('Indicador salvo com sucesso.', true);
           fecharEdicaoIndicador();
-          loadData();
+          renderAfterLocalMutation({ toast: 'Indicador atualizado em tempo real.' });
+          showIndicador(serverRow);
+          scheduleBackgroundRefresh();
         })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar indicador.'); await ui.dialog.alert('Erro ao editar indicador: ' + (err.message || err)); })
         .atualizarIndicador(payload);
@@ -2417,7 +2558,7 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Criando indicador...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Indicador criado com sucesso.', true); loadData(); await ui.dialog.alert('Novo indicador cadastrado.'); })
+        .withSuccessHandler(async result => { const row = (result && result.data) || {}; asyncUi.finish(); upsertLocal('indicadores', 'ID_INDICADOR', row); showSaveFeedback('Indicador criado com sucesso.', true); renderAfterLocalMutation({ toast: 'Novo indicador disponível no painel.' }); scheduleBackgroundRefresh(); await ui.dialog.alert('Novo indicador cadastrado.'); })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao criar indicador.'); await ui.dialog.alert('Erro ao criar indicador: ' + (err.message || err)); })
         .criarIndicador({ NOME_INDICADOR: NOME_INDICADOR.trim(), TIPO_INDICADOR: TIPO_INDICADOR.trim(), META: META.trim().replace(',', '.'), META_OPERADOR: META_OPERADOR.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
     }
@@ -2435,7 +2576,7 @@ function getIndicatorUnit(ind) {
       showSaveFeedback('Excluindo indicador...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
-        .withSuccessHandler(async () => { asyncUi.finish(); showSaveFeedback('Indicador excluído com sucesso.', true); loadData(); await ui.dialog.alert('Indicador excluído.'); })
+        .withSuccessHandler(async () => { asyncUi.finish(); removeLocal('indicadores', 'ID_INDICADOR', item.ID_INDICADOR); state.data.lancamentos = (state.data.lancamentos || []).filter(row => String(row.ID_INDICADOR || '') !== String(item.ID_INDICADOR)); showSaveFeedback('Indicador excluído com sucesso.', true); ui.closeDrawer(); renderAfterLocalMutation({ toast: 'Indicador removido do painel.' }); scheduleBackgroundRefresh(); await ui.dialog.alert('Indicador excluído.'); })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao excluir indicador.'); await ui.dialog.alert('Erro ao excluir indicador: ' + (err.message || err)); })
         .excluirIndicador({ ID_INDICADOR: item.ID_INDICADOR, MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
@@ -2503,7 +2644,7 @@ function getIndicatorUnit(ind) {
     function badgeClass(v) {
       const n = normalize(v);
       if (n === 'SIM' || n.includes('CONCLUID') || n.includes('REALIZADA')) return 'ok';
-      if (n === 'NAO' || n.includes('NAO INICIADA') || n.includes('PENDENTE')) return 'bad';
+      if (n === 'NAO' || n.includes('NAO INICIAD') || n.includes('PENDENTE')) return 'bad';
       if (n.includes('ANDAMENTO')) return 'warn';
       return '';
     }
@@ -2515,7 +2656,7 @@ function getIndicatorUnit(ind) {
       const n = normalize(v);
       if (n.includes('CONCLUID') || n.includes('REALIZADA') || n === 'SIM') return {label:'Concluído', type:'ok'};
       if (n.includes('BLOQUE') || n.includes('REAGEND')) return {label:'Bloqueado', type:'bad'};
-      if (n.includes('NAO INICIADA') || n.includes('PENDENTE') || n === 'NAO') return {label:'Atrasado', type:'bad'};
+      if (n.includes('NAO INICIAD') || n.includes('PENDENTE') || n === 'NAO') return {label:'Atrasado', type:'bad'};
       if (n.includes('ANDAMENTO') || n.includes('ANALISE')) return {label:'Atenção', type:'warn'};
       return {label:'No prazo', type:'warn'};
     }
