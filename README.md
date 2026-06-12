@@ -1,4 +1,4 @@
-# SIGEP_HUC
+# Hospital Process Management System
 
 Hospital process management system focused on internal workflows, records, and operational control.
 
