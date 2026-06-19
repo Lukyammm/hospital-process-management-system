@@ -23,13 +23,32 @@ const SIGEP = {
       BASE_UNIDADES: ['ID_UNIDADE']
     },
     autoCreate: {
-      BASE_INDICADORES: ['META_OPERADOR']
+      BASE_INDICADORES: [
+        'META_OPERADOR', 'POLARIDADE_META', 'PERIODICIDADE',
+        'CATEGORIA_INDICADOR', 'TIPO_OPERACIONAL', 'EIXO_ASSISTENCIAL',
+        'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA'
+      ],
+      BASE_ACOMPANHAMENTO: ['LINK_PLANILHA_GESTAO']
     }
   },
+  mapeamentoColumns: [
+    'ID_MAPEAMENTO', 'NOME_PROCESSO', 'GRUPO_PROCESSO', 'LINHA', 'COLUNA',
+    'STATUS', 'RESPONSAVEL', 'ANALISTA', 'LINK_PLANILHA', 'LINK_CONECTA',
+    'COMENTARIO', 'ULTIMA_ATUALIZACAO', 'ATIVO'
+  ],
+  gestorColumns: [
+    'ID_GESTOR', 'NOME', 'FUNCAO', 'SETOR', 'EMAIL', 'TELEFONE', 'CPF',
+    'VINCULO', 'NOTIFICA_LOGIN', 'NOTIFICA_SENHA', 'NOTIFICA_SITUACAO',
+    'OBSERVACOES', 'ATIVO', 'ULTIMA_ATUALIZACAO'
+  ],
+  gestorSensitiveColumns: ['CPF', 'TELEFONE', 'NOTIFICA_LOGIN', 'NOTIFICA_SENHA'],
+  statusPadrao: ['Não iniciado', 'Em andamento', 'Concluído', 'Não se aplica'],
   featureFlags: {
     PROCESSOS: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_PROCESSOS', defaultValue: true },
     INDICADORES: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_INDICADORES', defaultValue: true },
     ACOMPANHAMENTO: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_ACOMPANHAMENTO', defaultValue: true },
+    MAPEAMENTO: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_MAPEAMENTO', defaultValue: true },
+    GESTORES: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_GESTORES', defaultValue: true },
     FILTROS_AVANCADOS: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'FILTROS_AVANCADOS', defaultValue: true }
   },
   sheets: {
@@ -38,6 +57,8 @@ const SIGEP = {
     indicadores: 'BASE_INDICADORES',
     lancamentos: 'BASE_LANCAMENTOS_INDICADORES',
     unidades: 'BASE_UNIDADES',
+    mapeamento: 'BASE_MAPEAMENTO',
+    gestores: 'BASE_GESTORES',
     usuarios: 'USUARIOS',
     historico: 'HISTORICO',
     dashboardBase: 'DASHBOARD_BASE',
@@ -208,6 +229,49 @@ function excluirIndicador(payload) {
   return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.remove(payload)));
 }
 
+function getMapeamento() {
+  const app = new SigepApplication();
+  return app.mapeamento.list();
+}
+
+function criarMapeamento(payload) {
+  return runWithWriteLock_(() => withWritePermission_('MAPEAMENTO', app => app.mapeamento.create(payload)));
+}
+
+function atualizarMapeamento(payload) {
+  return runWithWriteLock_(() => withWritePermission_('MAPEAMENTO', app => app.mapeamento.update(payload)));
+}
+
+function excluirMapeamento(payload) {
+  return runWithWriteLock_(() => withWritePermission_('MAPEAMENTO', app => app.mapeamento.remove(payload)));
+}
+
+function popularMapeamentoPadrao() {
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.mapeamento.seedDefaults()));
+}
+
+function getGestores() {
+  const app = new SigepApplication();
+  return app.gestores.list();
+}
+
+function salvarGestor(payload) {
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.gestores.save(payload)));
+}
+
+function excluirGestor(payload) {
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.gestores.remove(payload)));
+}
+
+function vincularGestor(payload) {
+  return runWithWriteLock_(() => withAdminPermission_('ADMIN', app => app.gestores.vincular(payload)));
+}
+
+function getHistoricoRegistro(payload) {
+  const app = new SigepApplication();
+  return app.audit.getHistoryFor(payload);
+}
+
 
 function getAdminData() {
   return withAdminPermission_('ADMIN', app => app.admin.getAdminData());
@@ -283,8 +347,10 @@ class SigepApplication {
     this.processos = new ProcessoService(this.repo, this.audit);
     this.acompanhamento = new AcompanhamentoService(this.repo, this.audit);
     this.indicadores = new IndicadorService(this.repo, this.audit);
+    this.mapeamento = new MapeamentoService(this.repo, this.audit);
+    this.gestores = new GestorService(this.repo, this.audit, this.auth);
     this.dashboard = new DashboardService();
-    this.admin = new AdminService(this.repo, this.audit);
+    this.admin = new AdminService(this.repo, this.audit, this.gestores);
   }
 
   getInitialData() {
@@ -301,17 +367,20 @@ class SigepApplication {
     const indicadores = featureFlags.INDICADORES ? this.auth.applyDataScope(this.indicadores.list(), user) : [];
     const lancamentos = featureFlags.INDICADORES ? this.indicadores.listLancamentos() : [];
     const unidades = this.repo.getObjects(SIGEP.sheets.unidades);
+    const mapeamento = featureFlags.MAPEAMENTO ? this.mapeamento.listRows() : [];
     const result = {
       ok: true,
       generatedAt: new Date().toISOString(),
       generatedAtLocal: this.repo.formatDatePtBr(new Date()),
       user: user.email || '',
+      userPerfil: user.perfil || '',
       dashboard: this.dashboard.build(processos, acompanhamento, indicadores, lancamentos),
       processos,
       acompanhamento,
       indicadores,
       lancamentos,
       unidades,
+      mapeamento,
       featureFlags
     };
 
@@ -450,6 +519,7 @@ class DomainNormalizer {
       ? metaExtraida.meta
       : this.asText(raw.META_VALOR || raw.VALOR_META || '');
 
+    const categoria = this.asText(raw.CATEGORIA_INDICADOR) || this.asText(raw.CATEGORIA);
     return {
       ...raw,
       ID_INDICADOR: this.asText(raw.ID_INDICADOR),
@@ -457,6 +527,15 @@ class DomainNormalizer {
       TIPO_INDICADOR: this.asText(raw.TIPO_INDICADOR),
       META: meta || metaRaw,
       META_OPERADOR: operador,
+      POLARIDADE_META: this.asText(raw.POLARIDADE_META),
+      PERIODICIDADE: this.asText(raw.PERIODICIDADE),
+      CATEGORIA: categoria,
+      CATEGORIA_INDICADOR: categoria,
+      TIPO_OPERACIONAL: this.asText(raw.TIPO_OPERACIONAL),
+      EIXO_ASSISTENCIAL: this.asText(raw.EIXO_ASSISTENCIAL),
+      ANALISTA_RESPONSAVEL: this.asText(raw.ANALISTA_RESPONSAVEL),
+      GESTOR_RESPONSAVEL: this.asText(raw.GESTOR_RESPONSAVEL),
+      LINK_FICHA_TECNICA_CONECTA: this.asText(raw.LINK_FICHA_TECNICA_CONECTA),
       RESULTADO_ESPERADO: this.asText(raw.RESULTADO_ESPERADO)
     };
   }
@@ -896,6 +975,7 @@ class AcompanhamentoService {
       MODELAGEM: String(payload.MODELAGEM || '').trim(),
       INDICADORES: String(payload.INDICADORES || '').trim(),
       FICHA_TECNICA_INDICADORES: String(payload.FICHA_TECNICA_INDICADORES || '').trim(),
+      LINK_PLANILHA_GESTAO: String(payload.LINK_PLANILHA_GESTAO || '').trim(),
       ORDEM_AGENDAMENTO_UNIDADE: Number(payload.ORDEM_AGENDAMENTO_UNIDADE || now.getTime())
     };
     this.computeProgress_(row);
@@ -907,7 +987,7 @@ class AcompanhamentoService {
   updateStatus(payload) {
     if (!payload || !payload.ID_ACOMPANHAMENTO) throw new Error('ID_ACOMPANHAMENTO obrigatório.');
     PayloadValidator.validateAcompanhamentoUpdate(payload);
-    const allowed = ['DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'];
+    const allowed = ['DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES', 'LINK_PLANILHA_GESTAO'];
     const patch = {};
     allowed.forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
@@ -915,12 +995,11 @@ class AcompanhamentoService {
     const current = this.repo.getById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO);
     const etapas = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'].map(k => (patch[k] !== undefined ? patch[k] : current[k]) || '');
     if (etapas.some(Boolean) || patch.STATUS_AGENDAMENTO !== undefined || patch.DATA_AGENDAMENTO !== undefined) {
-      const concluidas = etapas.filter(v => this.isConcluida_(v)).length;
-      const total = this.getEtapasTotal_();
-      patch.ETAPAS_CONCLUIDAS = concluidas;
-      patch.ETAPAS_TOTAL = total;
-      patch.PROGRESSO_PERCENTUAL = Math.round((concluidas / total) * 100);
-      patch.STATUS_GERAL = concluidas === total ? 'Concluída' : concluidas === 0 ? 'Não iniciada' : 'Em andamento';
+      const progress = this.computeProgressValues_(etapas);
+      patch.ETAPAS_CONCLUIDAS = progress.concluidas;
+      patch.ETAPAS_TOTAL = progress.total;
+      patch.PROGRESSO_PERCENTUAL = progress.percentual;
+      patch.STATUS_GERAL = progress.statusGeral;
     }
     const updated = this.repo.updateById(SIGEP.sheets.acompanhamento, 'ID_ACOMPANHAMENTO', payload.ID_ACOMPANHAMENTO, patch, current);
     this.audit.logChange({ acao: 'ATUALIZAR_ACOMPANHAMENTO', entidade: 'ACOMPANHAMENTO', id: payload.ID_ACOMPANHAMENTO, before: current, after: updated, patch, origem: 'ACOMPANHAMENTO', motivo: payload.MOTIVO_ALTERACAO || '' });
@@ -939,21 +1018,37 @@ class AcompanhamentoService {
 
   isConcluida_(value) {
     const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
-    return normalized.includes('CONCLUID');
+    return normalized.includes('CONCLUID') || normalized.includes('REALIZAD') || normalized === 'SIM';
   }
 
-  getEtapasTotal_() {
-    return 6;
+  isNaoSeAplica_(value) {
+    const normalized = String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    return normalized.includes('NAO SE APLICA') || normalized === 'N/A' || normalized === 'NA';
+  }
+
+  // Regra "Não se aplica": etapas marcadas como N/A não entram no cálculo de progresso.
+  computeProgressValues_(etapas) {
+    const consideradas = (etapas || []).filter(v => !this.isNaoSeAplica_(v));
+    const total = consideradas.length;
+    const concluidas = consideradas.filter(v => this.isConcluida_(v)).length;
+    const percentual = total ? Math.round((concluidas / total) * 100) : 0;
+    const statusGeral = total === 0
+      ? 'Não se aplica'
+      : concluidas === total
+        ? 'Concluída'
+        : concluidas === 0
+          ? 'Não iniciada'
+          : 'Em andamento';
+    return { concluidas, total, percentual, statusGeral };
   }
 
   computeProgress_(target) {
     const etapas = ['INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'].map(k => target[k] || '');
-    const concluidas = etapas.filter(v => this.isConcluida_(v)).length;
-    const total = this.getEtapasTotal_();
-    target.ETAPAS_CONCLUIDAS = concluidas;
-    target.ETAPAS_TOTAL = total;
-    target.PROGRESSO_PERCENTUAL = Math.round((concluidas / total) * 100);
-    target.STATUS_GERAL = concluidas === total ? 'Concluída' : concluidas === 0 ? 'Não iniciada' : 'Em andamento';
+    const progress = this.computeProgressValues_(etapas);
+    target.ETAPAS_CONCLUIDAS = progress.concluidas;
+    target.ETAPAS_TOTAL = progress.total;
+    target.PROGRESSO_PERCENTUAL = progress.percentual;
+    target.STATUS_GERAL = progress.statusGeral;
   }
 
   generateId_() {
@@ -981,15 +1076,24 @@ class IndicadorService {
     const tipo = String(payload.TIPO_INDICADOR || '').trim();
     const meta = String(payload.META || '').trim();
     if (!nome || !tipo || !meta) throw new Error('NOME_INDICADOR, TIPO_INDICADOR e META são obrigatórios para cadastro.');
+    const categoria = String(payload.CATEGORIA_INDICADOR || payload.CATEGORIA || '').trim();
     const row = {
       ID_INDICADOR: this.generateId_(),
       NOME_INDICADOR: nome,
       TIPO_INDICADOR: tipo,
       META: meta,
       META_OPERADOR: String(payload.META_OPERADOR || '>=').trim(),
+      POLARIDADE_META: String(payload.POLARIDADE_META || '').trim(),
+      PERIODICIDADE: String(payload.PERIODICIDADE || '').trim(),
       RESULTADO_ESPERADO: String(payload.RESULTADO_ESPERADO || '').trim(),
       PROCESSO: String(payload.PROCESSO || '').trim(),
-      CATEGORIA: String(payload.CATEGORIA || '').trim(),
+      CATEGORIA: categoria,
+      CATEGORIA_INDICADOR: categoria,
+      TIPO_OPERACIONAL: String(payload.TIPO_OPERACIONAL || '').trim(),
+      EIXO_ASSISTENCIAL: String(payload.EIXO_ASSISTENCIAL || '').trim(),
+      ANALISTA_RESPONSAVEL: String(payload.ANALISTA_RESPONSAVEL || '').trim(),
+      GESTOR_RESPONSAVEL: String(payload.GESTOR_RESPONSAVEL || '').trim(),
+      LINK_FICHA_TECNICA_CONECTA: String(payload.LINK_FICHA_TECNICA_CONECTA || '').trim(),
       UNIDADE: String(payload.UNIDADE || '').trim()
     };
     const saved = this.repo.insertObject(SIGEP.sheets.indicadores, row, 'ID_INDICADOR');
@@ -1005,9 +1109,13 @@ class IndicadorService {
     const normalizedPayload = Object.assign({}, payload, {
       META_OPERADOR: payload.META_OPERADOR !== undefined ? payload.META_OPERADOR : operadorAlias
     });
-    ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'].forEach(k => {
+    ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO',
+     'POLARIDADE_META', 'PERIODICIDADE', 'CATEGORIA_INDICADOR', 'TIPO_OPERACIONAL',
+     'EIXO_ASSISTENCIAL', 'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA'].forEach(k => {
       if (normalizedPayload[k] !== undefined) patch[k] = normalizedPayload[k];
     });
+    // Mantém a coluna legada CATEGORIA sincronizada com CATEGORIA_INDICADOR.
+    if (patch.CATEGORIA_INDICADOR !== undefined) patch.CATEGORIA = patch.CATEGORIA_INDICADOR;
     const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
     const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch, current);
     this.audit.logChange({ acao: 'ATUALIZAR_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
@@ -1059,6 +1167,318 @@ class IndicadorService {
   generateId_() {
     const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.indicadores, 'ID_INDICADOR');
     return `IND-${String(max + 1).padStart(4, '0')}`;
+  }
+}
+
+class MapeamentoService {
+  constructor(repo, audit) {
+    this.repo = repo;
+    this.audit = audit;
+  }
+
+  // Lista usada pelo carregamento inicial: nunca lança erro caso a base ainda não exista.
+  listRows() {
+    return this.repo.getObjectsSafe(SIGEP.sheets.mapeamento, [])
+      .filter(r => String(r.ATIVO || 'SIM').toUpperCase() !== 'NAO' && String(r.ATIVO || 'SIM').toUpperCase() !== 'NÃO');
+  }
+
+  list() {
+    const exists = !!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SIGEP.sheets.mapeamento);
+    return { ok: true, data: this.listRows(), canSeed: !exists || this.listRows().length === 0 };
+  }
+
+  ensureSheet_() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(SIGEP.sheets.mapeamento);
+    if (!sh) {
+      sh = ss.insertSheet(SIGEP.sheets.mapeamento);
+      sh.getRange(1, 1, 1, SIGEP.mapeamentoColumns.length).setValues([SIGEP.mapeamentoColumns]);
+      this.repo.headersCache[SIGEP.sheets.mapeamento] = SIGEP.mapeamentoColumns.slice();
+      delete this.repo.objectsCache[SIGEP.sheets.mapeamento];
+    }
+    return sh;
+  }
+
+  create(payload) {
+    this.ensureSheet_();
+    const nome = String(payload.NOME_PROCESSO || '').trim();
+    const grupo = this.normalizeGrupo_(payload.GRUPO_PROCESSO);
+    if (!nome) throw new Error('NOME_PROCESSO é obrigatório.');
+    if (!grupo) throw new Error('GRUPO_PROCESSO é obrigatório (Gerencial, Finalístico ou Apoio).');
+    const row = this.buildRow_(payload, { ID_MAPEAMENTO: this.generateId_(), NOME_PROCESSO: nome, GRUPO_PROCESSO: grupo });
+    const saved = this.repo.insertObject(SIGEP.sheets.mapeamento, row, 'ID_MAPEAMENTO');
+    this.audit.logChange({ acao: 'CRIAR_MAPEAMENTO', entidade: 'MAPEAMENTO', id: saved.ID_MAPEAMENTO, before: null, after: saved, patch: row, origem: 'MAPEAMENTO', motivo: payload.COMENTARIO || '' });
+    return { ok: true, data: saved };
+  }
+
+  update(payload) {
+    this.ensureSheet_();
+    if (!payload || !payload.ID_MAPEAMENTO) throw new Error('ID_MAPEAMENTO obrigatório.');
+    const allowed = ['NOME_PROCESSO', 'GRUPO_PROCESSO', 'LINHA', 'COLUNA', 'STATUS', 'RESPONSAVEL', 'ANALISTA', 'LINK_PLANILHA', 'LINK_CONECTA', 'COMENTARIO'];
+    const patch = {};
+    allowed.forEach(k => {
+      if (payload[k] !== undefined) patch[k] = k === 'GRUPO_PROCESSO' ? this.normalizeGrupo_(payload[k]) : payload[k];
+    });
+    patch.ULTIMA_ATUALIZACAO = this.repo.formatDateOperational(new Date());
+    const current = this.repo.getById(SIGEP.sheets.mapeamento, 'ID_MAPEAMENTO', payload.ID_MAPEAMENTO);
+    const updated = this.repo.updateById(SIGEP.sheets.mapeamento, 'ID_MAPEAMENTO', payload.ID_MAPEAMENTO, patch, current);
+    this.audit.logChange({ acao: 'ATUALIZAR_MAPEAMENTO', entidade: 'MAPEAMENTO', id: payload.ID_MAPEAMENTO, before: current, after: updated, patch, origem: 'MAPEAMENTO', motivo: payload.COMENTARIO || '' });
+    return { ok: true, data: updated };
+  }
+
+  remove(payload) {
+    this.ensureSheet_();
+    if (!payload || !payload.ID_MAPEAMENTO) throw new Error('ID_MAPEAMENTO obrigatório para exclusão.');
+    const current = this.repo.getById(SIGEP.sheets.mapeamento, 'ID_MAPEAMENTO', payload.ID_MAPEAMENTO);
+    this.repo.deleteById(SIGEP.sheets.mapeamento, 'ID_MAPEAMENTO', payload.ID_MAPEAMENTO);
+    this.audit.logChange({ acao: 'EXCLUIR_MAPEAMENTO', entidade: 'MAPEAMENTO', id: payload.ID_MAPEAMENTO, before: current, after: null, patch: null, origem: 'MAPEAMENTO', motivo: String(payload.COMENTARIO || '').trim() });
+    return { ok: true };
+  }
+
+  seedDefaults() {
+    this.ensureSheet_();
+    if (this.listRows().length) return { ok: true, seeded: 0, message: 'Mapeamento já possui registros.' };
+    const grupos = MapeamentoService.defaultContent();
+    const rows = [];
+    let seq = 0;
+    Object.keys(grupos).forEach(grupo => {
+      grupos[grupo].forEach((nome, index) => {
+        seq += 1;
+        rows.push(this.buildRow_({
+          STATUS: 'Não iniciado',
+          LINHA: Math.floor(index / 4) + 1,
+          COLUNA: (index % 4) + 1
+        }, {
+          ID_MAPEAMENTO: `MAP-${String(seq).padStart(4, '0')}`,
+          NOME_PROCESSO: nome,
+          GRUPO_PROCESSO: grupo
+        }));
+      });
+    });
+    const headers = this.repo.getHeaders(SIGEP.sheets.mapeamento);
+    const matrix = rows.map(obj => headers.map(h => (obj[h] !== undefined ? obj[h] : '')));
+    this.repo.appendRows(SIGEP.sheets.mapeamento, matrix);
+    this.audit.log('SEED_MAPEAMENTO', 'MAPEAMENTO', String(rows.length), 'Conteúdo padrão do mapeamento criado');
+    return { ok: true, seeded: rows.length };
+  }
+
+  buildRow_(payload, base) {
+    return {
+      ID_MAPEAMENTO: base.ID_MAPEAMENTO,
+      NOME_PROCESSO: base.NOME_PROCESSO,
+      GRUPO_PROCESSO: base.GRUPO_PROCESSO,
+      LINHA: payload.LINHA !== undefined ? payload.LINHA : '',
+      COLUNA: payload.COLUNA !== undefined ? payload.COLUNA : '',
+      STATUS: String(payload.STATUS || 'Não iniciado').trim(),
+      RESPONSAVEL: String(payload.RESPONSAVEL || '').trim(),
+      ANALISTA: String(payload.ANALISTA || '').trim(),
+      LINK_PLANILHA: String(payload.LINK_PLANILHA || '').trim(),
+      LINK_CONECTA: String(payload.LINK_CONECTA || '').trim(),
+      COMENTARIO: String(payload.COMENTARIO || '').trim(),
+      ULTIMA_ATUALIZACAO: this.repo.formatDateOperational(new Date()),
+      ATIVO: 'SIM'
+    };
+  }
+
+  normalizeGrupo_(value) {
+    const n = String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    if (n.indexOf('GEREN') === 0) return 'Gerencial';
+    if (n.indexOf('FINAL') === 0) return 'Finalístico';
+    if (n.indexOf('APOIO') === 0) return 'Apoio';
+    return '';
+  }
+
+  generateId_() {
+    const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.mapeamento, 'ID_MAPEAMENTO');
+    return `MAP-${String(max + 1).padStart(4, '0')}`;
+  }
+
+  static defaultContent() {
+    return {
+      Gerencial: [
+        'Gestão da Comunicação',
+        'Satisfação e Experiência dos Usuários',
+        'Prevenção e Controle de Infecções Hospitalares',
+        'Vigilância Epidemiológica',
+        'Gestão Administrativa e Financeira',
+        'Gestão da Clínica',
+        'Comissões Obrigatórias',
+        'Gestão da Qualidade e Segurança do Paciente'
+      ],
+      Finalístico: [
+        'Atendimento Ambulatorial',
+        'Assistência Oncológica',
+        'Assistência em Cirurgia Oncológica',
+        'Assistência Hemodinâmica',
+        'Atendimento Cirúrgico',
+        'Assistência em Obstetrícia',
+        'Assistência Neonatal',
+        'Ensino e Pesquisa e Inovação em Saúde',
+        'Assistência em Terapia Intensiva Cardiopediátrica',
+        'Casa da Gestante',
+        'Assistência em Terapia Intensiva',
+        'Assistência em Hematologia',
+        'Assistência em Cirurgia Vascular',
+        'Assistência em Cirurgia Urológica',
+        'Assistência em Cirurgia de Cabeça e Pescoço',
+        'Assistência em Ortopedia',
+        'Assistência em Clínica Médica',
+        'Assistência em Cirurgia Geral e Digestiva',
+        'Assistência em Cirurgia Cardiopediatria'
+      ],
+      Apoio: [
+        'Segurança e Medicina do Trabalho',
+        'Segurança Institucional',
+        'Coleta Laboratorial',
+        'Diagnóstico por Imagem',
+        'Nutrição e Dietética',
+        'Processamento de Leite Humano',
+        'Gestão do Acesso',
+        'Assistência Hemoterápica',
+        'Faturamento e Arquivo de Prontuários',
+        'Rouparia',
+        'Desenvolvimento Humano Organizacional',
+        'Transporte Hospitalar',
+        'Gestão de Infraestrutura',
+        'Gestão de Equipamentos Tecnologia Hospitalar',
+        'Gestão de Suprimentos',
+        'Assistência Farmacêutica',
+        'Processamento de Produtos para a Saúde',
+        'Métodos Endoscópicos e Videoscópicos',
+        'Tecnologia da Informação',
+        'Higienização'
+      ]
+    };
+  }
+}
+
+class GestorService {
+  constructor(repo, audit, auth) {
+    this.repo = repo;
+    this.audit = audit;
+    this.auth = auth;
+  }
+
+  listRows() {
+    return this.repo.getObjectsSafe(SIGEP.sheets.gestores, []);
+  }
+
+  // Aplica mascaramento de campos sensíveis para perfis sem permissão de administrador.
+  list() {
+    let isAdmin = false;
+    try {
+      const user = this.auth.getCurrentUser();
+      isAdmin = ['ADMIN', 'ADMINISTRADOR'].includes(user.perfil);
+    } catch (e) {
+      isAdmin = false;
+    }
+    const rows = this.listRows().map(row => this.maskSensitive_(row, isAdmin));
+    return { ok: true, data: rows, isAdmin };
+  }
+
+  maskSensitive_(row, isAdmin) {
+    if (isAdmin) return row;
+    const clone = { ...row };
+    (SIGEP.gestorSensitiveColumns || []).forEach(col => {
+      if (clone[col] !== undefined && String(clone[col]).trim() !== '') clone[col] = '••••••';
+    });
+    return clone;
+  }
+
+  ensureSheet_() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(SIGEP.sheets.gestores);
+    if (!sh) {
+      sh = ss.insertSheet(SIGEP.sheets.gestores);
+      sh.getRange(1, 1, 1, SIGEP.gestorColumns.length).setValues([SIGEP.gestorColumns]);
+      this.repo.headersCache[SIGEP.sheets.gestores] = SIGEP.gestorColumns.slice();
+      delete this.repo.objectsCache[SIGEP.sheets.gestores];
+    }
+    return sh;
+  }
+
+  save(payload) {
+    this.ensureSheet_();
+    const nome = String(payload.NOME || '').trim();
+    if (!nome) throw new Error('NOME do gestor é obrigatório.');
+    const id = String(payload.ID_GESTOR || '').trim();
+    const patch = {
+      NOME: nome,
+      FUNCAO: String(payload.FUNCAO || '').trim(),
+      SETOR: String(payload.SETOR || '').trim(),
+      EMAIL: String(payload.EMAIL || '').trim().toLowerCase(),
+      TELEFONE: String(payload.TELEFONE || '').trim(),
+      CPF: String(payload.CPF || '').trim(),
+      VINCULO: String(payload.VINCULO || '').trim(),
+      NOTIFICA_LOGIN: String(payload.NOTIFICA_LOGIN || '').trim(),
+      NOTIFICA_SENHA: String(payload.NOTIFICA_SENHA || '').trim(),
+      NOTIFICA_SITUACAO: String(payload.NOTIFICA_SITUACAO || '').trim(),
+      OBSERVACOES: String(payload.OBSERVACOES || '').trim(),
+      ATIVO: String(payload.ATIVO || 'SIM').trim().toUpperCase(),
+      ULTIMA_ATUALIZACAO: this.repo.formatDateOperational(new Date())
+    };
+    // Não sobrescreve campos sensíveis em branco quando o registro já existe (mascaramento).
+    const existing = id ? this.listRows().find(r => String(r.ID_GESTOR || '').trim() === id) : null;
+    if (existing) {
+      (SIGEP.gestorSensitiveColumns || []).forEach(col => {
+        const v = String(payload[col] || '').trim();
+        if (!v || v === '••••••') patch[col] = existing[col] || '';
+      });
+      const updated = this.repo.updateById(SIGEP.sheets.gestores, 'ID_GESTOR', id, patch, existing);
+      this.audit.logChange({ acao: 'ATUALIZAR_GESTOR', entidade: 'GESTOR', id, before: this.redactForAudit_(existing), after: this.redactForAudit_(updated), patch: this.redactForAudit_(patch), origem: 'ADMIN', motivo: payload.MOTIVO_ALTERACAO || '' });
+      return { ok: true, data: this.maskSensitive_(updated, true) };
+    }
+    patch.ID_GESTOR = id || this.generateId_();
+    const saved = this.repo.insertObject(SIGEP.sheets.gestores, patch, 'ID_GESTOR');
+    this.audit.logChange({ acao: 'CRIAR_GESTOR', entidade: 'GESTOR', id: saved.ID_GESTOR, before: null, after: this.redactForAudit_(saved), patch: this.redactForAudit_(patch), origem: 'ADMIN', motivo: payload.MOTIVO_ALTERACAO || '' });
+    return { ok: true, data: saved };
+  }
+
+  remove(payload) {
+    this.ensureSheet_();
+    const id = String((payload && (payload.ID_GESTOR || payload)) || '').trim();
+    if (!id) throw new Error('ID_GESTOR obrigatório para exclusão.');
+    this.repo.deleteById(SIGEP.sheets.gestores, 'ID_GESTOR', id);
+    this.audit.log('EXCLUIR_GESTOR', 'GESTOR', id, 'Exclusão de gestor');
+    return { ok: true };
+  }
+
+  // Vincula o gestor a um setor, indicador ou item de mapeamento.
+  vincular(payload) {
+    const id = String(payload && payload.ID_GESTOR || '').trim();
+    const tipo = String(payload && payload.TIPO || '').toUpperCase().trim();
+    const alvo = String(payload && payload.ALVO || '').trim();
+    if (!id) throw new Error('ID_GESTOR obrigatório.');
+    if (!tipo || !alvo) throw new Error('Informe o tipo de vínculo e o alvo.');
+    const gestor = this.listRows().find(r => String(r.ID_GESTOR || '').trim() === id);
+    if (!gestor) throw new Error('Gestor não encontrado.');
+    if (tipo === 'SETOR') {
+      this.save({ ...gestor, SETOR: alvo, MOTIVO_ALTERACAO: 'Vínculo de setor' });
+    } else if (tipo === 'INDICADOR') {
+      const ind = new IndicadorService(this.repo, this.audit);
+      ind.update({ ID_INDICADOR: alvo, GESTOR_RESPONSAVEL: gestor.NOME, MOTIVO_ALTERACAO: 'Vínculo de gestor responsável' });
+    } else if (tipo === 'MAPEAMENTO') {
+      const map = new MapeamentoService(this.repo, this.audit);
+      map.update({ ID_MAPEAMENTO: alvo, RESPONSAVEL: gestor.NOME, COMENTARIO: 'Vínculo de gestor responsável' });
+    } else {
+      throw new Error('Tipo de vínculo não suportado: ' + tipo);
+    }
+    this.audit.log('VINCULAR_GESTOR', 'GESTOR', id, JSON.stringify({ tipo, alvo }));
+    return { ok: true };
+  }
+
+  redactForAudit_(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    const clone = { ...obj };
+    (SIGEP.gestorSensitiveColumns || []).forEach(col => {
+      if (clone[col] !== undefined && String(clone[col]).trim() !== '') clone[col] = '[restrito]';
+    });
+    return clone;
+  }
+
+  generateId_() {
+    const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.gestores, 'ID_GESTOR');
+    return `GEST-${String(max + 1).padStart(4, '0')}`;
   }
 }
 
@@ -1492,16 +1912,20 @@ class ConfigService {
 
 
 class AdminService {
-  constructor(repo, audit) {
+  constructor(repo, audit, gestores) {
     this.repo = repo;
     this.audit = audit;
+    this.gestores = gestores;
   }
 
   getAdminData() {
     const usuarios = this.repo.getObjects(SIGEP.sheets.usuarios);
     const unidades = this.repo.getObjects(SIGEP.sheets.unidades);
     const parameterSheets = this.repo.getParameterSheets_();
+    const gestores = this.gestores ? this.gestores.list() : { data: [], isAdmin: true };
     return {
+      gestores: gestores.data || [],
+      gestoresIsAdmin: gestores.isAdmin !== false,
       ok: true,
       usuarios,
       status: parameterSheets.CONFIG_STATUS || [],
@@ -1906,12 +2330,14 @@ class AuthorizationService {
   }
 
   getRbacRules_() {
+    const full = ['LISTAR', 'CRIAR', 'EDITAR', 'EXCLUIR', 'EXPORTAR', 'ADMIN'];
+    const editor = ['LISTAR', 'CRIAR', 'EDITAR', 'EXPORTAR'];
     return {
-      ADMIN: { GERAL: ['LISTAR', 'CRIAR', 'EDITAR', 'EXCLUIR', 'EXPORTAR', 'ADMIN'], ADMIN: ['LISTAR', 'CRIAR', 'EDITAR', 'EXCLUIR', 'EXPORTAR', 'ADMIN'] },
-      ADMINISTRADOR: { GERAL: ['LISTAR', 'CRIAR', 'EDITAR', 'EXCLUIR', 'EXPORTAR', 'ADMIN'], ADMIN: ['LISTAR', 'CRIAR', 'EDITAR', 'EXCLUIR', 'EXPORTAR', 'ADMIN'] },
-      GESTOR: { GERAL: ['LISTAR', 'CRIAR', 'EDITAR', 'EXPORTAR'], ADMIN: ['LISTAR'], PROCESSOS: ['LISTAR', 'CRIAR', 'EDITAR', 'EXPORTAR'], ACOMPANHAMENTO: ['LISTAR', 'CRIAR', 'EDITAR', 'EXPORTAR'], INDICADORES: ['LISTAR', 'CRIAR', 'EDITAR', 'EXPORTAR'] },
-      EDITOR: { GERAL: ['LISTAR', 'EDITAR'], PROCESSOS: ['LISTAR', 'EDITAR'], ACOMPANHAMENTO: ['LISTAR', 'EDITAR'], INDICADORES: ['LISTAR', 'EDITAR'], ADMIN: [] },
-      LEITOR: { GERAL: ['LISTAR'], PROCESSOS: ['LISTAR'], ACOMPANHAMENTO: ['LISTAR'], INDICADORES: ['LISTAR'], ADMIN: [] }
+      ADMIN: { GERAL: full, ADMIN: full, MAPEAMENTO: full, GESTORES: full },
+      ADMINISTRADOR: { GERAL: full, ADMIN: full, MAPEAMENTO: full, GESTORES: full },
+      GESTOR: { GERAL: editor, ADMIN: ['LISTAR'], PROCESSOS: editor, ACOMPANHAMENTO: editor, INDICADORES: editor, MAPEAMENTO: editor, GESTORES: ['LISTAR'] },
+      EDITOR: { GERAL: ['LISTAR', 'EDITAR'], PROCESSOS: ['LISTAR', 'EDITAR'], ACOMPANHAMENTO: ['LISTAR', 'EDITAR'], INDICADORES: ['LISTAR', 'EDITAR'], MAPEAMENTO: ['LISTAR', 'EDITAR'], GESTORES: ['LISTAR'], ADMIN: [] },
+      LEITOR: { GERAL: ['LISTAR'], PROCESSOS: ['LISTAR'], ACOMPANHAMENTO: ['LISTAR'], INDICADORES: ['LISTAR'], MAPEAMENTO: ['LISTAR'], GESTORES: ['LISTAR'], ADMIN: [] }
     };
   }
 
@@ -1984,6 +2410,39 @@ class AuditService {
     }
   }
 
+  // Retorna o histórico de alterações (comentários/motivos + diff) de um registro específico.
+  getHistoryFor(payload) {
+    const entidade = String(payload && payload.entidade || '').toUpperCase().trim();
+    const id = String(payload && payload.id || '').trim();
+    if (!id) return { ok: true, historico: [] };
+    let sh;
+    try {
+      sh = this.repo.getSheet(SIGEP.sheets.historico);
+    } catch (e) {
+      return { ok: true, historico: [] };
+    }
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) return { ok: true, historico: [] };
+    const values = sh.getRange(2, 1, lastRow - 1, 6).getDisplayValues();
+    const historico = [];
+    values.forEach(r => {
+      const rowEntidade = String(r[3] || '').toUpperCase().trim();
+      const rowId = String(r[4] || '').trim();
+      if (entidade && rowEntidade !== entidade) return;
+      if (rowId !== id) return;
+      let contexto = {};
+      try { contexto = JSON.parse(r[5] || '{}'); } catch (parseErr) { contexto = {}; }
+      historico.push({
+        data: contexto.timestampLocal || r[0] || '',
+        usuario: r[1] || contexto.usuario || '',
+        acao: r[2] || '',
+        motivo: contexto.motivo || '',
+        alteracoes: contexto.alteracoes || null
+      });
+    });
+    return { ok: true, historico: historico.reverse() };
+  }
+
   compact_(obj) {
     if (!obj || typeof obj !== 'object') return null;
     const out = {};
@@ -2005,13 +2464,15 @@ class PayloadValidator {
   }
 
   static validateAcompanhamentoUpdate(payload) {
-    const allowed = ['DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES'];
+    const allowed = ['DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES', 'LINK_PLANILHA_GESTAO'];
     this.validateAllowedKeys_(payload, ['ID_ACOMPANHAMENTO', 'MOTIVO_ALTERACAO'].concat(allowed), 'acompanhamento');
     this.validateRequiredChangeReason_(payload, allowed, 'acompanhamento');
   }
 
   static validateIndicadorUpdate(payload) {
-    const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO'];
+    const allowed = ['NOME_INDICADOR', 'TIPO_INDICADOR', 'META', 'META_OPERADOR', 'RESULTADO_ESPERADO',
+      'POLARIDADE_META', 'PERIODICIDADE', 'CATEGORIA_INDICADOR', 'TIPO_OPERACIONAL',
+      'EIXO_ASSISTENCIAL', 'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA'];
     const aliases = ['META OPERADOR', 'OPERADOR_META'];
     this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed, aliases), 'indicador');
     this.validateRequiredChangeReason_(payload, allowed.concat(aliases), 'indicador');
