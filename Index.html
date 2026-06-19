@@ -1455,6 +1455,53 @@
       .sidebar-note { display:none; }
     }
 
+    /* ===== Mapeamento (cadeia de valor) ===== */
+    .map-board { display:flex; flex-direction:column; gap:18px; }
+    .map-group { border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--surface); box-shadow:var(--shadow-sm); }
+    .map-group-title { background:#3f4a57; color:#fff; padding:10px 16px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; font-size:.82rem; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .map-group-title span.map-group-count { font-weight:600; opacity:.85; text-transform:none; letter-spacing:0; }
+    .map-group-body { padding:14px; }
+    .map-group.gerencial .map-group-body { background:#eef0f2; }
+    .map-group.finalistico .map-group-body { background:#e9f6ed; }
+    .map-group.apoio .map-group-body { background:#e7f1fb; }
+    .map-finalistico-shell { display:flex; gap:12px; align-items:stretch; }
+    .map-side { flex:0 0 78px; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:800; letter-spacing:.06em; text-transform:uppercase; font-size:.72rem; color:#1f4e79; background:rgba(31,78,121,.10); border:1px dashed var(--primary-3); border-radius:var(--radius-sm); padding:8px 6px; }
+    .map-grid { flex:1; display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:10px; }
+    .map-cell { text-align:left; cursor:pointer; border:1px solid var(--line-strong); border-radius:var(--radius-sm); background:var(--surface-card); padding:11px 12px; display:flex; flex-direction:column; gap:8px; transition:transform var(--ease), box-shadow var(--ease); min-height:78px; }
+    .map-cell:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+    .map-cell:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
+    .map-cell h5 { margin:0; font-size:.86rem; line-height:1.3; color:var(--ink); font-weight:700; }
+    .map-cell-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .map-cell-resp { font-size:.72rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .map-dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
+    .map-dot.s-ok { background:var(--success); }
+    .map-dot.s-run { background:var(--warning); }
+    .map-dot.s-none { background:var(--line-strong); }
+    .map-dot.s-na { background:#9aa7b5; }
+    .map-status-pill { font-size:.68rem; padding:2px 8px; border-radius:999px; font-weight:700; }
+    .map-status-pill.s-ok { background:var(--success-bg); color:var(--color-text-success); }
+    .map-status-pill.s-run { background:var(--warning-bg); color:var(--color-text-warning); }
+    .map-status-pill.s-none { background:var(--surface-field); color:var(--muted); }
+    .map-status-pill.s-na { background:#eef1f4; color:#5a6b7b; }
+    [data-theme="dark"] .map-group.gerencial .map-group-body { background:rgba(148,163,184,.10); }
+    [data-theme="dark"] .map-group.finalistico .map-group-body { background:rgba(47,158,109,.14); }
+    [data-theme="dark"] .map-group.apoio .map-group-body { background:rgba(31,78,121,.20); }
+    [data-theme="dark"] .map-group-title { background:#1f2733; }
+    .map-check { display:flex; align-items:center; gap:8px; font-size:.82rem; color:var(--text); }
+    .map-check input { width:16px; height:16px; }
+    .indicator-filter-check { justify-content:flex-end; }
+    .history-comments { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+    .history-comment { border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 12px; background:var(--surface-soft); }
+    .history-comment-head { display:flex; justify-content:space-between; gap:8px; font-size:.76rem; color:var(--muted); font-weight:700; }
+    .history-comment-body { font-size:.86rem; color:var(--text); margin-top:4px; }
+    .history-comment-diff { font-size:.74rem; color:var(--muted); margin-top:4px; }
+    .link-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .unit-top-actions { display:flex; align-items:center; gap:8px; }
+    @media (max-width: 680px) {
+      .map-finalistico-shell { flex-direction:column; }
+      .map-side { flex:none; width:100%; padding:6px; }
+    }
+
 </style>
 </head>
 <body class="min-h-screen bg-slate-50 font-sans antialiased selection:bg-teal-200/70 selection:text-slate-950">
@@ -1479,6 +1526,7 @@
       <nav class="nav" id="sidebarNav" aria-label="Navegação principal">
         <button class="active" data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="1.8"/></svg>Acompanhamento</button>
         <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Modelagem de Processos</button>
+        <button data-view="mapeamento"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h7v6H4zM13 5h7v4h-7zM13 11h7v8h-7zM4 13h7v6H4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Mapeamento</button>
         <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
         <button data-view="admin"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.5 4.8.7-3.5 3.4.8 4.8L12 14.8 7.7 16.4l.8-4.8L5 8.2l4.8-.7L12 3z" stroke="currentColor" stroke-width="1.6"/></svg>Administração</button>
       </nav>
@@ -1547,6 +1595,16 @@
         </div>
       </section>
 
+      <section id="mapeamento" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div><h3>Mapeamento de processos</h3><span>Cadeia de valor: gerenciais, finalísticos e de apoio</span></div>
+            <div class="filters"><button class="btn secondary" id="mapSeedBtn" onclick="popularMapeamento()" style="display:none">Carregar mapa padrão</button><button class="btn secondary" onclick="novoQuadrinhoMapeamento()">Novo processo</button></div>
+          </div>
+          <div class="content-pad"><div id="mapeamentoBoard" class="map-board"></div></div>
+        </div>
+      </section>
+
       <section id="indicadores" class="view">
         <div class="panel">
           <div class="panel-head indicator-head-clean">
@@ -1563,10 +1621,16 @@
                 </div>
                 <div class="indicator-filter-grid">
                   <label class="indicator-filter-field"><b>Categoria</b><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></label>
+                  <label class="indicator-filter-field"><b>Tipo operacional</b><select id="filtroTipoOperacionalIndicador" aria-label="Filtrar indicadores por tipo operacional"><option value="">Todos os tipos operacionais</option></select></label>
+                  <label class="indicator-filter-field"><b>Eixo assistencial</b><select id="filtroEixoIndicador" aria-label="Filtrar indicadores por eixo assistencial"><option value="">Todos os eixos</option></select></label>
+                  <label class="indicator-filter-field"><b>Analista responsável</b><select id="filtroAnalistaIndicador" aria-label="Filtrar indicadores por analista"><option value="">Todos os analistas</option></select></label>
+                  <label class="indicator-filter-field"><b>Gestor responsável</b><select id="filtroGestorIndicador" aria-label="Filtrar indicadores por gestor"><option value="">Todos os gestores</option></select></label>
                   <label class="indicator-filter-field"><b>Tipo</b><select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select></label>
+                  <label class="indicator-filter-field"><b>Periodicidade</b><select id="filtroPeriodicidadeIndicador" aria-label="Filtrar indicadores por periodicidade"><option value="">Todas as periodicidades</option></select></label>
                   <label class="indicator-filter-field"><b>Período</b><select id="filtroPeriodoIndicador" aria-label="Filtrar indicadores por período"><option value="">Todos os períodos</option></select></label>
                   <label class="indicator-filter-field"><b>Competência</b><select id="filtroCompetenciaIndicador" aria-label="Filtrar indicadores por competência"><option value="">Todas as competências</option></select></label>
                   <label class="indicator-filter-field"><b>Preenchimento</b><select id="filtroStatusPreenchimento" aria-label="Filtrar preenchimento"><option value="">Todos</option><option value="preenchido">Preenchido</option><option value="nao_preenchido">Não preenchido</option></select></label>
+                  <label class="indicator-filter-field indicator-filter-check"><b>Meus indicadores</b><span class="map-check"><input type="checkbox" id="filtroMeusIndicadores" aria-label="Mostrar apenas meus indicadores"><span>Somente analista/gestor = eu</span></span></label>
                 </div>
               </div>
               <div class="indicator-active-tags" id="indicatorActiveTags"></div>
@@ -1662,10 +1726,16 @@
       filtroTipoProcesso: '',
       filtroCategoriaIndicador: '',
       filtroTipoIndicador: '',
+      filtroTipoOperacionalIndicador: '',
+      filtroEixoIndicador: '',
+      filtroAnalistaIndicador: '',
+      filtroGestorIndicador: '',
+      filtroPeriodicidadeIndicador: '',
       filtroPeriodoIndicador: '',
       filtroCompetenciaIndicador: '',
       filtroComparacaoCompetencia: '',
       filtroStatusPreenchimento: '',
+      filtroMeusIndicadores: false,
       processosIndicadorSelecionados: [],
       indicadorFiltroRecolhido: false,
       buscaIndicador: '',
@@ -1707,13 +1777,21 @@
       return n.includes('CONCLUID') || n.includes('REALIZAD') || n === 'SIM';
     }
 
+    function isNaoSeAplicaStatus(value) {
+      const n = normalize(value);
+      return n.includes('NAO SE APLICA') || n === 'N/A' || n === 'NA';
+    }
+
+    // Regra "Não se aplica": etapas marcadas como N/A não entram no cálculo de progresso.
     function calculateAcompanhamentoProgress(row) {
-      const done = ACOMP_STEP_FIELDS.filter(field => isDoneStatus(row && row[field])).length;
+      const consideradas = ACOMP_STEP_FIELDS.filter(field => !isNaoSeAplicaStatus(row && row[field]));
+      const total = consideradas.length;
+      const done = consideradas.filter(field => isDoneStatus(row && row[field])).length;
       return {
         ETAPAS_CONCLUIDAS: done,
-        ETAPAS_TOTAL: ACOMP_STEP_TOTAL,
-        PROGRESSO_PERCENTUAL: Math.round((done / ACOMP_STEP_TOTAL) * 100),
-        STATUS_GERAL: done === ACOMP_STEP_TOTAL ? 'Concluído' : done === 0 ? 'Não iniciada' : 'Em andamento'
+        ETAPAS_TOTAL: total,
+        PROGRESSO_PERCENTUAL: total ? Math.round((done / total) * 100) : 0,
+        STATUS_GERAL: total === 0 ? 'Não se aplica' : done === total ? 'Concluído' : done === 0 ? 'Não iniciada' : 'Em andamento'
       };
     }
 
@@ -1826,12 +1904,15 @@
           state.search = e.target.value.toLowerCase().trim();
           render();
         });
-        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador', 'filtroTipoIndicador', 'filtroPeriodoIndicador', 'filtroCompetenciaIndicador', 'filtroStatusPreenchimento'].forEach(id => {
-          document.getElementById(id).addEventListener('change', e => {
+        ['filtroStatusAcomp', 'filtroTipoProcesso', 'filtroCategoriaIndicador', 'filtroTipoIndicador', 'filtroTipoOperacionalIndicador', 'filtroEixoIndicador', 'filtroAnalistaIndicador', 'filtroGestorIndicador', 'filtroPeriodicidadeIndicador', 'filtroPeriodoIndicador', 'filtroCompetenciaIndicador', 'filtroStatusPreenchimento'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('change', e => {
             state[id] = e.target.value;
             render();
           });
         });
+        const meusInd = document.getElementById('filtroMeusIndicadores');
+        if (meusInd) meusInd.addEventListener('change', e => { state.filtroMeusIndicadores = e.target.checked; renderIndicadores(); });
         const drawer = document.getElementById('drawer');
         drawer.addEventListener('click', e => {
           if (e.target === drawer) ui.closeDrawer();
@@ -1869,11 +1950,13 @@
           dashboard: ['Dashboard executivo', 'Visão consolidada de processos, acompanhamento e indicadores.'],
           acompanhamento: ['Acompanhamento', 'Unidades, datas de agenda e evolução das etapas.'],
           processos: ['Modelagem de Processos', 'Pipeline de modelagem, validação e publicação.'],
+          mapeamento: ['Mapeamento de processos', 'Cadeia de valor: processos gerenciais, finalísticos e de apoio.'],
           indicadores: ['Indicadores', 'Carteira de indicadores e competências mensais.'],
           admin: ['Administração', 'Usuários, permissões e configurações de apoio.']
         };
-        document.getElementById('pageTitle').textContent = titles[view][0];
-        document.getElementById('pageSubtitle').textContent = titles[view][1];
+        const meta = titles[view] || titles.acompanhamento;
+        document.getElementById('pageTitle').textContent = meta[0];
+        document.getElementById('pageSubtitle').textContent = meta[1];
         if (view === 'admin' && !state.adminData) loadAdminData();
         document.getElementById('appRoot').classList.remove('sidebar-open');
         document.getElementById('mobileMenuBtn').setAttribute('aria-expanded', 'false');
@@ -2003,7 +2086,7 @@
     }
 
     function setLoading() {
-      ['kpis', 'dashboardAcompanhamento', 'acompGrid', 'processGrid', 'indicatorGrid', 'adminGrid'].forEach(id => {
+      ['kpis', 'dashboardAcompanhamento', 'acompGrid', 'processGrid', 'mapeamentoBoard', 'indicatorGrid', 'adminGrid'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '<div class="loading">Carregando dados do SIGEP-HUC...</div>';
       });
@@ -2015,6 +2098,11 @@
       fillSelect('filtroTipoProcesso', unique((data.processos || []).map(x => x.TIPO_PROCESSO)), 'Todos os tipos');
       fillSelect('filtroCategoriaIndicador', unique((data.indicadores || []).map(x => x.CATEGORIA)), 'Todas as categorias');
       fillSelect('filtroTipoIndicador', unique((data.indicadores || []).map(x => x.TIPO_INDICADOR)), 'Todos os tipos');
+      fillSelect('filtroTipoOperacionalIndicador', unique((data.indicadores || []).map(x => x.TIPO_OPERACIONAL)), 'Todos os tipos operacionais');
+      fillSelect('filtroEixoIndicador', unique((data.indicadores || []).map(x => x.EIXO_ASSISTENCIAL)), 'Todos os eixos');
+      fillSelect('filtroAnalistaIndicador', unique((data.indicadores || []).map(x => x.ANALISTA_RESPONSAVEL)), 'Todos os analistas');
+      fillSelect('filtroGestorIndicador', unique((data.indicadores || []).map(x => x.GESTOR_RESPONSAVEL)), 'Todos os gestores');
+      fillSelect('filtroPeriodicidadeIndicador', unique((data.indicadores || []).map(x => x.PERIODICIDADE)), 'Todas as periodicidades');
       const competencias = unique((data.lancamentos || []).map(x => x.COMPETENCIA).filter(Boolean)).sort((a,b)=>parseCompetencia(a)-parseCompetencia(b));
       fillSelect('filtroCompetenciaIndicador', competencias, 'Todas as competências');
             const periodos = ['Ano','Semestre','Quadrimestre','Trimestre','Mês'];
@@ -2033,6 +2121,7 @@
       renderDashboard();
       renderAcompanhamento();
       renderProcessos();
+      renderMapeamento();
       renderIndicadores();
       renderAdmin();
     }
@@ -2102,7 +2191,10 @@
           <article class="unit-card" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showAcompanhamento(${JSON.stringify(group.base).replace(/'/g, "&apos;")})'>
             <div class="unit-top">
               <div><h4>${escapeHtml(group.unidade)}</h4><small>${group.items.length} data(s) registrada(s) · ${escapeHtml(b.STATUS_GERAL || '')}</small></div>
-              <div class="ring" style="--p:${Math.max(0, Math.min(100, group.progresso))}" aria-label="${group.progresso}% concluído"><span>${group.progresso}%</span></div>
+              <div class="unit-top-actions">
+                ${b.LINK_PLANILHA_GESTAO ? `<a class="btn secondary small" href="${escapeHtml(b.LINK_PLANILHA_GESTAO)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Planilha</a>` : ''}
+                <div class="ring" style="--p:${Math.max(0, Math.min(100, group.progresso))}" aria-label="${group.progresso}% concluído"><span>${group.progresso}%</span></div>
+              </div>
             </div>
             <div class="unit-body">
               <div class="steps">
@@ -2155,12 +2247,289 @@
       document.getElementById('processGrid').innerHTML = html || '<div class="empty"><strong>Nenhum processo encontrado.</strong><br>Refine os filtros para carregar processos operacionais desta unidade.</div>';
     }
 
+    /* ===================== Mapeamento (cadeia de valor) ===================== */
+    const MAP_GROUPS = [
+      { key: 'Gerencial', label: 'Processos Gerenciais', cls: 'gerencial' },
+      { key: 'Finalístico', label: 'Processos Finalísticos', cls: 'finalistico' },
+      { key: 'Apoio', label: 'Processos de Apoio', cls: 'apoio' }
+    ];
+    const MAP_STATUS_OPTIONS = ['Não iniciado', 'Em andamento', 'Concluído', 'Não se aplica'];
+
+    function isAdminUser() {
+      const p = normalize(state.data && state.data.userPerfil || '');
+      return p === 'ADMIN' || p === 'ADMINISTRADOR';
+    }
+
+    function mapGroupKeyOf(grupo) {
+      const n = normalize(grupo);
+      if (n.indexOf('GEREN') === 0) return 'Gerencial';
+      if (n.indexOf('FINAL') === 0) return 'Finalístico';
+      if (n.indexOf('APOIO') === 0) return 'Apoio';
+      return '';
+    }
+
+    function mapStatusInfo(status) {
+      const n = normalize(status);
+      if (n.includes('CONCLUID')) return { cls: 's-ok', label: status || 'Concluído' };
+      if (n.includes('ANDAMENTO')) return { cls: 's-run', label: status || 'Em andamento' };
+      if (n.includes('NAO SE APLICA') || n === 'N/A') return { cls: 's-na', label: status || 'Não se aplica' };
+      return { cls: 's-none', label: status || 'Não iniciado' };
+    }
+
+    function renderMapeamento() {
+      const board = document.getElementById('mapeamentoBoard');
+      if (!board) return;
+      let rows = (state.data.mapeamento || []).slice();
+      rows = filterRows(rows, ['NOME_PROCESSO', 'GRUPO_PROCESSO', 'STATUS', 'RESPONSAVEL', 'ANALISTA']);
+      const seedBtn = document.getElementById('mapSeedBtn');
+      const hasAny = (state.data.mapeamento || []).length > 0;
+      if (seedBtn) seedBtn.style.display = (!hasAny && isAdminUser()) ? '' : 'none';
+      if (!hasAny) {
+        board.innerHTML = `<div class="empty"><strong>Mapa de processos ainda não configurado.</strong><br>${isAdminUser() ? 'Clique em “Carregar mapa padrão” para criar a cadeia de valor do HUC.' : 'Solicite a um administrador o carregamento do mapa padrão.'}</div>`;
+        return;
+      }
+      const byGroup = {};
+      MAP_GROUPS.forEach(g => byGroup[g.key] = []);
+      rows.forEach(r => {
+        const key = mapGroupKeyOf(r.GRUPO_PROCESSO) || 'Apoio';
+        if (!byGroup[key]) byGroup[key] = [];
+        byGroup[key].push(r);
+      });
+      Object.keys(byGroup).forEach(k => byGroup[k].sort((a, b) =>
+        (Number(a.LINHA || 0) - Number(b.LINHA || 0)) ||
+        (Number(a.COLUNA || 0) - Number(b.COLUNA || 0)) ||
+        String(a.NOME_PROCESSO || '').localeCompare(String(b.NOME_PROCESSO || ''), 'pt-BR')));
+
+      const cell = (r) => {
+        const st = mapStatusInfo(r.STATUS);
+        const resp = r.RESPONSAVEL || r.ANALISTA || '';
+        return `<button class="map-cell" onclick='abrirMapeamento(${JSON.stringify(r).replace(/'/g, "&apos;")})'>
+          <h5>${escapeHtml(r.NOME_PROCESSO || 'Sem nome')}</h5>
+          <div class="map-cell-foot"><span class="map-cell-resp">${escapeHtml(resp || 'Sem responsável')}</span><span class="map-status-pill ${st.cls}">${escapeHtml(st.label)}</span></div>
+        </button>`;
+      };
+
+      board.innerHTML = MAP_GROUPS.map(g => {
+        const items = byGroup[g.key] || [];
+        const grid = items.length ? items.map(cell).join('') : '<span class="pill">Sem processos para os filtros atuais</span>';
+        const body = g.key === 'Finalístico'
+          ? `<div class="map-finalistico-shell"><div class="map-side">Entradas</div><div class="map-grid">${grid}</div><div class="map-side">Saídas</div></div>`
+          : `<div class="map-grid">${grid}</div>`;
+        return `<div class="map-group ${g.cls}"><div class="map-group-title">${escapeHtml(g.label)}<span class="map-group-count">${items.length} processo(s)</span></div><div class="map-group-body">${body}</div></div>`;
+      }).join('');
+    }
+
+    function abrirMapeamento(item) {
+      ui.openDrawer(item.NOME_PROCESSO || 'Processo do mapa', item.GRUPO_PROCESSO || '', `
+        <div class="indicator-head">
+          <div>
+            <div class="indicator-code">${escapeHtml(item.ID_MAPEAMENTO || '-')} · ${escapeHtml(item.GRUPO_PROCESSO || '-')}</div>
+            <h4 class="section-title">${escapeHtml(item.NOME_PROCESSO || 'Processo')}</h4>
+          </div>
+          <button class="btn secondary icon" onclick='abrirEdicaoMapeamento(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Editar</button>
+          <button class="btn secondary icon" onclick='excluirMapeamentoUi(${JSON.stringify(item).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V5h6v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Excluir</button>
+        </div>
+        <div class="steps">
+          ${drawerField('Grupo', item.GRUPO_PROCESSO)}
+          ${drawerField('Status', item.STATUS)}
+          ${drawerField('Responsável', item.RESPONSAVEL)}
+          ${drawerField('Analista', item.ANALISTA)}
+        </div>
+        <h4 class="section-title">Links</h4>
+        <div class="steps">
+          ${linkRow('Planilha do processo', item.LINK_PLANILHA)}
+          ${linkRow('Conecta', item.LINK_CONECTA)}
+        </div>
+        <h4 class="section-title">Comentário da alteração</h4>
+        <div class="note-soft">${escapeHtml(item.COMENTARIO || 'Sem comentário registrado.')}</div>
+        <div id="mapEditHost"></div>
+        <h4 class="section-title">Histórico de comentários</h4>
+        ${renderHistoricoBlock('MAPEAMENTO', item.ID_MAPEAMENTO)}
+      `);
+      loadHistorico('MAPEAMENTO', item.ID_MAPEAMENTO);
+    }
+
+    function abrirEdicaoMapeamento(item) {
+      const host = document.getElementById('mapEditHost');
+      if (!host) return;
+      const grupos = ['Gerencial', 'Finalístico', 'Apoio'];
+      const statusSel = MAP_STATUS_OPTIONS.map(op => `<option value="${escapeHtml(op)}" ${String(item.STATUS || '').toLowerCase() === op.toLowerCase() ? 'selected' : ''}>${escapeHtml(op)}</option>`).join('');
+      host.innerHTML = `
+        <form class="edit-form" onsubmit="salvarEdicaoMapeamento(event, '${escapeHtml(item.ID_MAPEAMENTO || '')}')">
+          <div class="edit-form-head"><div><h5>Editar processo do mapa</h5><p>Atualize dados, status, responsáveis e links.</p></div><span class="edit-badge">Modo edição</span></div>
+          <div class="edit-form-grid">
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Identificação</p>
+              <label>Nome do processo<input name="NOME_PROCESSO" value="${escapeHtml(item.NOME_PROCESSO || '')}" required></label>
+              <label>Grupo<select name="GRUPO_PROCESSO" required>${grupos.map(g => `<option value="${g}" ${mapGroupKeyOf(item.GRUPO_PROCESSO) === g ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
+              <label>Status<select name="STATUS">${statusSel}</select></label>
+            </div>
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Responsáveis e links</p>
+              <label>Responsável<input name="RESPONSAVEL" value="${escapeHtml(item.RESPONSAVEL || '')}"></label>
+              <label>Analista<input name="ANALISTA" value="${escapeHtml(item.ANALISTA || '')}"></label>
+              <label>Link da planilha<input name="LINK_PLANILHA" value="${escapeHtml(item.LINK_PLANILHA || '')}" placeholder="https://..."></label>
+              <label>Link Conecta<input name="LINK_CONECTA" value="${escapeHtml(item.LINK_CONECTA || '')}" placeholder="https://..."></label>
+            </div>
+            <div class="edit-form-group full">
+              <p class="edit-form-group-title">Rastreabilidade</p>
+              <label>Comentário da alteração<textarea name="COMENTARIO" placeholder="Ex.: ajuste após reunião com a unidade.">${escapeHtml(item.COMENTARIO || '')}</textarea></label>
+            </div>
+          </div>
+          <div class="edit-form-actions"><button type="button" class="btn secondary" onclick="document.getElementById('mapEditHost').innerHTML=''">Cancelar</button><button type="submit" class="btn">Salvar</button></div>
+        </form>`;
+      host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function salvarEdicaoMapeamento(event, id) {
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        ID_MAPEAMENTO: id,
+        NOME_PROCESSO: form.NOME_PROCESSO.value.trim(),
+        GRUPO_PROCESSO: form.GRUPO_PROCESSO.value.trim(),
+        STATUS: form.STATUS.value.trim(),
+        RESPONSAVEL: form.RESPONSAVEL.value.trim(),
+        ANALISTA: form.ANALISTA.value.trim(),
+        LINK_PLANILHA: form.LINK_PLANILHA.value.trim(),
+        LINK_CONECTA: form.LINK_CONECTA.value.trim(),
+        COMENTARIO: form.COMENTARIO.value.trim()
+      };
+      showSaveFeedback('Salvando mapeamento...');
+      asyncUi.start('Sincronizando com Google Sheets...');
+      google.script.run
+        .withSuccessHandler(result => {
+          asyncUi.finish();
+          const serverRow = (result && result.data) || { ...getById(state.data?.mapeamento, 'ID_MAPEAMENTO', id), ...payload };
+          upsertLocal('mapeamento', 'ID_MAPEAMENTO', serverRow);
+          showSaveFeedback('Mapeamento salvo com sucesso.', true);
+          renderMapeamento();
+          abrirMapeamento(serverRow);
+          scheduleBackgroundRefresh();
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao salvar mapeamento.'); await ui.dialog.alert('Erro ao salvar mapeamento: ' + (err.message || err)); })
+        .atualizarMapeamento(payload);
+    }
+
+    async function novoQuadrinhoMapeamento() {
+      const values = await ui.dialog.form({
+        title: 'Novo processo no mapa',
+        description: 'Cadastre um processo na cadeia de valor.',
+        confirmText: 'Criar',
+        fields: [
+          { name: 'NOME_PROCESSO', label: 'Nome do processo', required: true },
+          { name: 'GRUPO_PROCESSO', label: 'Grupo', type: 'select', value: 'Apoio', options: ['Gerencial', 'Finalístico', 'Apoio'] },
+          { name: 'STATUS', label: 'Status', type: 'select', value: 'Não iniciado', options: MAP_STATUS_OPTIONS },
+          { name: 'RESPONSAVEL', label: 'Responsável' },
+          { name: 'COMENTARIO', label: 'Comentário', type: 'textarea' }
+        ]
+      });
+      if (!values || !String(values.NOME_PROCESSO || '').trim()) return;
+      asyncUi.start('Sincronizando com Google Sheets...');
+      google.script.run
+        .withSuccessHandler(async result => {
+          asyncUi.finish();
+          const row = (result && result.data) || {};
+          upsertLocal('mapeamento', 'ID_MAPEAMENTO', row);
+          renderMapeamento();
+          scheduleBackgroundRefresh();
+          await ui.dialog.alert('Processo adicionado ao mapa.');
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao criar processo: ' + (err.message || err)); })
+        .criarMapeamento({
+          NOME_PROCESSO: String(values.NOME_PROCESSO || '').trim(),
+          GRUPO_PROCESSO: String(values.GRUPO_PROCESSO || 'Apoio').trim(),
+          STATUS: String(values.STATUS || 'Não iniciado').trim(),
+          RESPONSAVEL: String(values.RESPONSAVEL || '').trim(),
+          COMENTARIO: String(values.COMENTARIO || '').trim()
+        });
+    }
+
+    async function excluirMapeamentoUi(item) {
+      if (!item || !item.ID_MAPEAMENTO) return;
+      if (!await ui.dialog.confirm(`Excluir "${item.NOME_PROCESSO}" do mapa?`)) return;
+      asyncUi.start('Sincronizando com Google Sheets...');
+      google.script.run
+        .withSuccessHandler(async () => {
+          asyncUi.finish();
+          removeLocal('mapeamento', 'ID_MAPEAMENTO', item.ID_MAPEAMENTO);
+          ui.closeDrawer();
+          renderMapeamento();
+          scheduleBackgroundRefresh();
+          await ui.dialog.alert('Processo removido do mapa.');
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao excluir: ' + (err.message || err)); })
+        .excluirMapeamento({ ID_MAPEAMENTO: item.ID_MAPEAMENTO, COMENTARIO: 'Exclusão pelo mapa' });
+    }
+
+    function popularMapeamento() {
+      asyncUi.start('Criando mapa padrão...');
+      google.script.run
+        .withSuccessHandler(() => { asyncUi.finish(); showToast('Mapa padrão criado.', 'success'); loadData(); ui.setView('mapeamento'); })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao criar mapa padrão: ' + (err.message || err)); })
+        .popularMapeamentoPadrao();
+    }
+
+    /* ===================== Links e histórico de comentários ===================== */
+    function linkRow(label, url, onEditAttr) {
+      const has = String(url || '').trim();
+      const open = has ? `<a class="btn secondary small" href="${escapeHtml(has)}" target="_blank" rel="noopener">Abrir</a>` : '<span class="pill">Sem link</span>';
+      const edit = onEditAttr ? `<button class="btn secondary small" onclick="${onEditAttr}">Editar link</button>` : '';
+      return `<div class="step"><b>${escapeHtml(label)}</b><span class="link-actions">${open}${edit}</span></div>`;
+    }
+
+    function historyContainerId(entidade, id) {
+      return 'hist-' + entidade + '-' + String(id || '').replace(/[^A-Za-z0-9_-]/g, '_');
+    }
+    function renderHistoricoBlock(entidade, id) {
+      return `<div id="${historyContainerId(entidade, id)}" class="history-comments"><div class="pill">Carregando histórico...</div></div>`;
+    }
+    function loadHistorico(entidade, id) {
+      const host = document.getElementById(historyContainerId(entidade, id));
+      if (!host) return;
+      google.script.run
+        .withSuccessHandler(res => {
+          const list = (res && res.historico) || [];
+          if (!list.length) { host.innerHTML = '<div class="pill">Sem comentários registrados para este item.</div>'; return; }
+          host.innerHTML = list.map(h => `
+            <div class="history-comment">
+              <div class="history-comment-head"><span>${escapeHtml(h.data || '')} · ${escapeHtml(h.usuario || '')}</span><span>${escapeHtml(formatAcaoLabel(h.acao))}</span></div>
+              ${h.motivo ? `<div class="history-comment-body">Comentário: ${escapeHtml(h.motivo)}</div>` : '<div class="history-comment-body" style="color:var(--muted)">Sem comentário informado.</div>'}
+              ${summarizeDiff(h.alteracoes) ? `<div class="history-comment-diff">${escapeHtml(summarizeDiff(h.alteracoes))}</div>` : ''}
+            </div>`).join('');
+        })
+        .withFailureHandler(() => { host.innerHTML = '<div class="pill">Não foi possível carregar o histórico agora.</div>'; })
+        .getHistoricoRegistro({ entidade, id });
+    }
+    function summarizeDiff(alteracoes) {
+      if (!alteracoes || typeof alteracoes !== 'object') return '';
+      const keys = Object.keys(alteracoes).filter(k => !['MOTIVO_ALTERACAO', 'ULTIMA_ATUALIZACAO', 'COMENTARIO'].includes(k));
+      return keys.length ? 'Campos alterados: ' + keys.join(', ') : '';
+    }
+    function formatAcaoLabel(acao) {
+      return String(acao || '').replace(/_/g, ' ').toLowerCase();
+    }
+
     function renderIndicadores() {
       let rows = state.data.indicadores || [];
       rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO', 'UNIDADE', 'SETOR']);
       if (state.filtroCategoriaIndicador) rows = rows.filter(x => x.CATEGORIA === state.filtroCategoriaIndicador);
       rows = rows.filter(x => passTaskFilter(x, 'ind'));
       if (state.filtroTipoIndicador) rows = rows.filter(x => x.TIPO_INDICADOR === state.filtroTipoIndicador);
+      if (state.filtroTipoOperacionalIndicador) rows = rows.filter(x => x.TIPO_OPERACIONAL === state.filtroTipoOperacionalIndicador);
+      if (state.filtroEixoIndicador) rows = rows.filter(x => x.EIXO_ASSISTENCIAL === state.filtroEixoIndicador);
+      if (state.filtroAnalistaIndicador) rows = rows.filter(x => x.ANALISTA_RESPONSAVEL === state.filtroAnalistaIndicador);
+      if (state.filtroGestorIndicador) rows = rows.filter(x => x.GESTOR_RESPONSAVEL === state.filtroGestorIndicador);
+      if (state.filtroPeriodicidadeIndicador) rows = rows.filter(x => x.PERIODICIDADE === state.filtroPeriodicidadeIndicador);
+      if (state.filtroMeusIndicadores) {
+        const me = normalize(state.data && state.data.user || '');
+        const meName = me.split('@')[0];
+        rows = rows.filter(x => {
+          const analista = normalize(x.ANALISTA_RESPONSAVEL || '');
+          const gestor = normalize(x.GESTOR_RESPONSAVEL || '');
+          return me && (analista === me || gestor === me || (meName && (analista.includes(meName) || gestor.includes(meName))));
+        });
+      }
       const lancamentos = state.data.lancamentos || [];
       const byInd = new Map();
       lancamentos.forEach(l => {
@@ -2254,11 +2623,14 @@
     }
 
     function clearIndicadorFilters() {
-      ['filtroCategoriaIndicador','filtroTipoIndicador','filtroPeriodoIndicador','filtroCompetenciaIndicador','filtroStatusPreenchimento'].forEach(id => {
+      ['filtroCategoriaIndicador','filtroTipoIndicador','filtroTipoOperacionalIndicador','filtroEixoIndicador','filtroAnalistaIndicador','filtroGestorIndicador','filtroPeriodicidadeIndicador','filtroPeriodoIndicador','filtroCompetenciaIndicador','filtroStatusPreenchimento'].forEach(id => {
         state[id] = '';
         const el = document.getElementById(id);
         if (el) el.value = '';
       });
+      state.filtroMeusIndicadores = false;
+      const meus = document.getElementById('filtroMeusIndicadores');
+      if (meus) meus.checked = false;
       renderIndicadores();
     }
 
@@ -2285,10 +2657,19 @@
 
     
     function getActiveIndicatorFilters() {
-      const labels = {filtroCategoriaIndicador:'Categoria',filtroTipoIndicador:'Tipo',filtroPeriodoIndicador:'Janela',filtroCompetenciaIndicador:'Competência',filtroStatusPreenchimento:'Preenchimento',buscaIndicador:'Busca'};
-      return Object.keys(labels).filter(k => state[k]).map(k => ({key:k,label:labels[k],value:state[k]}));
+      const labels = {filtroCategoriaIndicador:'Categoria',filtroTipoIndicador:'Tipo',filtroTipoOperacionalIndicador:'Tipo operacional',filtroEixoIndicador:'Eixo',filtroAnalistaIndicador:'Analista',filtroGestorIndicador:'Gestor',filtroPeriodicidadeIndicador:'Periodicidade',filtroPeriodoIndicador:'Janela',filtroCompetenciaIndicador:'Competência',filtroStatusPreenchimento:'Preenchimento',buscaIndicador:'Busca'};
+      const active = Object.keys(labels).filter(k => state[k]).map(k => ({key:k,label:labels[k],value:state[k]}));
+      if (state.filtroMeusIndicadores) active.push({ key: 'filtroMeusIndicadores', label: 'Visão', value: 'Meus indicadores' });
+      return active;
     }
     function removeIndicadorFilter(key) {
+      if (key === 'filtroMeusIndicadores') {
+        state.filtroMeusIndicadores = false;
+        const meus = document.getElementById('filtroMeusIndicadores');
+        if (meus) meus.checked = false;
+        renderIndicadores();
+        return;
+      }
       state[key] = '';
       const el = document.getElementById(key);
       if (el) el.value = '';
@@ -2409,15 +2790,53 @@ function getIndicatorUnit(ind) {
             </div>
           </section>
 
+          <section class="acomp-section">
+            <h5>Planilha de gestão</h5>
+            <div class="steps">
+              ${linkRow('Planilha de gestão', item.LINK_PLANILHA_GESTAO, `editarLinkPlanilhaGestao(${JSON.stringify(item).replace(/'/g, "&apos;")})`)}
+            </div>
+          </section>
+
           <div id="acompEditHost"></div>
+
+          <section class="acomp-section">
+            <h5>Histórico de comentários</h5>
+            ${renderHistoricoBlock('ACOMPANHAMENTO', item.ID_ACOMPANHAMENTO)}
+          </section>
         </div>
       `);
+      loadHistorico('ACOMPANHAMENTO', item.ID_ACOMPANHAMENTO);
+    }
+
+    async function editarLinkPlanilhaGestao(item) {
+      const values = await ui.dialog.form({
+        title: 'Planilha de gestão',
+        description: 'Informe o link da planilha de gestão desta unidade.',
+        confirmText: 'Salvar link',
+        fields: [
+          { name: 'LINK_PLANILHA_GESTAO', label: 'Link da planilha', value: item.LINK_PLANILHA_GESTAO || '', placeholder: 'https://...' },
+          { name: 'MOTIVO_ALTERACAO', label: 'Comentário da alteração', type: 'textarea', required: true }
+        ]
+      });
+      if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
+      asyncUi.start('Sincronizando com Google Sheets...');
+      google.script.run
+        .withSuccessHandler(result => {
+          asyncUi.finish();
+          const serverRow = normalizeAcompanhamentoRow((result && result.data) || { ...getById(state.data?.acompanhamento, 'ID_ACOMPANHAMENTO', item.ID_ACOMPANHAMENTO), LINK_PLANILHA_GESTAO: String(values.LINK_PLANILHA_GESTAO || '').trim() });
+          upsertLocal('acompanhamento', 'ID_ACOMPANHAMENTO', serverRow);
+          showToast('Link da planilha atualizado.', 'success');
+          showAcompanhamento(serverRow);
+          scheduleBackgroundRefresh();
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao salvar link: ' + (err.message || err)); })
+        .atualizarStatusAcompanhamento({ ID_ACOMPANHAMENTO: item.ID_ACOMPANHAMENTO, LINK_PLANILHA_GESTAO: String(values.LINK_PLANILHA_GESTAO || '').trim(), MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
 
     function abrirEdicaoAcompanhamento(item) {
       const host = document.getElementById('acompEditHost');
       if (!host) return;
-      const statusOptions = ['Concluído', 'Em andamento', 'Aguardando', 'Pendente', 'Não iniciado', 'Não se aplica'];
+      const statusOptions = ['Não iniciado', 'Em andamento', 'Concluído', 'Não se aplica'];
       const renderStatusSelect = (fieldName, label, currentValue) => `
         <label>
           <span>${escapeHtml(label)}</span>
@@ -2443,6 +2862,7 @@ function getIndicatorUnit(ind) {
               <p class="edit-form-group-title">Agendamento</p>
               <label>Data do agendamento<input name="DATA_AGENDAMENTO" value="${escapeHtml(item.DATA_AGENDAMENTO || '')}" placeholder="dd/mm/aaaa"></label>
               ${renderStatusSelect('STATUS_AGENDAMENTO', 'Status do agendamento', item.STATUS_AGENDAMENTO)}
+              <label>Link da planilha de gestão<input name="LINK_PLANILHA_GESTAO" value="${escapeHtml(item.LINK_PLANILHA_GESTAO || '')}" placeholder="https://..."></label>
             </div>
             <div class="edit-form-group">
               <p class="edit-form-group-title">Etapas</p>
@@ -2486,6 +2906,7 @@ function getIndicatorUnit(ind) {
         MODELAGEM: form.MODELAGEM.value.trim(),
         INDICADORES: form.INDICADORES.value.trim(),
         FICHA_TECNICA_INDICADORES: form.FICHA_TECNICA_INDICADORES.value.trim(),
+        LINK_PLANILHA_GESTAO: form.LINK_PLANILHA_GESTAO.value.trim(),
         MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
       };
       showSaveFeedback('Salvando acompanhamento...');
@@ -2628,6 +3049,20 @@ function getIndicatorUnit(ind) {
       return options.map(opt => `<option value="${opt}" ${current === opt ? 'selected' : ''}>${opt || 'Não informado'}</option>`).join('');
     }
 
+    function selectOptions(options, currentValue) {
+      const current = String(currentValue || '').trim().toLowerCase();
+      let matched = false;
+      const html = (options || []).map(opt => {
+        const sel = String(opt).trim().toLowerCase() === current;
+        if (sel) matched = true;
+        return `<option value="${escapeHtml(opt)}" ${sel ? 'selected' : ''}>${escapeHtml(opt || 'Não informado')}</option>`;
+      }).join('');
+      if (!matched && current) {
+        return html + `<option value="${escapeHtml(currentValue)}" selected>${escapeHtml(currentValue)}</option>`;
+      }
+      return html;
+    }
+
     function fecharEdicaoProcesso() {
       const host = document.getElementById('processEditHost');
       if (host) host.innerHTML = '';
@@ -2744,8 +3179,17 @@ function getIndicatorUnit(ind) {
           <div class="meta-grid">
             <div class="meta-item"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
             <div class="meta-item"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
+            <div class="meta-item"><b>Tipo operacional</b><span>${escapeHtml(ind.TIPO_OPERACIONAL || '-')}</span></div>
+            <div class="meta-item"><b>Eixo assistencial</b><span>${escapeHtml(ind.EIXO_ASSISTENCIAL || '-')}</span></div>
             <div class="meta-item"><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
-            <div class="meta-item"><b>Origem</b><span>${escapeHtml(ind.ABA_ORIGEM || '-')}</span></div>
+            <div class="meta-item"><b>Polaridade</b><span>${escapeHtml(ind.POLARIDADE_META || '-')}</span></div>
+            <div class="meta-item"><b>Periodicidade</b><span>${escapeHtml(ind.PERIODICIDADE || '-')}</span></div>
+            <div class="meta-item"><b>Analista responsável</b><span>${escapeHtml(ind.ANALISTA_RESPONSAVEL || '-')}</span></div>
+            <div class="meta-item"><b>Gestor responsável</b><span>${escapeHtml(ind.GESTOR_RESPONSAVEL || '-')}</span></div>
+          </div>
+          <h4 class="section-title">Ficha técnica no Conecta</h4>
+          <div class="steps">
+            ${linkRow('Ficha técnica no Conecta', ind.LINK_FICHA_TECNICA_CONECTA, `editarLinkFichaConecta(${JSON.stringify(ind).replace(/'/g, "&apos;")})`)}
           </div>
           <h4 class="section-title">Resultado</h4>
           <div class="result-box">
@@ -2781,8 +3225,36 @@ function getIndicatorUnit(ind) {
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
           <div id="indicatorLaunchHost"></div>
           <div id="indicatorEditHost"></div>
+          <h4 class="section-title">Histórico de comentários</h4>
+          ${renderHistoricoBlock('INDICADOR', ind.ID_INDICADOR)}
         </div>
       `);
+      loadHistorico('INDICADOR', ind.ID_INDICADOR);
+    }
+
+    async function editarLinkFichaConecta(ind) {
+      const values = await ui.dialog.form({
+        title: 'Ficha técnica no Conecta',
+        description: 'Informe o link da ficha técnica do indicador no Conecta.',
+        confirmText: 'Salvar link',
+        fields: [
+          { name: 'LINK_FICHA_TECNICA_CONECTA', label: 'Link da ficha técnica', value: ind.LINK_FICHA_TECNICA_CONECTA || '', placeholder: 'https://...' },
+          { name: 'MOTIVO_ALTERACAO', label: 'Comentário da alteração', type: 'textarea', required: true }
+        ]
+      });
+      if (!values || !String(values.MOTIVO_ALTERACAO || '').trim()) return;
+      asyncUi.start('Sincronizando com Google Sheets...');
+      google.script.run
+        .withSuccessHandler(result => {
+          asyncUi.finish();
+          const serverRow = (result && result.data) || { ...getById(state.data?.indicadores, 'ID_INDICADOR', ind.ID_INDICADOR), LINK_FICHA_TECNICA_CONECTA: String(values.LINK_FICHA_TECNICA_CONECTA || '').trim() };
+          upsertLocal('indicadores', 'ID_INDICADOR', serverRow);
+          showToast('Link da ficha técnica atualizado.', 'success');
+          showIndicador(serverRow);
+          scheduleBackgroundRefresh();
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao salvar link: ' + (err.message || err)); })
+        .atualizarIndicador({ ID_INDICADOR: ind.ID_INDICADOR, LINK_FICHA_TECNICA_CONECTA: String(values.LINK_FICHA_TECNICA_CONECTA || '').trim(), MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
     }
 
 
@@ -2967,6 +3439,11 @@ function getIndicatorUnit(ind) {
               <p class="edit-form-group-title">Identificação</p>
               <label>Nome do indicador<input name="NOME_INDICADOR" value="${escapeHtml(ind.NOME_INDICADOR || '')}" required></label>
               <label>Tipo do indicador<input name="TIPO_INDICADOR" value="${escapeHtml(ind.TIPO_INDICADOR || '')}" required></label>
+              <label>Categoria<input name="CATEGORIA_INDICADOR" value="${escapeHtml(ind.CATEGORIA_INDICADOR || ind.CATEGORIA || '')}" placeholder="Ex.: Comissão, Segurança, Contratual, Resultado"></label>
+              <label>Tipo operacional
+                <select name="TIPO_OPERACIONAL">${selectOptions(['', 'Apoio', 'Finalista', 'Gerencial'], ind.TIPO_OPERACIONAL)}</select>
+              </label>
+              <label>Eixo assistencial<input name="EIXO_ASSISTENCIAL" value="${escapeHtml(ind.EIXO_ASSISTENCIAL || '')}"></label>
             </div>
             <div class="edit-form-group">
               <p class="edit-form-group-title">Meta e regra</p>
@@ -2976,10 +3453,23 @@ function getIndicatorUnit(ind) {
                   ${['>=', '>', '<=', '<', '='].map(op => `<option value="${op}" ${String(ind.META_OPERADOR || '>=').trim() === op ? 'selected' : ''}>${op}</option>`).join('')}
                 </select>
               </label>
+              <label>Polaridade da meta
+                <select name="POLARIDADE_META">${selectOptions(['', 'Maior é melhor', 'Menor é melhor', 'Igual ao alvo'], ind.POLARIDADE_META)}</select>
+              </label>
+              <label>Periodicidade
+                <select name="PERIODICIDADE">${selectOptions(['', 'Mensal', 'Quadrimestral', 'Semestral', 'Anual'], ind.PERIODICIDADE)}</select>
+              </label>
+            </div>
+            <div class="edit-form-group">
+              <p class="edit-form-group-title">Responsáveis e ficha técnica</p>
+              <label>Analista responsável<input name="ANALISTA_RESPONSAVEL" value="${escapeHtml(ind.ANALISTA_RESPONSAVEL || '')}"></label>
+              <label>Gestor responsável<input name="GESTOR_RESPONSAVEL" value="${escapeHtml(ind.GESTOR_RESPONSAVEL || '')}"></label>
+              <label>Link da ficha técnica no Conecta<input name="LINK_FICHA_TECNICA_CONECTA" value="${escapeHtml(ind.LINK_FICHA_TECNICA_CONECTA || '')}" placeholder="https://..."></label>
             </div>
             <div class="edit-form-group full">
               <p class="edit-form-group-title">Contexto gerencial</p>
               <label>Observações/resultado esperado<textarea name="RESULTADO_ESPERADO">${escapeHtml(ind.RESULTADO_ESPERADO || '')}</textarea></label>
+              <label>Comentário da alteração<textarea name="MOTIVO_ALTERACAO" required placeholder="Ex.: ajuste após reunião de governança."></textarea></label>
             </div>
           </div>
           <div class="edit-form-actions">
@@ -3081,12 +3571,25 @@ function getIndicatorUnit(ind) {
         TIPO_INDICADOR: form.TIPO_INDICADOR.value.trim(),
         META: form.META.value.trim().replace(',', '.'),
         META_OPERADOR: form.META_OPERADOR.value.trim(),
-        RESULTADO_ESPERADO: form.RESULTADO_ESPERADO.value.trim()
+        POLARIDADE_META: form.POLARIDADE_META.value.trim(),
+        PERIODICIDADE: form.PERIODICIDADE.value.trim(),
+        CATEGORIA_INDICADOR: form.CATEGORIA_INDICADOR.value.trim(),
+        TIPO_OPERACIONAL: form.TIPO_OPERACIONAL.value.trim(),
+        EIXO_ASSISTENCIAL: form.EIXO_ASSISTENCIAL.value.trim(),
+        ANALISTA_RESPONSAVEL: form.ANALISTA_RESPONSAVEL.value.trim(),
+        GESTOR_RESPONSAVEL: form.GESTOR_RESPONSAVEL.value.trim(),
+        LINK_FICHA_TECNICA_CONECTA: form.LINK_FICHA_TECNICA_CONECTA.value.trim(),
+        RESULTADO_ESPERADO: form.RESULTADO_ESPERADO.value.trim(),
+        MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
       };
 
       const metaValor = Number(payload.META);
       if (!Number.isFinite(metaValor)) {
         await ui.dialog.alert('A meta precisa ser numérica.');
+        return;
+      }
+      if (!payload.MOTIVO_ALTERACAO) {
+        await ui.dialog.alert('Informe o comentário da alteração.');
         return;
       }
       showSaveFeedback('Salvando indicador...');
@@ -3114,8 +3617,15 @@ function getIndicatorUnit(ind) {
         fields: [
           { name: 'NOME_INDICADOR', label: 'Nome do indicador', required: true },
           { name: 'TIPO_INDICADOR', label: 'Tipo do indicador', required: true },
+          { name: 'CATEGORIA_INDICADOR', label: 'Categoria', placeholder: 'Ex.: Comissão, Segurança, Contratual, Resultado' },
+          { name: 'TIPO_OPERACIONAL', label: 'Tipo operacional', type: 'select', value: '', options: ['', 'Apoio', 'Finalista', 'Gerencial'] },
           { name: 'META', label: 'Meta numérica', required: true, placeholder: 'Ex.: 95,5' },
           { name: 'META_OPERADOR', label: 'Operador da meta', type: 'select', value: '>=', options: ['>=', '>', '<=', '<', '='] },
+          { name: 'POLARIDADE_META', label: 'Polaridade da meta', type: 'select', value: '', options: ['', 'Maior é melhor', 'Menor é melhor', 'Igual ao alvo'] },
+          { name: 'PERIODICIDADE', label: 'Periodicidade', type: 'select', value: 'Mensal', options: ['Mensal', 'Quadrimestral', 'Semestral', 'Anual'] },
+          { name: 'ANALISTA_RESPONSAVEL', label: 'Analista responsável' },
+          { name: 'GESTOR_RESPONSAVEL', label: 'Gestor responsável' },
+          { name: 'LINK_FICHA_TECNICA_CONECTA', label: 'Link da ficha técnica no Conecta', placeholder: 'https://...' },
           { name: 'MOTIVO_ALTERACAO', label: 'Motivo do cadastro', type: 'textarea', required: true }
         ]
       });
@@ -3132,7 +3642,20 @@ function getIndicatorUnit(ind) {
       google.script.run
         .withSuccessHandler(async result => { const row = (result && result.data) || {}; asyncUi.finish(); upsertLocal('indicadores', 'ID_INDICADOR', row); showSaveFeedback('Indicador criado com sucesso.', true); renderAfterLocalMutation({ toast: 'Novo indicador disponível no painel.' }); scheduleBackgroundRefresh(); await ui.dialog.alert('Novo indicador cadastrado.'); })
         .withFailureHandler(async err => { asyncUi.finish(); showSaveFeedback('Falha ao criar indicador.'); await ui.dialog.alert('Erro ao criar indicador: ' + (err.message || err)); })
-        .criarIndicador({ NOME_INDICADOR: NOME_INDICADOR.trim(), TIPO_INDICADOR: TIPO_INDICADOR.trim(), META: META.trim().replace(',', '.'), META_OPERADOR: META_OPERADOR.trim(), MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim() });
+        .criarIndicador({
+          NOME_INDICADOR: NOME_INDICADOR.trim(),
+          TIPO_INDICADOR: TIPO_INDICADOR.trim(),
+          CATEGORIA_INDICADOR: String(values.CATEGORIA_INDICADOR || '').trim(),
+          TIPO_OPERACIONAL: String(values.TIPO_OPERACIONAL || '').trim(),
+          META: META.trim().replace(',', '.'),
+          META_OPERADOR: META_OPERADOR.trim(),
+          POLARIDADE_META: String(values.POLARIDADE_META || '').trim(),
+          PERIODICIDADE: String(values.PERIODICIDADE || '').trim(),
+          ANALISTA_RESPONSAVEL: String(values.ANALISTA_RESPONSAVEL || '').trim(),
+          GESTOR_RESPONSAVEL: String(values.GESTOR_RESPONSAVEL || '').trim(),
+          LINK_FICHA_TECNICA_CONECTA: String(values.LINK_FICHA_TECNICA_CONECTA || '').trim(),
+          MOTIVO_ALTERACAO: MOTIVO_ALTERACAO.trim()
+        });
     }
 
     async function excluirIndicadorUi(item) {
@@ -3292,6 +3815,7 @@ function getIndicatorUnit(ind) {
       }
       el.innerHTML = `
         <article class="card" onclick="showAdminUsers()"><h4>Usuários</h4><p>${(a.usuarios||[]).length} cadastrados</p></article>
+        <article class="card" onclick="showAdminGestores()"><h4>Gestores</h4><p>${(a.gestores||[]).length} cadastrados</p></article>
         <article class="card" onclick="showAdminSetores()"><h4>Setores</h4><p>${(a.setores||[]).length} cadastrados</p></article>
         <article class="card" onclick="showAdminStatus()"><h4>Status</h4><p>${(a.status||[]).length} opções configuradas</p></article>
         <article class="card" onclick="showAdminTipos()"><h4>Tipos de processo</h4><p>${(a.tiposProcesso||[]).length} tipos ativos</p></article>
@@ -3371,6 +3895,90 @@ function getIndicatorUnit(ind) {
         .withSuccessHandler(async ()=>{ asyncUi.finish(); await ui.dialog.alert('Senha alterada.'); })
         .withFailureHandler(async err=>{ asyncUi.finish(); await ui.dialog.alert(err.message||err); })
         .alterarSenhaUsuario({EMAIL:email,NOVA_SENHA});
+    }
+
+    function showAdminGestores() {
+      const rows = (state.adminData && state.adminData.gestores) || [];
+      const isAdmin = !state.adminData || state.adminData.gestoresIsAdmin !== false;
+      const sensitiveNote = isAdmin
+        ? '<p class="edit-form-note">Campos sensíveis (CPF, telefone, login/senha do Notifica) são visíveis apenas para administradores.</p>'
+        : '<p class="edit-form-note">Campos sensíveis estão ocultos para o seu perfil.</p>';
+      ui.openDrawer('Gestores', 'Cadastro de gestores e vínculos com setores, indicadores e mapeamento.', `
+        <div class="actions" style="justify-content:flex-end;margin-bottom:8px"><button class="btn small" onclick="editarGestor({})">Novo gestor</button></div>
+        ${sensitiveNote}
+        <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Função</th><th>Setor</th><th>E-mail</th><th>Notifica</th><th>Ativo</th><th>Ações</th></tr></thead>
+        <tbody>${rows.length ? rows.map(g => `<tr>
+          <td data-label="Nome">${escapeHtml(g.NOME||'-')}</td>
+          <td data-label="Função">${escapeHtml(g.FUNCAO||'-')}</td>
+          <td data-label="Setor">${escapeHtml(g.SETOR||'-')}</td>
+          <td data-label="E-mail">${escapeHtml(g.EMAIL||'-')}</td>
+          <td data-label="Notifica">${escapeHtml(g.NOTIFICA_SITUACAO||'-')}</td>
+          <td data-label="Ativo">${escapeHtml(g.ATIVO||'-')}</td>
+          <td data-label="Ações">
+            <button class="btn secondary small" onclick='editarGestor(${JSON.stringify(g).replace(/'/g,"&apos;")})'>Editar</button>
+            <button class="btn secondary small" onclick='vincularGestorUi(${JSON.stringify(g).replace(/'/g,"&apos;")})'>Vincular</button>
+            <button class="btn secondary small" onclick='excluirGestorUi("${escapeHtml(g.ID_GESTOR||"")}", "${escapeHtml(g.NOME||"")}")'>Excluir</button>
+          </td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center">Nenhum gestor cadastrado.</td></tr>'}</tbody></table></div>
+      `);
+    }
+
+    async function editarGestor(g) {
+      g = g || {};
+      const isEditing = Boolean(g.ID_GESTOR);
+      const values = await ui.dialog.form({
+        title: isEditing ? 'Editar gestor' : 'Novo gestor',
+        description: 'Dados do gestor. Campos sensíveis ficam restritos a administradores.',
+        confirmText: isEditing ? 'Salvar alterações' : 'Cadastrar gestor',
+        fields: [
+          { name: 'NOME', label: 'Nome', required: true, value: g.NOME || '' },
+          { name: 'FUNCAO', label: 'Função', value: g.FUNCAO || '' },
+          { name: 'SETOR', label: 'Setor', value: g.SETOR || '' },
+          { name: 'EMAIL', label: 'E-mail', type: 'email', value: g.EMAIL || '' },
+          { name: 'TELEFONE', label: 'Telefone', value: g.TELEFONE || '' },
+          { name: 'CPF', label: 'CPF', value: g.CPF || '' },
+          { name: 'VINCULO', label: 'Vínculo', value: g.VINCULO || '' },
+          { name: 'NOTIFICA_LOGIN', label: 'Login do Notifica', value: g.NOTIFICA_LOGIN || '' },
+          { name: 'NOTIFICA_SENHA', label: 'Senha do Notifica (restrito)', value: g.NOTIFICA_SENHA || '' },
+          { name: 'NOTIFICA_SITUACAO', label: 'Situação no Notifica', value: g.NOTIFICA_SITUACAO || '' },
+          { name: 'OBSERVACOES', label: 'Observações', type: 'textarea', value: g.OBSERVACOES || '' },
+          { name: 'ATIVO', label: 'Ativo', type: 'select', value: (g.ATIVO || 'SIM').toUpperCase(), options: ['SIM', 'NÃO'] }
+        ]
+      });
+      if (!values || !String(values.NOME || '').trim()) return;
+      const payload = { ...values, ID_GESTOR: g.ID_GESTOR || '' };
+      asyncUi.start('Salvando gestor...');
+      google.script.run
+        .withSuccessHandler(async () => { asyncUi.finish(); loadAdminData(); showAdminGestores(); await ui.dialog.alert('Gestor salvo com sucesso.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert(err.message || err); })
+        .salvarGestor(payload);
+    }
+
+    async function excluirGestorUi(id, nome) {
+      if (!id) return;
+      if (!await ui.dialog.confirm('Excluir o gestor ' + (nome || id) + '?')) return;
+      asyncUi.start('Excluindo gestor...');
+      google.script.run
+        .withSuccessHandler(() => { asyncUi.finish(); loadAdminData(); showAdminGestores(); showToast('Gestor excluído.', 'success'); })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert(err.message || err); })
+        .excluirGestor({ ID_GESTOR: id });
+    }
+
+    async function vincularGestorUi(g) {
+      const tipo = await ui.dialog.form({
+        title: 'Vincular gestor',
+        description: 'Vincule ' + (g.NOME || 'o gestor') + ' a um setor, indicador ou item do mapeamento.',
+        confirmText: 'Vincular',
+        fields: [
+          { name: 'TIPO', label: 'Tipo de vínculo', type: 'select', value: 'SETOR', options: ['SETOR', 'INDICADOR', 'MAPEAMENTO'] },
+          { name: 'ALVO', label: 'Alvo (nome do setor, ID do indicador ou ID do mapeamento)', required: true }
+        ]
+      });
+      if (!tipo || !String(tipo.ALVO || '').trim()) return;
+      asyncUi.start('Vinculando gestor...');
+      google.script.run
+        .withSuccessHandler(async () => { asyncUi.finish(); loadAdminData(); showAdminGestores(); await ui.dialog.alert('Vínculo registrado.'); })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert(err.message || err); })
+        .vincularGestor({ ID_GESTOR: g.ID_GESTOR, TIPO: String(tipo.TIPO || '').trim(), ALVO: String(tipo.ALVO || '').trim() });
     }
 
     function showAdminSetores() {
