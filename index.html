@@ -1955,11 +1955,15 @@
           admin: ['Administração', 'Usuários, permissões e configurações de apoio.']
         };
         const meta = titles[view] || titles.acompanhamento;
-        document.getElementById('pageTitle').textContent = meta[0];
-        document.getElementById('pageSubtitle').textContent = meta[1];
+        const pageTitle = document.getElementById('pageTitle');
+        const pageSubtitle = document.getElementById('pageSubtitle');
+        if (pageTitle) pageTitle.textContent = meta[0];
+        if (pageSubtitle) pageSubtitle.textContent = meta[1];
         if (view === 'admin' && !state.adminData) loadAdminData();
-        document.getElementById('appRoot').classList.remove('sidebar-open');
-        document.getElementById('mobileMenuBtn').setAttribute('aria-expanded', 'false');
+        const appRoot = document.getElementById('appRoot');
+        if (appRoot) appRoot.classList.remove('sidebar-open');
+        const menuBtn = document.getElementById('mobileMenuBtn');
+        if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
       },
 
       openDrawer(title, subtitle, html) {
@@ -2080,7 +2084,15 @@
         })
         .withFailureHandler(err => {
           asyncUi.finish();
-          document.querySelector('.main').innerHTML = `<div class="panel"><div class="empty"><strong>Erro ao carregar o SIGEP-HUC</strong><br>${escapeHtml(err.message || err)}</div></div>`;
+          const msg = (err && (err.message || err)) || 'Erro desconhecido';
+          // Não destruir o shell (topbar/nav/views) para que a navegação e o
+          // botão de tentar novamente continuem funcionando.
+          const banner = `<div class="empty"><strong>Não foi possível carregar os dados do SIGEP-HUC.</strong><br>${escapeHtml(msg)}<br><button class="btn" style="margin-top:12px" onclick="loadData()">Tentar novamente</button></div>`;
+          ['acompGrid', 'processGrid', 'mapeamentoBoard', 'indicatorGrid'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = banner;
+          });
+          showToast('Erro ao carregar o SIGEP-HUC: ' + msg, 'error');
         })
         .getSigepData();
     }
@@ -2111,6 +2123,7 @@
 
     function fillSelect(id, items, first) {
       const el = document.getElementById(id);
+      if (!el) return;
       const current = el.value;
       el.innerHTML = `<option value="">${first}</option>` + items.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
       el.value = current;
@@ -2118,12 +2131,9 @@
 
     function render() {
       if (!state.data) return;
-      renderDashboard();
-      renderAcompanhamento();
-      renderProcessos();
-      renderMapeamento();
-      renderIndicadores();
-      renderAdmin();
+      [renderDashboard, renderAcompanhamento, renderProcessos, renderMapeamento, renderIndicadores, renderAdmin].forEach(fn => {
+        try { fn(); } catch (e) { console.error('Falha ao renderizar ' + (fn.name || 'seção') + ':', e); }
+      });
     }
 
     function renderDashboard() {
