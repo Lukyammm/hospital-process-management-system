@@ -28,11 +28,19 @@ This project was developed to solve real operational problems using web technolo
 
 The goal of this project is to improve operational efficiency, reduce manual work, and support better decision-making through automation and clear data visualization.
 
-## Demo guide image
 
-> Demonstrative image with fictitious data, created only to guide the project presentation.
+## Guia visual do sistema
 
-![Hospital Process Management System overview](./docs/screenshots/overview.svg)
+> Mockups demonstrativos do sistema, com dados ficticios e sem informacoes reais de pacientes ou da instituicao.
+
+### Painel de KPIs
+![Painel de KPIs](./docs/screenshots/kpi-dashboard.svg)
+
+### Quadro de processos
+![Quadro de processos](./docs/screenshots/process-board.svg)
+
+### Rotinas agendadas
+![Rotinas agendadas](./docs/screenshots/snapshot-jobs.svg)
 
 ## Status
 
