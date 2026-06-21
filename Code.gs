@@ -651,13 +651,29 @@ class SheetRepository {
 
   ensureSchemaColumns() {
     const cacheKey = this.getCacheKey('schema_columns_ok');
+    const cooldownKey = this.getCacheKey('schema_columns_cooldown');
     const cache = CacheService.getScriptCache();
     if (cache.get(cacheKey) === '1') return;
-    const requiredBySheet = SIGEP.schema.required || {};
-    Object.keys(requiredBySheet).forEach(sheetName => this.ensureColumnsForSheet_(sheetName, requiredBySheet[sheetName] || []));
-    const autoCreateBySheet = SIGEP.schema.autoCreate || {};
-    Object.keys(autoCreateBySheet).forEach(sheetName => this.ensureColumnsForSheet_(sheetName, autoCreateBySheet[sheetName] || []));
-    cache.put(cacheKey, '1', 21600);
+    // Evita tentar recriar colunas em toda requisição quando há falha recorrente.
+    if (cache.get(cooldownKey) === '1') return;
+    // Criação de colunas é "best-effort": uma falha (ex.: aba protegida ou
+    // usuário sem permissão de escrita) NÃO pode derrubar a leitura inicial,
+    // pois as leituras toleram colunas ausentes (campo vira string vazia).
+    let allOk = true;
+    const ensure = (bySheet) => {
+      Object.keys(bySheet || {}).forEach(sheetName => {
+        try {
+          this.ensureColumnsForSheet_(sheetName, bySheet[sheetName] || []);
+        } catch (err) {
+          allOk = false;
+          console.warn('Não foi possível garantir colunas em ' + sheetName + ': ' + (err && err.message ? err.message : err));
+        }
+      });
+    };
+    ensure(SIGEP.schema.required || {});
+    ensure(SIGEP.schema.autoCreate || {});
+    if (allOk) cache.put(cacheKey, '1', 21600);
+    else cache.put(cooldownKey, '1', 300);
   }
 
   ensureColumnsForSheet_(sheetName, columns) {
