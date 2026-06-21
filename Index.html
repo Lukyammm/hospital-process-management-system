@@ -472,6 +472,7 @@
     .indicator-filter-head h4 { margin:0; font-size:15px; color:var(--ink); }
     .indicator-filter-head p { margin:2px 0 0; font-size:12px; color:var(--muted); }
     .indicator-filter-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:12px; }
+    .indicator-filter-subhead { grid-column: 1 / -1; margin: 4px 0 0; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 6px; }
     .indicator-filter-field { display:grid; gap:5px; }
     .indicator-filter-field b { font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#59718c; }
     .indicator-filter-field select { width:100%; min-width:0; border:1px solid #cbdcf0; background:#fff; border-radius:11px; padding:10px 11px; font-size:13px; }
@@ -1457,6 +1458,10 @@
 
     /* ===== Mapeamento (cadeia de valor) ===== */
     .map-board { display:flex; flex-direction:column; gap:18px; }
+    .system-dialog-subhead { margin: 10px 0 2px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+    .system-dialog-subhead:first-child { margin-top: 0; }
+    .map-legend { display:flex; flex-wrap:wrap; gap:14px; align-items:center; padding:8px 4px; }
+    .map-legend span { display:inline-flex; align-items:center; gap:6px; font-size:.78rem; color:var(--muted); font-weight:600; }
     .map-group { border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--surface); box-shadow:var(--shadow-sm); }
     .map-group-title { background:#3f4a57; color:#fff; padding:10px 16px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; font-size:.82rem; display:flex; justify-content:space-between; align-items:center; gap:10px; }
     .map-group-title span.map-group-count { font-weight:600; opacity:.85; text-transform:none; letter-spacing:0; }
@@ -1609,23 +1614,25 @@
         <div class="panel">
           <div class="panel-head indicator-head-clean">
             <div><h3>Indicadores</h3><span>Monitoramento analítico hospitalar com foco operacional</span></div>
-            <div class="actions"><button class="btn secondary indicator-advanced-toggle" onclick="toggleIndicadorFiltro()">Filtros avançados</button><button class="btn secondary" onclick="novoIndicador()">Novo indicador</button></div>
+            <div class="actions"><button class="btn secondary indicator-advanced-toggle" id="toggleFiltrosBtn" aria-expanded="false" aria-controls="indicatorFilterShell" onclick="toggleIndicadorFiltro()">Filtros avançados</button><button class="btn secondary" onclick="novoIndicador()">Novo indicador</button></div>
           </div>
           <div class="content-pad indicators-layout">
             <div class="indicator-main-area">
               <label class="indicator-search-main"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input type="search" id="filtroBuscaIndicador" placeholder="Buscar indicador, processo ou unidade..."></label>
-              <div class="indicator-filter-shell" id="indicatorFilterShell">
+              <div class="indicator-filter-shell is-hidden" id="indicatorFilterShell">
                 <div class="indicator-filter-head">
                   <div><h4>Filtros avançados</h4><p>Refine sua visualização sem poluir a tela principal.</p></div>
                   <div class="indicator-filter-actions"><span class="indicator-filter-counter" id="indicatorFilterCounter">0 filtros ativos</span><button class="btn muted" onclick="clearIndicadorFilters()">Limpar</button></div>
                 </div>
                 <div class="indicator-filter-grid">
+                  <p class="indicator-filter-subhead">Classificação e responsáveis</p>
                   <label class="indicator-filter-field"><b>Categoria</b><select id="filtroCategoriaIndicador" aria-label="Filtrar indicadores por categoria"><option value="">Todas as categorias</option></select></label>
                   <label class="indicator-filter-field"><b>Tipo operacional</b><select id="filtroTipoOperacionalIndicador" aria-label="Filtrar indicadores por tipo operacional"><option value="">Todos os tipos operacionais</option></select></label>
                   <label class="indicator-filter-field"><b>Eixo assistencial</b><select id="filtroEixoIndicador" aria-label="Filtrar indicadores por eixo assistencial"><option value="">Todos os eixos</option></select></label>
+                  <label class="indicator-filter-field"><b>Tipo</b><select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select></label>
                   <label class="indicator-filter-field"><b>Analista responsável</b><select id="filtroAnalistaIndicador" aria-label="Filtrar indicadores por analista"><option value="">Todos os analistas</option></select></label>
                   <label class="indicator-filter-field"><b>Gestor responsável</b><select id="filtroGestorIndicador" aria-label="Filtrar indicadores por gestor"><option value="">Todos os gestores</option></select></label>
-                  <label class="indicator-filter-field"><b>Tipo</b><select id="filtroTipoIndicador" aria-label="Filtrar indicadores por tipo"><option value="">Todos os tipos</option></select></label>
+                  <p class="indicator-filter-subhead">Período e preenchimento</p>
                   <label class="indicator-filter-field"><b>Periodicidade</b><select id="filtroPeriodicidadeIndicador" aria-label="Filtrar indicadores por periodicidade"><option value="">Todas as periodicidades</option></select></label>
                   <label class="indicator-filter-field"><b>Período</b><select id="filtroPeriodoIndicador" aria-label="Filtrar indicadores por período"><option value="">Todos os períodos</option></select></label>
                   <label class="indicator-filter-field"><b>Competência</b><select id="filtroCompetenciaIndicador" aria-label="Filtrar indicadores por competência"><option value="">Todas as competências</option></select></label>
@@ -1653,11 +1660,11 @@
     </main>
   </div>
 
-  <div class="drawer" id="drawer">
-    <div class="drawer-card">
+  <div class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-card" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
       <div class="drawer-head">
         <div><h3 id="drawerTitle">Detalhes</h3><p id="drawerSubtitle"></p></div>
-        <button class="close" onclick="ui.closeDrawer()">×</button>
+        <button class="close" onclick="ui.closeDrawer()" aria-label="Fechar painel">×</button>
       </div>
       <div id="drawerContent" class="drawer-body"></div>
     </div>
@@ -1737,7 +1744,7 @@
       filtroStatusPreenchimento: '',
       filtroMeusIndicadores: false,
       processosIndicadorSelecionados: [],
-      indicadorFiltroRecolhido: false,
+      indicadorFiltroRecolhido: true,
       buscaIndicador: '',
       unidadeIndicadorSelecionada: '',
       categoriaIndicadorSelecionada: '',
@@ -1791,7 +1798,7 @@
         ETAPAS_CONCLUIDAS: done,
         ETAPAS_TOTAL: total,
         PROGRESSO_PERCENTUAL: total ? Math.round((done / total) * 100) : 0,
-        STATUS_GERAL: total === 0 ? 'Não se aplica' : done === total ? 'Concluído' : done === 0 ? 'Não iniciada' : 'Em andamento'
+        STATUS_GERAL: total === 0 ? 'Não se aplica' : done === total ? 'Concluído' : done === 0 ? 'Não iniciado' : 'Em andamento'
       };
     }
 
@@ -1804,7 +1811,7 @@
       const done = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'].filter(field => normalize(row && row[field]) === 'SIM').length;
       if (done === 4) return 'Concluído';
       if (done > 0) return 'Em andamento';
-      return 'Pendente';
+      return 'Não iniciado';
     }
 
     function normalizeProcessRow(row) {
@@ -1971,14 +1978,40 @@
         document.getElementById('drawerSubtitle').textContent = subtitle || '';
         document.getElementById('drawerContent').innerHTML = html;
         const drawer = document.getElementById('drawer');
+        // Guarda o foco de origem para devolvê-lo ao fechar (acessibilidade).
+        this._lastFocus = document.activeElement;
         drawer.classList.add('active');
+        drawer.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        const focusFirst = () => {
+          const target = drawer.querySelector('.drawer-body button, .drawer-body a[href], .drawer-body input, .drawer-body select, .drawer-body textarea') || drawer.querySelector('.close');
+          if (target && typeof target.focus === 'function') target.focus();
+        };
+        if (typeof setTimeout === 'function') setTimeout(focusFirst, 0); else focusFirst();
+        if (!this._drawerTrap) {
+          this._drawerTrap = (e) => {
+            if (e.key !== 'Tab') return;
+            const sel = 'button, a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            const nodes = Array.prototype.slice.call(drawer.querySelectorAll(sel)).filter(el => el.offsetParent !== null || el === document.activeElement);
+            if (!nodes.length) return;
+            const first = nodes[0];
+            const last = nodes[nodes.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          };
+          drawer.addEventListener('keydown', this._drawerTrap);
+        }
       },
 
       closeDrawer() {
         const drawer = document.getElementById('drawer');
         drawer.classList.remove('active');
+        drawer.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        if (this._lastFocus && typeof this._lastFocus.focus === 'function') {
+          this._lastFocus.focus();
+        }
+        this._lastFocus = null;
       },
       dialog: {
         alert(message) {
@@ -2005,6 +2038,7 @@
               const fName = escapeHtml(field.name || 'campo');
               const fLabel = escapeHtml(field.label || field.name || 'Campo');
               const fRequired = field.required ? 'required' : '';
+              if (fType === 'heading') return `<p class="system-dialog-subhead">${fLabel}</p>`;
               if (fType === 'textarea') return `<label>${fLabel}<textarea class="system-dialog-input" name="${fName}" ${fRequired} placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(field.value || '')}</textarea></label>`;
               if (fType === 'select') return `<label>${fLabel}<select class="system-dialog-input" name="${fName}" ${fRequired}>${(field.options || []).map(opt => { const v = String(opt || ''); return `<option value="${escapeHtml(v)}" ${String(field.value || '')===v?'selected':''}>${escapeHtml(v || 'Selecione')}</option>`; }).join('')}</select></label>`;
               return `<label>${fLabel}<input class="system-dialog-input" name="${fName}" type="${escapeHtml(fType)}" value="${escapeHtml(field.value || '')}" ${fRequired} placeholder="${escapeHtml(field.placeholder || '')}"></label>`;
@@ -2319,14 +2353,30 @@
         </button>`;
       };
 
-      board.innerHTML = MAP_GROUPS.map(g => {
+      const legend = `<div class="map-legend" aria-hidden="true">
+        <span><i class="map-dot s-ok"></i>Concluído</span>
+        <span><i class="map-dot s-run"></i>Em andamento</span>
+        <span><i class="map-dot s-none"></i>Não iniciado</span>
+        <span><i class="map-dot s-na"></i>Não se aplica</span>
+      </div>`;
+
+      const groupsHtml = MAP_GROUPS.map(g => {
         const items = byGroup[g.key] || [];
+        const counts = items.reduce((acc, it) => { const c = mapStatusInfo(it.STATUS).cls; acc[c] = (acc[c] || 0) + 1; return acc; }, {});
+        const breakdown = [
+          counts['s-ok'] ? `${counts['s-ok']} concluído(s)` : '',
+          counts['s-run'] ? `${counts['s-run']} em andamento` : '',
+          counts['s-none'] ? `${counts['s-none']} não iniciado(s)` : '',
+          counts['s-na'] ? `${counts['s-na']} N/A` : ''
+        ].filter(Boolean).join(' · ');
+        const countLabel = `${items.length} processo(s)${breakdown ? ' · ' + breakdown : ''}`;
         const grid = items.length ? items.map(cell).join('') : '<span class="pill">Sem processos para os filtros atuais</span>';
         const body = g.key === 'Finalístico'
           ? `<div class="map-finalistico-shell"><div class="map-side">Entradas</div><div class="map-grid">${grid}</div><div class="map-side">Saídas</div></div>`
           : `<div class="map-grid">${grid}</div>`;
-        return `<div class="map-group ${g.cls}"><div class="map-group-title">${escapeHtml(g.label)}<span class="map-group-count">${items.length} processo(s)</span></div><div class="map-group-body">${body}</div></div>`;
+        return `<div class="map-group ${g.cls}"><div class="map-group-title">${escapeHtml(g.label)}<span class="map-group-count">${escapeHtml(countLabel)}</span></div><div class="map-group-body">${body}</div></div>`;
       }).join('');
+      board.innerHTML = legend + groupsHtml;
     }
 
     function abrirMapeamento(item) {
@@ -2532,12 +2582,15 @@
       if (state.filtroGestorIndicador) rows = rows.filter(x => x.GESTOR_RESPONSAVEL === state.filtroGestorIndicador);
       if (state.filtroPeriodicidadeIndicador) rows = rows.filter(x => x.PERIODICIDADE === state.filtroPeriodicidadeIndicador);
       if (state.filtroMeusIndicadores) {
-        const me = normalize(state.data && state.data.user || '');
-        const meName = me.split('@')[0];
+        // Casa o usuário logado tanto pelo e-mail quanto pelo nome cadastrado,
+        // pois os campos de responsável costumam guardar o NOME, não o e-mail.
+        const meEmail = normalize(state.data && state.data.user || '');
+        const meLocal = meEmail.split('@')[0];
+        const meNome = normalize(state.data && state.data.userNome || '');
+        const termos = [meEmail, meLocal, meNome].filter(t => t && t.length >= 3);
         rows = rows.filter(x => {
-          const analista = normalize(x.ANALISTA_RESPONSAVEL || '');
-          const gestor = normalize(x.GESTOR_RESPONSAVEL || '');
-          return me && (analista === me || gestor === me || (meName && (analista.includes(meName) || gestor.includes(meName))));
+          const alvo = normalize((x.ANALISTA_RESPONSAVEL || '') + ' | ' + (x.GESTOR_RESPONSAVEL || ''));
+          return termos.some(t => alvo.includes(t));
         });
       }
       const lancamentos = state.data.lancamentos || [];
@@ -2629,7 +2682,10 @@
           </article>
         `;
       }).join('');
-      document.getElementById('indicatorGrid').innerHTML = html || '<div class="empty"><strong>Nenhum indicador encontrado.</strong><br>Selecione outro recorte para analisar métricas disponíveis.</div>';
+      const emptyMsg = state.filtroMeusIndicadores
+        ? '<div class="empty"><strong>Nenhum indicador atribuído a você.</strong><br>Verifique se seu nome ou e-mail está nos campos de analista/gestor responsável dos indicadores.</div>'
+        : '<div class="empty"><strong>Nenhum indicador encontrado.</strong><br>Selecione outro recorte para analisar métricas disponíveis.</div>';
+      document.getElementById('indicatorGrid').innerHTML = html || emptyMsg;
     }
 
     function clearIndicadorFilters() {
@@ -2702,7 +2758,7 @@ function getIndicatorUnit(ind) {
       state.processosIndicadorSelecionados = Array.from(list);
       renderIndicadores();
     }
-    function toggleIndicadorFiltro() { state.indicadorFiltroRecolhido = !state.indicadorFiltroRecolhido; const shell=document.getElementById("indicatorFilterShell"); if(shell) shell.classList.toggle("is-hidden", state.indicadorFiltroRecolhido); }
+    function toggleIndicadorFiltro() { state.indicadorFiltroRecolhido = !state.indicadorFiltroRecolhido; const shell=document.getElementById("indicatorFilterShell"); if(shell) shell.classList.toggle("is-hidden", state.indicadorFiltroRecolhido); const btn=document.getElementById("toggleFiltrosBtn"); if(btn) btn.setAttribute("aria-expanded", state.indicadorFiltroRecolhido ? "false" : "true"); }
     function setTaskFilter(v) { state.taskFilter = v; render(); }
 
 
@@ -3940,16 +3996,20 @@ function getIndicatorUnit(ind) {
         description: 'Dados do gestor. Campos sensíveis ficam restritos a administradores.',
         confirmText: isEditing ? 'Salvar alterações' : 'Cadastrar gestor',
         fields: [
+          { type: 'heading', label: 'Identificação' },
           { name: 'NOME', label: 'Nome', required: true, value: g.NOME || '' },
           { name: 'FUNCAO', label: 'Função', value: g.FUNCAO || '' },
           { name: 'SETOR', label: 'Setor', value: g.SETOR || '' },
+          { name: 'VINCULO', label: 'Vínculo', value: g.VINCULO || '' },
+          { type: 'heading', label: 'Contato (dados sensíveis)' },
           { name: 'EMAIL', label: 'E-mail', type: 'email', value: g.EMAIL || '' },
           { name: 'TELEFONE', label: 'Telefone', value: g.TELEFONE || '' },
           { name: 'CPF', label: 'CPF', value: g.CPF || '' },
-          { name: 'VINCULO', label: 'Vínculo', value: g.VINCULO || '' },
+          { type: 'heading', label: 'Notifica (restrito a administradores)' },
           { name: 'NOTIFICA_LOGIN', label: 'Login do Notifica', value: g.NOTIFICA_LOGIN || '' },
-          { name: 'NOTIFICA_SENHA', label: 'Senha do Notifica (restrito)', value: g.NOTIFICA_SENHA || '' },
+          { name: 'NOTIFICA_SENHA', label: 'Senha do Notifica', type: 'password', value: g.NOTIFICA_SENHA || '', placeholder: 'Deixe em branco para manter a atual' },
           { name: 'NOTIFICA_SITUACAO', label: 'Situação no Notifica', value: g.NOTIFICA_SITUACAO || '' },
+          { type: 'heading', label: 'Outros' },
           { name: 'OBSERVACOES', label: 'Observações', type: 'textarea', value: g.OBSERVACOES || '' },
           { name: 'ATIVO', label: 'Ativo', type: 'select', value: (g.ATIVO || 'SIM').toUpperCase(), options: ['SIM', 'NÃO'] }
         ]
