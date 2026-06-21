@@ -1458,6 +1458,8 @@
 
     /* ===== Mapeamento (cadeia de valor) ===== */
     .map-board { display:flex; flex-direction:column; gap:18px; }
+    .system-dialog-subhead { margin: 10px 0 2px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+    .system-dialog-subhead:first-child { margin-top: 0; }
     .map-legend { display:flex; flex-wrap:wrap; gap:14px; align-items:center; padding:8px 4px; }
     .map-legend span { display:inline-flex; align-items:center; gap:6px; font-size:.78rem; color:var(--muted); font-weight:600; }
     .map-group { border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--surface); box-shadow:var(--shadow-sm); }
@@ -1796,7 +1798,7 @@
         ETAPAS_CONCLUIDAS: done,
         ETAPAS_TOTAL: total,
         PROGRESSO_PERCENTUAL: total ? Math.round((done / total) * 100) : 0,
-        STATUS_GERAL: total === 0 ? 'Não se aplica' : done === total ? 'Concluído' : done === 0 ? 'Não iniciada' : 'Em andamento'
+        STATUS_GERAL: total === 0 ? 'Não se aplica' : done === total ? 'Concluído' : done === 0 ? 'Não iniciado' : 'Em andamento'
       };
     }
 
@@ -1809,7 +1811,7 @@
       const done = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'].filter(field => normalize(row && row[field]) === 'SIM').length;
       if (done === 4) return 'Concluído';
       if (done > 0) return 'Em andamento';
-      return 'Pendente';
+      return 'Não iniciado';
     }
 
     function normalizeProcessRow(row) {
@@ -2036,6 +2038,7 @@
               const fName = escapeHtml(field.name || 'campo');
               const fLabel = escapeHtml(field.label || field.name || 'Campo');
               const fRequired = field.required ? 'required' : '';
+              if (fType === 'heading') return `<p class="system-dialog-subhead">${fLabel}</p>`;
               if (fType === 'textarea') return `<label>${fLabel}<textarea class="system-dialog-input" name="${fName}" ${fRequired} placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(field.value || '')}</textarea></label>`;
               if (fType === 'select') return `<label>${fLabel}<select class="system-dialog-input" name="${fName}" ${fRequired}>${(field.options || []).map(opt => { const v = String(opt || ''); return `<option value="${escapeHtml(v)}" ${String(field.value || '')===v?'selected':''}>${escapeHtml(v || 'Selecione')}</option>`; }).join('')}</select></label>`;
               return `<label>${fLabel}<input class="system-dialog-input" name="${fName}" type="${escapeHtml(fType)}" value="${escapeHtml(field.value || '')}" ${fRequired} placeholder="${escapeHtml(field.placeholder || '')}"></label>`;
@@ -2579,12 +2582,15 @@
       if (state.filtroGestorIndicador) rows = rows.filter(x => x.GESTOR_RESPONSAVEL === state.filtroGestorIndicador);
       if (state.filtroPeriodicidadeIndicador) rows = rows.filter(x => x.PERIODICIDADE === state.filtroPeriodicidadeIndicador);
       if (state.filtroMeusIndicadores) {
-        const me = normalize(state.data && state.data.user || '');
-        const meName = me.split('@')[0];
+        // Casa o usuário logado tanto pelo e-mail quanto pelo nome cadastrado,
+        // pois os campos de responsável costumam guardar o NOME, não o e-mail.
+        const meEmail = normalize(state.data && state.data.user || '');
+        const meLocal = meEmail.split('@')[0];
+        const meNome = normalize(state.data && state.data.userNome || '');
+        const termos = [meEmail, meLocal, meNome].filter(t => t && t.length >= 3);
         rows = rows.filter(x => {
-          const analista = normalize(x.ANALISTA_RESPONSAVEL || '');
-          const gestor = normalize(x.GESTOR_RESPONSAVEL || '');
-          return me && (analista === me || gestor === me || (meName && (analista.includes(meName) || gestor.includes(meName))));
+          const alvo = normalize((x.ANALISTA_RESPONSAVEL || '') + ' | ' + (x.GESTOR_RESPONSAVEL || ''));
+          return termos.some(t => alvo.includes(t));
         });
       }
       const lancamentos = state.data.lancamentos || [];
@@ -2676,7 +2682,10 @@
           </article>
         `;
       }).join('');
-      document.getElementById('indicatorGrid').innerHTML = html || '<div class="empty"><strong>Nenhum indicador encontrado.</strong><br>Selecione outro recorte para analisar métricas disponíveis.</div>';
+      const emptyMsg = state.filtroMeusIndicadores
+        ? '<div class="empty"><strong>Nenhum indicador atribuído a você.</strong><br>Verifique se seu nome ou e-mail está nos campos de analista/gestor responsável dos indicadores.</div>'
+        : '<div class="empty"><strong>Nenhum indicador encontrado.</strong><br>Selecione outro recorte para analisar métricas disponíveis.</div>';
+      document.getElementById('indicatorGrid').innerHTML = html || emptyMsg;
     }
 
     function clearIndicadorFilters() {
@@ -3987,16 +3996,20 @@ function getIndicatorUnit(ind) {
         description: 'Dados do gestor. Campos sensíveis ficam restritos a administradores.',
         confirmText: isEditing ? 'Salvar alterações' : 'Cadastrar gestor',
         fields: [
+          { type: 'heading', label: 'Identificação' },
           { name: 'NOME', label: 'Nome', required: true, value: g.NOME || '' },
           { name: 'FUNCAO', label: 'Função', value: g.FUNCAO || '' },
           { name: 'SETOR', label: 'Setor', value: g.SETOR || '' },
+          { name: 'VINCULO', label: 'Vínculo', value: g.VINCULO || '' },
+          { type: 'heading', label: 'Contato (dados sensíveis)' },
           { name: 'EMAIL', label: 'E-mail', type: 'email', value: g.EMAIL || '' },
           { name: 'TELEFONE', label: 'Telefone', value: g.TELEFONE || '' },
           { name: 'CPF', label: 'CPF', value: g.CPF || '' },
-          { name: 'VINCULO', label: 'Vínculo', value: g.VINCULO || '' },
+          { type: 'heading', label: 'Notifica (restrito a administradores)' },
           { name: 'NOTIFICA_LOGIN', label: 'Login do Notifica', value: g.NOTIFICA_LOGIN || '' },
-          { name: 'NOTIFICA_SENHA', label: 'Senha do Notifica (restrito)', value: g.NOTIFICA_SENHA || '' },
+          { name: 'NOTIFICA_SENHA', label: 'Senha do Notifica', type: 'password', value: g.NOTIFICA_SENHA || '', placeholder: 'Deixe em branco para manter a atual' },
           { name: 'NOTIFICA_SITUACAO', label: 'Situação no Notifica', value: g.NOTIFICA_SITUACAO || '' },
+          { type: 'heading', label: 'Outros' },
           { name: 'OBSERVACOES', label: 'Observações', type: 'textarea', value: g.OBSERVACOES || '' },
           { name: 'ATIVO', label: 'Ativo', type: 'select', value: (g.ATIVO || 'SIM').toUpperCase(), options: ['SIM', 'NÃO'] }
         ]

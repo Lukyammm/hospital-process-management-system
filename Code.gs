@@ -373,6 +373,7 @@ class SigepApplication {
       generatedAt: new Date().toISOString(),
       generatedAtLocal: this.repo.formatDatePtBr(new Date()),
       user: user.email || '',
+      userNome: user.nome || '',
       userPerfil: user.perfil || '',
       dashboard: this.dashboard.build(processos, acompanhamento, indicadores, lancamentos),
       processos,
@@ -957,7 +958,7 @@ class ProcessoService {
     const sim = campos.filter(v => v === 'SIM').length;
     if (campos.length >= 4 && sim === campos.length) return 'Concluído';
     if (sim > 0) return 'Em andamento';
-    return 'Pendente';
+    return 'Não iniciado';
   }
 
   generateId_() {
@@ -1051,9 +1052,9 @@ class AcompanhamentoService {
     const statusGeral = total === 0
       ? 'Não se aplica'
       : concluidas === total
-        ? 'Concluída'
+        ? 'Concluído'
         : concluidas === 0
-          ? 'Não iniciada'
+          ? 'Não iniciado'
           : 'Em andamento';
     return { concluidas, total, percentual, statusGeral };
   }
