@@ -36,7 +36,7 @@ section('Backend (Code.gs) — sintaxe e regras de negócio');
   let api;
   try {
     api = vm.runInNewContext(
-      code + '\n;({AcompanhamentoService,ProcessoService,DomainNormalizer,MapeamentoService,SIGEP});',
+      code + '\n;({AcompanhamentoService,ProcessoService,IndicadorService,DomainNormalizer,MapeamentoService,GovernanceService,SIGEP});',
       sandbox, { filename: 'Code.gs' }
     );
   } catch (e) {
@@ -75,6 +75,17 @@ section('Backend (Code.gs) — sintaxe e regras de negócio');
     map.normalizeGrupo_('FINALÍSTICOS') === 'Finalístico' &&
     map.normalizeGrupo_('apoio') === 'Apoio', 'normalizeGrupo_ mapeia os três grupos');
 
+  // Avaliação de meta com polaridade
+  const IS = api.IndicadorService;
+  assert(IS.parseNum_('>= 92,5%') === 92.5 && IS.parseNum_('1.234,5') === 1234.5, 'parseNum_ entende pt-BR e operadores');
+  assert(IS.metaAtingida_(80, 90, '>=', 'Menor é melhor') === true, 'Polaridade "Menor é melhor": 80 <= 90 atinge');
+  assert(IS.metaAtingida_(95, 90, '>=', 'Menor é melhor') === false, 'Polaridade "Menor é melhor": 95 não atinge');
+  assert(IS.metaAtingida_(95, 90, '<=', '') === false && IS.metaAtingida_(95, 90, '>=', '') === true, 'Sem polaridade usa o operador');
+
+  const gov = new api.GovernanceService(null, null);
+  assert(gov.compKey_('05/2026') === 2026 * 12 + 5 && gov.compKey_('abr./25') === 2025 * 12 + 4, 'compKey_ ordena competências (MM/AAAA e mmm/aa)');
+  assert(gov.sameComp_('5/2026', '05/2026') === true, 'sameComp_ normaliza competências equivalentes');
+
   // Conteúdo padrão do mapeamento deve cobrir os três blocos.
   const def = api.MapeamentoService.defaultContent();
   assert(def.Gerencial.length === 8 && def.Finalístico.length === 19 && def.Apoio.length === 20,
@@ -86,7 +97,9 @@ section('Backend (Code.gs) — sintaxe e regras de negócio');
 /* ------------------------------------------------------------------ */
 section('Frontend (index.html) — smoke (sucesso e falha)');
 (function frontendTests() {
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  // Busca o arquivo HTML de forma insensível à caixa (o repo usa "Index.html").
+  const htmlFile = fs.readdirSync(ROOT).find(f => /^index\.html$/i.test(f)) || 'Index.html';
+  const html = fs.readFileSync(path.join(ROOT, htmlFile), 'utf8');
   const start = html.lastIndexOf('<script>');
   const end = html.lastIndexOf('</script>');
   const code = html.slice(start + '<script>'.length, end);
@@ -169,6 +182,8 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
     const board = getEl('mapeamentoBoard');
     assert(board && /Processos Gerenciais/.test(board.innerHTML) && /map-legend/.test(board.innerHTML),
       'Mapeamento renderiza blocos + legenda');
+    assert(board && /Maturidade/.test(board.innerHTML) && /map-mat/.test(board.innerHTML),
+      'Mapeamento mostra maturidade por processo');
     const grid = getEl('indicatorGrid');
     assert(grid && /Taxa X/.test(grid.innerHTML), 'Indicadores renderiza a lista');
   })();

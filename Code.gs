@@ -272,6 +272,19 @@ function getHistoricoRegistro(payload) {
   return app.audit.getHistoryFor(payload);
 }
 
+function getHistoricoRecente(payload) {
+  return withAdminPermission_('ADMIN', app => app.audit.getRecent(payload));
+}
+
+function runGovernancaMensalJob() {
+  const app = new SigepApplication();
+  return app.runGovernancaMensal();
+}
+
+function setupGovernancaAutomation() {
+  return withAdminPermission_('ADMIN', app => app.setupGovernancaAutomation());
+}
+
 
 function getAdminData() {
   return withAdminPermission_('ADMIN', app => app.admin.getAdminData());
@@ -427,6 +440,16 @@ class SigepApplication {
   runDailyOperationalGuardJob() {
     const ops = new OperationalHardeningService(this.repo, this.audit);
     return ops.runDailyGuard();
+  }
+
+  runGovernancaMensal() {
+    const gov = new GovernanceService(this.repo, this.audit);
+    return gov.runMonthly();
+  }
+
+  setupGovernancaAutomation() {
+    const gov = new GovernanceService(this.repo, this.audit);
+    return gov.setupTrigger();
   }
 
   runBulkUpdate(payload) {
@@ -1168,6 +1191,20 @@ class IndicadorService {
     ['VALOR', 'STATUS', 'OBSERVACAO'].forEach(k => {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
+    // Justificativa obrigatória quando o resultado fica fora da meta (governança de desvios).
+    if (patch.VALOR !== undefined) {
+      const ind = this.repo.getObjects(SIGEP.sheets.indicadores)
+        .find(r => String(r.ID_INDICADOR || '').trim() === String(payload.ID_INDICADOR).trim());
+      const valorNum = IndicadorService.parseNum_(patch.VALOR);
+      const metaNum = ind ? IndicadorService.parseNum_(ind.META) : NaN;
+      if (ind && Number.isFinite(valorNum) && Number.isFinite(metaNum)) {
+        const dentro = IndicadorService.metaAtingida_(valorNum, metaNum, ind.META_OPERADOR, ind.POLARIDADE_META);
+        const justificativa = String(patch.OBSERVACAO !== undefined ? patch.OBSERVACAO : (before.OBSERVACAO || '')).trim();
+        if (!dentro && !justificativa) {
+          throw new Error('Resultado fora da meta: a observação/justificativa é obrigatória para registrar o desvio.');
+        }
+      }
+    }
     const updatedRow = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
     const indexByHeader = this.repo.indexHeaders_(headers);
     Object.keys(patch).forEach(key => {
@@ -1184,6 +1221,29 @@ class IndicadorService {
   generateId_() {
     const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.indicadores, 'ID_INDICADOR');
     return `IND-${String(max + 1).padStart(4, '0')}`;
+  }
+
+  // Converte texto (ex.: ">= 90", "92,3%", "1.234,5") em número.
+  static parseNum_(raw) {
+    const txt = String(raw == null ? '' : raw).replace(/[^0-9.,-]/g, '').trim();
+    if (!txt) return NaN;
+    const norm = txt.indexOf(',') > -1 ? txt.replace(/\./g, '').replace(',', '.') : txt;
+    const n = Number(norm);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  // Avalia se o valor atinge a meta, priorizando a POLARIDADE quando informada.
+  static metaAtingida_(valor, meta, operador, polaridade) {
+    const pol = String(polaridade || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    if (pol.indexOf('menor') === 0 || pol.indexOf('menor e melhor') > -1) return valor <= meta;
+    if (pol.indexOf('igual') === 0 || pol.indexOf('igual ao alvo') > -1) return valor === meta;
+    if (pol.indexOf('maior') === 0 || pol.indexOf('maior e melhor') > -1) return valor >= meta;
+    const op = String(operador || '>=').trim();
+    if (op === '>') return valor > meta;
+    if (op === '<') return valor < meta;
+    if (op === '<=') return valor <= meta;
+    if (op === '=') return valor === meta;
+    return valor >= meta;
   }
 }
 
@@ -1735,6 +1795,136 @@ class OperationalHardeningService {
       .filter(Boolean);
     const fromConfig = (SIGEP.operations.adminEmails || []).map(e => String(e || '').trim().toLowerCase()).filter(Boolean);
     return [...new Set(fromUsers.concat(fromConfig))];
+  }
+}
+
+// Governança mensal de indicadores: pendências de preenchimento + desvios de meta.
+class GovernanceService {
+  constructor(repo, audit) {
+    this.repo = repo;
+    this.audit = audit;
+  }
+
+  buildMonthlyDigest(competencia) {
+    const comp = competencia || this.currentCompetencia_();
+    const indicadores = this.repo.getObjectsSafe(SIGEP.sheets.indicadores, []).map(DomainNormalizer.indicador.bind(DomainNormalizer));
+    const lancamentos = this.repo.getObjectsSafe(SIGEP.sheets.lancamentos, []);
+    const porIndicador = {};
+    lancamentos.forEach(l => {
+      const id = String(l.ID_INDICADOR || '').trim();
+      if (!id) return;
+      (porIndicador[id] = porIndicador[id] || []).push(l);
+    });
+
+    const pendentesPreenchimento = [];
+    const foraDaMeta = [];
+    indicadores.forEach(ind => {
+      const periodic = String(ind.PERIODICIDADE || '').toLowerCase();
+      const mensal = !periodic || periodic.indexOf('mensal') > -1;
+      const lans = porIndicador[ind.ID_INDICADOR] || [];
+      if (mensal) {
+        const temComp = lans.some(l => this.sameComp_(l.COMPETENCIA, comp) && String(l.VALOR || '').trim() !== '');
+        if (!temComp) {
+          pendentesPreenchimento.push({
+            id: ind.ID_INDICADOR, nome: ind.NOME_INDICADOR, processo: ind.PROCESSO,
+            analista: ind.ANALISTA_RESPONSAVEL || '', gestor: ind.GESTOR_RESPONSAVEL || ''
+          });
+        }
+      }
+      const consec = this.consecutiveOutOfTarget_(lans, ind);
+      if (consec.meses >= 1) {
+        foraDaMeta.push({
+          id: ind.ID_INDICADOR, nome: ind.NOME_INDICADOR, processo: ind.PROCESSO,
+          mesesForaDaMeta: consec.meses, ultimoValor: consec.ultimoValor,
+          gestor: ind.GESTOR_RESPONSAVEL || '', analista: ind.ANALISTA_RESPONSAVEL || ''
+        });
+      }
+    });
+    foraDaMeta.sort((a, b) => b.mesesForaDaMeta - a.mesesForaDaMeta);
+    return { ok: true, competencia: comp, pendentesPreenchimento, foraDaMeta };
+  }
+
+  runMonthly() {
+    const digest = this.buildMonthlyDigest();
+    this.audit.log('GOVERNANCA_MENSAL', 'INDICADORES', digest.competencia,
+      JSON.stringify({ pendentes: digest.pendentesPreenchimento.length, foraDaMeta: digest.foraDaMeta.length }));
+    const enviado = this.sendDigestEmail_(digest);
+    return { ok: true, competencia: digest.competencia, pendentes: digest.pendentesPreenchimento.length, foraDaMeta: digest.foraDaMeta.length, emailEnviado: enviado };
+  }
+
+  setupTrigger() {
+    const fn = 'runGovernancaMensalJob';
+    const exists = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === fn);
+    if (exists) return { ok: true, triggerCreated: false };
+    ScriptApp.newTrigger(fn).timeBased().onMonthDay(1).atHour(7).create();
+    this.audit.log('GOVERNANCA_SETUP', 'AUTOMACAO', 'TRIGGER', 'Trigger mensal de governança criado');
+    return { ok: true, triggerCreated: true };
+  }
+
+  sendDigestEmail_(digest) {
+    const ops = new OperationalHardeningService(this.repo, this.audit);
+    const recipients = ops.resolveAdminEmails_();
+    if (!recipients.length) return false;
+    if (!digest.pendentesPreenchimento.length && !digest.foraDaMeta.length) return false;
+    const linhasPend = digest.pendentesPreenchimento.slice(0, 30)
+      .map(p => `- ${p.nome} (${p.processo || 'sem processo'}) · resp.: ${p.analista || p.gestor || 'não definido'}`).join('\n');
+    const linhasMeta = digest.foraDaMeta.slice(0, 30)
+      .map(p => `- ${p.nome}: ${p.mesesForaDaMeta} mês(es) fora da meta (último: ${p.ultimoValor})`).join('\n');
+    const body = [
+      'Resumo mensal de governança de indicadores — competência ' + digest.competencia,
+      '',
+      'Pendências de preenchimento: ' + digest.pendentesPreenchimento.length,
+      linhasPend || '(nenhuma)',
+      '',
+      'Indicadores fora da meta: ' + digest.foraDaMeta.length,
+      linhasMeta || '(nenhum)'
+    ].join('\n');
+    MailApp.sendEmail(recipients.join(','), '[SIGEP-HUC] Governança mensal de indicadores — ' + digest.competencia, body);
+    return true;
+  }
+
+  consecutiveOutOfTarget_(lans, ind) {
+    const meta = IndicadorService.parseNum_(ind.META);
+    if (!Number.isFinite(meta)) return { meses: 0, ultimoValor: '' };
+    const ordered = lans
+      .map(l => ({ comp: l.COMPETENCIA, valor: l.VALOR, num: IndicadorService.parseNum_(l.VALOR), key: this.compKey_(l.COMPETENCIA) }))
+      .filter(l => Number.isFinite(l.num) && l.key > 0)
+      .sort((a, b) => a.key - b.key);
+    let meses = 0;
+    let ultimoValor = '';
+    for (let i = ordered.length - 1; i >= 0; i--) {
+      const dentro = IndicadorService.metaAtingida_(ordered[i].num, meta, ind.META_OPERADOR, ind.POLARIDADE_META);
+      if (i === ordered.length - 1) ultimoValor = String(ordered[i].valor || '');
+      if (dentro) break;
+      meses++;
+    }
+    return { meses, ultimoValor };
+  }
+
+  currentCompetencia_() {
+    const tz = (SIGEP.timezones && SIGEP.timezones.operational) || Session.getScriptTimeZone();
+    return Utilities.formatDate(new Date(), tz, 'MM/yyyy');
+  }
+
+  sameComp_(a, b) {
+    return this.compKey_(a) === this.compKey_(b) && this.compKey_(a) > 0;
+  }
+
+  // Converte competência (MM/AAAA, MM/AA, mmm/aa) em chave ordenável (ano*12+mês).
+  compKey_(raw) {
+    const s = String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
+    if (!s) return 0;
+    const meses = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
+    let mes = 0, ano = 0;
+    let m = s.match(/^(\d{1,2})[\/-](\d{2}|\d{4})$/);
+    if (m) { mes = Number(m[1]); ano = Number(m[2]); }
+    else {
+      m = s.match(/^([a-zç]{3})\.?[\/-]?(\d{2}|\d{4})$/);
+      if (m && meses[m[1]]) { mes = meses[m[1]]; ano = Number(m[2]); }
+    }
+    if (!mes || !ano || mes < 1 || mes > 12) return 0;
+    if (ano < 100) ano += 2000;
+    return ano * 12 + mes;
   }
 }
 
@@ -2458,6 +2648,37 @@ class AuditService {
       });
     });
     return { ok: true, historico: historico.reverse() };
+  }
+
+  // Histórico geral recente (para o painel de auditoria navegável da Administração).
+  getRecent(payload) {
+    const limit = Math.min(500, Math.max(1, Number(payload && payload.limit || 200)));
+    let sh;
+    try {
+      sh = this.repo.getSheet(SIGEP.sheets.historico);
+    } catch (e) {
+      return { ok: true, eventos: [] };
+    }
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) return { ok: true, eventos: [] };
+    const startRow = Math.max(2, lastRow - limit + 1);
+    const count = lastRow - startRow + 1;
+    const values = sh.getRange(startRow, 1, count, 6).getDisplayValues();
+    const eventos = values.map(r => {
+      let contexto = {};
+      try { contexto = JSON.parse(r[5] || '{}'); } catch (parseErr) { contexto = {}; }
+      return {
+        data: contexto.timestampLocal || r[0] || '',
+        usuario: r[1] || contexto.usuario || '',
+        perfil: contexto.perfil || '',
+        acao: r[2] || '',
+        entidade: r[3] || '',
+        id: r[4] || '',
+        motivo: contexto.motivo || '',
+        origem: contexto.origem || ''
+      };
+    });
+    return { ok: true, eventos: eventos.reverse() };
   }
 
   compact_(obj) {

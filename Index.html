@@ -1488,6 +1488,54 @@
     .map-status-pill.s-run { background:var(--warning-bg); color:var(--color-text-warning); }
     .map-status-pill.s-none { background:var(--surface-field); color:var(--muted); }
     .map-status-pill.s-na { background:#eef1f4; color:#5a6b7b; }
+    .map-dot.s-low { background:var(--danger); }
+    /* Maturidade do processo */
+    .map-cell { border-left-width:4px; }
+    .map-cell.mat-s-ok { border-left-color:var(--success); }
+    .map-cell.mat-s-run { border-left-color:var(--warning); }
+    .map-cell.mat-s-low { border-left-color:var(--danger); }
+    .map-cell.mat-s-none { border-left-color:var(--line-strong); }
+    .map-mat { height:5px; border-radius:999px; background:var(--surface-field); overflow:hidden; margin-top:2px; }
+    .map-mat-bar { display:block; height:100%; border-radius:999px; background:var(--line-strong); }
+    .map-mat-bar.s-ok { background:var(--success); }
+    .map-mat-bar.s-run { background:var(--warning); }
+    .map-mat-bar.s-low { background:var(--danger); }
+    .map-mat-label { font-size:.66rem; color:var(--muted); font-weight:700; }
+    .mat-shell { display:flex; gap:14px; align-items:center; flex-wrap:wrap; border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px; background:var(--surface-soft); }
+    .mat-score { display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:84px; padding:8px 12px; border-radius:var(--radius-sm); background:var(--surface-card); border:1px solid var(--line); }
+    .mat-score strong { font-size:1.4rem; line-height:1; }
+    .mat-score span { font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+    .mat-score.s-ok strong { color:var(--success); } .mat-score.s-run strong { color:var(--warning); } .mat-score.s-low strong { color:var(--danger); }
+    .mat-checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 14px; flex:1; min-width:200px; }
+    .mat-check { display:flex; align-items:center; gap:8px; font-size:.84rem; color:var(--text); }
+    .mat-check span { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:800; }
+    .mat-check.on span { background:var(--success-bg); color:var(--color-text-success); }
+    .mat-check.off span { background:var(--surface-field); color:var(--muted); }
+    .mat-check.off { color:var(--muted); }
+    .mat-inds { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .mat-ind { border:1px solid var(--primary-3); background:var(--primary-2); color:var(--primary); border-radius:999px; padding:6px 12px; font-size:.8rem; font-weight:600; cursor:pointer; }
+    .mat-ind:hover { background:var(--primary); color:#fff; }
+    /* Fila de preenchimento */
+    .fila-summary { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+    .fila-kpi { flex:1; min-width:140px; border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 14px; background:var(--surface-soft); }
+    .fila-kpi strong { display:block; font-size:1.6rem; line-height:1; color:var(--primary); }
+    .fila-kpi span { font-size:.78rem; color:var(--muted); }
+    .fila-group { margin-bottom:14px; }
+    .fila-group-head { font-weight:800; font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .fila-group-head span { background:var(--surface-field); border-radius:999px; padding:1px 8px; font-size:.74rem; }
+    .fila-item { display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 12px; background:var(--surface-card); cursor:pointer; margin-bottom:6px; }
+    .fila-item:hover { border-color:var(--primary-3); background:var(--primary-2); }
+    .fila-item-name { font-weight:600; color:var(--ink); font-size:.9rem; }
+    .fila-item-meta { font-size:.74rem; color:var(--muted); }
+    /* Painel de auditoria */
+    .audit-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    .audit-table th, .audit-table td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+    .audit-table th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+    .audit-filterbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .audit-filterbar input, .audit-filterbar select { border:1px solid var(--line-strong); border-radius:10px; padding:8px 10px; font-size:13px; background:var(--surface); }
+    /* Dica contextual */
+    .view-tip { display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--primary-2); border:1px solid var(--primary-3); color:var(--primary); border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:14px; font-size:.86rem; }
+    .view-tip-close { background:transparent; border:none; color:inherit; font-size:1.15rem; cursor:pointer; line-height:1; padding:0 4px; }
     [data-theme="dark"] .map-group.gerencial .map-group-body { background:rgba(148,163,184,.10); }
     [data-theme="dark"] .map-group.finalistico .map-group-body { background:rgba(47,158,109,.14); }
     [data-theme="dark"] .map-group.apoio .map-group-body { background:rgba(31,78,121,.20); }
@@ -1557,6 +1605,7 @@
         </div>
       </header>
 
+      <div id="viewTip" class="view-tip" hidden></div>
 
       <section id="dashboard" class="view">
         <div class="hero shadow-premium ring-1 ring-white/50">
@@ -1581,7 +1630,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Acompanhamento por unidade</h3><span>Uma unidade pode aparecer com várias datas no mesmo card</span></div>
-            <div class="filters"><select id="filtroStatusAcomp" aria-label="Filtrar acompanhamento por status"><option value="">Todos os status</option></select><button class="btn secondary" onclick="novoAcompanhamento()">Novo acompanhamento</button></div>
+            <div class="filters"><select id="filtroStatusAcomp" aria-label="Filtrar acompanhamento por status"><option value="">Todos os status</option></select><button class="btn secondary" onclick="exportAcompanhamentoCsv()">Exportar CSV</button><button class="btn secondary" onclick="novoAcompanhamento()">Novo acompanhamento</button></div>
           </div>
           <div class="content-pad"><div class="acomp-grid" id="acompGrid"></div></div>
         </div>
@@ -1591,7 +1640,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Modelagem de Processos</h3><span>Pipeline de modelagem, validação e publicação</span></div>
-            <div class="filters"><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select><button class="btn secondary" onclick="novoProcesso()">Novo processo</button></div>
+            <div class="filters"><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select><button class="btn secondary" onclick="exportProcessosCsv()">Exportar CSV</button><button class="btn secondary" onclick="novoProcesso()">Novo processo</button></div>
           </div>
           <div class="content-pad">
             <div id="processSummary" class="indicator-summary"></div>
@@ -1604,7 +1653,7 @@
         <div class="panel">
           <div class="panel-head">
             <div><h3>Mapeamento de processos</h3><span>Cadeia de valor: gerenciais, finalísticos e de apoio</span></div>
-            <div class="filters"><button class="btn secondary" id="mapSeedBtn" onclick="popularMapeamento()" style="display:none">Carregar mapa padrão</button><button class="btn secondary" onclick="novoQuadrinhoMapeamento()">Novo processo</button></div>
+            <div class="filters"><button class="btn secondary" id="mapSeedBtn" onclick="popularMapeamento()" style="display:none">Carregar mapa padrão</button><button class="btn secondary" onclick="exportMapeamentoCsv()">Exportar CSV</button><button class="btn secondary" onclick="novoQuadrinhoMapeamento()">Novo processo</button></div>
           </div>
           <div class="content-pad"><div id="mapeamentoBoard" class="map-board"></div></div>
         </div>
@@ -1614,7 +1663,7 @@
         <div class="panel">
           <div class="panel-head indicator-head-clean">
             <div><h3>Indicadores</h3><span>Monitoramento analítico hospitalar com foco operacional</span></div>
-            <div class="actions"><button class="btn secondary indicator-advanced-toggle" id="toggleFiltrosBtn" aria-expanded="false" aria-controls="indicatorFilterShell" onclick="toggleIndicadorFiltro()">Filtros avançados</button><button class="btn secondary" onclick="novoIndicador()">Novo indicador</button></div>
+            <div class="actions"><button class="btn secondary indicator-advanced-toggle" id="toggleFiltrosBtn" aria-expanded="false" aria-controls="indicatorFilterShell" onclick="toggleIndicadorFiltro()">Filtros avançados</button><button class="btn secondary" onclick="abrirFilaPreenchimento()">Fila de preenchimento</button><button class="btn secondary" onclick="exportIndicadoresCsv()">Exportar CSV</button><button class="btn secondary" onclick="novoIndicador()">Novo indicador</button></div>
           </div>
           <div class="content-pad indicators-layout">
             <div class="indicator-main-area">
@@ -1967,6 +2016,7 @@
         if (pageTitle) pageTitle.textContent = meta[0];
         if (pageSubtitle) pageSubtitle.textContent = meta[1];
         if (view === 'admin' && !state.adminData) loadAdminData();
+        updateViewTip(view);
         const appRoot = document.getElementById('appRoot');
         if (appRoot) appRoot.classList.remove('sidebar-open');
         const menuBtn = document.getElementById('mobileMenuBtn');
@@ -2320,6 +2370,31 @@
       return { cls: 's-none', label: status || 'Não iniciado' };
     }
 
+    // Cruza o item do mapa com Modelagem de Processos e Indicadores para um
+    // "raio-x" de maturidade do processo (modelagem, indicadores, ficha, publicação).
+    function matchesProcessName(a, b) {
+      const x = normalize(a), y = normalize(b);
+      if (!x || !y) return false;
+      return x === y || x.includes(y) || y.includes(x);
+    }
+    function computeMaturidade(nomeProcesso) {
+      const procs = (state.data.processos || []).filter(p => matchesProcessName(p.PROCESSO, nomeProcesso));
+      const inds = (state.data.indicadores || []).filter(i => matchesProcessName(i.PROCESSO, nomeProcesso));
+      const modelagem = procs.some(p => normalize(p.MODELAGEM_REALIZADA) === 'SIM' || normalize(p.STATUS_GERAL).includes('CONCLUID'));
+      const temIndicadores = inds.length > 0;
+      const ficha = inds.some(i => String(i.LINK_FICHA_TECNICA_CONECTA || '').trim());
+      const publicacao = procs.some(p => normalize(p.PUBLICACAO) === 'SIM');
+      const parts = { modelagem, indicadores: temIndicadores, ficha, publicacao };
+      const score = Math.round((['modelagem', 'indicadores', 'ficha', 'publicacao'].filter(k => parts[k]).length / 4) * 100);
+      return { score, parts, indicadores: inds, processos: procs };
+    }
+    function maturidadeClass(score) {
+      if (score >= 80) return 's-ok';
+      if (score >= 40) return 's-run';
+      if (score > 0) return 's-low';
+      return 's-none';
+    }
+
     function renderMapeamento() {
       const board = document.getElementById('mapeamentoBoard');
       if (!board) return;
@@ -2347,9 +2422,13 @@
       const cell = (r) => {
         const st = mapStatusInfo(r.STATUS);
         const resp = r.RESPONSAVEL || r.ANALISTA || '';
-        return `<button class="map-cell" onclick='abrirMapeamento(${JSON.stringify(r).replace(/'/g, "&apos;")})'>
+        const mat = computeMaturidade(r.NOME_PROCESSO);
+        const matCls = maturidadeClass(mat.score);
+        return `<button class="map-cell mat-${matCls}" onclick='abrirMapeamento(${JSON.stringify(r).replace(/'/g, "&apos;")})'>
           <h5>${escapeHtml(r.NOME_PROCESSO || 'Sem nome')}</h5>
           <div class="map-cell-foot"><span class="map-cell-resp">${escapeHtml(resp || 'Sem responsável')}</span><span class="map-status-pill ${st.cls}">${escapeHtml(st.label)}</span></div>
+          <div class="map-mat" title="Maturidade do processo: ${mat.score}%"><span class="map-mat-bar ${matCls}" style="width:${mat.score}%"></span></div>
+          <div class="map-mat-label">Maturidade ${mat.score}%</div>
         </button>`;
       };
 
@@ -2395,6 +2474,7 @@
           ${drawerField('Responsável', item.RESPONSAVEL)}
           ${drawerField('Analista', item.ANALISTA)}
         </div>
+        ${renderMaturidadeBlock(item)}
         <h4 class="section-title">Links</h4>
         <div class="steps">
           ${linkRow('Planilha do processo', item.LINK_PLANILHA)}
@@ -2407,6 +2487,26 @@
         ${renderHistoricoBlock('MAPEAMENTO', item.ID_MAPEAMENTO)}
       `);
       loadHistorico('MAPEAMENTO', item.ID_MAPEAMENTO);
+    }
+
+    function renderMaturidadeBlock(item) {
+      const mat = computeMaturidade(item.NOME_PROCESSO);
+      const check = (ok, label) => `<div class="mat-check ${ok ? 'on' : 'off'}"><span>${ok ? '✓' : '—'}</span>${escapeHtml(label)}</div>`;
+      const indsHtml = mat.indicadores.length
+        ? mat.indicadores.map(i => `<button class="mat-ind" onclick='showIndicador(${JSON.stringify(i).replace(/'/g, "&apos;")})'>${escapeHtml(i.NOME_INDICADOR || 'Indicador')}</button>`).join('')
+        : '<span class="pill">Nenhum indicador vinculado a este processo</span>';
+      return `
+        <h4 class="section-title">Maturidade do processo</h4>
+        <div class="mat-shell">
+          <div class="mat-score ${maturidadeClass(mat.score)}"><strong>${mat.score}%</strong><span>maturidade</span></div>
+          <div class="mat-checks">
+            ${check(mat.parts.modelagem, 'Modelagem realizada')}
+            ${check(mat.parts.indicadores, 'Indicadores definidos')}
+            ${check(mat.parts.ficha, 'Ficha técnica no Conecta')}
+            ${check(mat.parts.publicacao, 'Processo publicado')}
+          </div>
+        </div>
+        <div class="mat-inds">${indsHtml}</div>`;
     }
 
     function abrirEdicaoMapeamento(item) {
@@ -2570,6 +2670,121 @@
       return String(acao || '').replace(/_/g, ' ').toLowerCase();
     }
 
+    /* ===================== Exportação CSV ===================== */
+    function csvCell(v) {
+      const s = String(v == null ? '' : v);
+      return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    function downloadCsv(filename, headerLabels, rows) {
+      if (!rows.length) { showToast('Nada para exportar com os dados atuais.', 'warning'); return; }
+      const lines = [headerLabels.map(csvCell).join(';')];
+      rows.forEach(r => lines.push(r.map(csvCell).join(';')));
+      const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Exportação gerada: ' + filename, 'success');
+    }
+    function exportIndicadoresCsv() {
+      const cols = ['ID_INDICADOR', 'NOME_INDICADOR', 'PROCESSO', 'UNIDADE', 'CATEGORIA', 'TIPO_INDICADOR', 'TIPO_OPERACIONAL', 'EIXO_ASSISTENCIAL', 'META_OPERADOR', 'META', 'POLARIDADE_META', 'PERIODICIDADE', 'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA'];
+      const rows = (state.data.indicadores || []).map(r => cols.map(c => r[c] || ''));
+      downloadCsv('indicadores.csv', cols, rows);
+    }
+    function exportProcessosCsv() {
+      const cols = ['ID_PROCESSO', 'PROCESSO', 'TIPO_PROCESSO', 'STATUS_GERAL', 'MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
+      const rows = (state.data.processos || []).map(r => cols.map(c => r[c] || ''));
+      downloadCsv('processos.csv', cols, rows);
+    }
+    function exportAcompanhamentoCsv() {
+      const cols = ['ID_ACOMPANHAMENTO', 'UNIDADE', 'DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'STATUS_GERAL', 'PROGRESSO_PERCENTUAL', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES', 'LINK_PLANILHA_GESTAO'];
+      const rows = (state.data.acompanhamento || []).map(r => cols.map(c => r[c] || ''));
+      downloadCsv('acompanhamento.csv', cols, rows);
+    }
+    function exportMapeamentoCsv() {
+      const cols = ['ID_MAPEAMENTO', 'NOME_PROCESSO', 'GRUPO_PROCESSO', 'STATUS', 'RESPONSAVEL', 'ANALISTA', 'LINK_PLANILHA', 'LINK_CONECTA', 'COMENTARIO'];
+      const rows = (state.data.mapeamento || []).map(r => cols.map(c => r[c] || ''));
+      downloadCsv('mapeamento.csv', cols, rows);
+    }
+
+    /* ===================== Fila de preenchimento de indicadores ===================== */
+    function latestCompetenciaInfo() {
+      const lans = state.data && state.data.lancamentos || [];
+      let key = 0, label = '';
+      lans.forEach(l => {
+        const c = resolvePeriodoLabel(l) || l.COMPETENCIA;
+        const k = parseCompetencia(c);
+        if (k > key) { key = k; label = c; }
+      });
+      return { key, label };
+    }
+    function isIndicadorMeu(ind) {
+      const meEmail = normalize(state.data && state.data.user || '');
+      const meNome = normalize(state.data && state.data.userNome || '');
+      const termos = [meEmail, meEmail.split('@')[0], meNome].filter(t => t && t.length >= 3);
+      const alvo = normalize((ind.ANALISTA_RESPONSAVEL || '') + ' | ' + (ind.GESTOR_RESPONSAVEL || ''));
+      return termos.some(t => alvo.includes(t));
+    }
+    function abrirFilaPreenchimento() {
+      const comp = latestCompetenciaInfo();
+      if (!comp.key) { ui.dialog.alert('Ainda não há competências lançadas para calcular a fila.'); return; }
+      const lans = state.data && state.data.lancamentos || [];
+      const preenchidos = new Set();
+      lans.forEach(l => {
+        const c = resolvePeriodoLabel(l) || l.COMPETENCIA;
+        if (parseCompetencia(c) === comp.key && String(l.VALOR || '').trim() !== '') preenchidos.add(String(l.ID_INDICADOR));
+      });
+      const pend = (state.data && state.data.indicadores || []).filter(ind => {
+        const periodic = normalize(ind.PERIODICIDADE);
+        const mensal = !periodic || periodic.includes('MENSAL');
+        return mensal && !preenchidos.has(String(ind.ID_INDICADOR));
+      });
+      const meus = pend.filter(isIndicadorMeu);
+      const grupos = {};
+      pend.forEach(ind => {
+        const resp = (ind.ANALISTA_RESPONSAVEL || ind.GESTOR_RESPONSAVEL || '').trim() || 'Sem responsável definido';
+        (grupos[resp] = grupos[resp] || []).push(ind);
+      });
+      const ordem = Object.keys(grupos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      const linhaInd = (ind) => `<button class="fila-item" onclick='ui.closeDrawer(); showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
+        <span class="fila-item-name">${escapeHtml(ind.NOME_INDICADOR || 'Indicador')}</span>
+        <span class="fila-item-meta">${escapeHtml(ind.PROCESSO || '-')}${isIndicadorMeu(ind) ? ' · <b>meu</b>' : ''}</span>
+      </button>`;
+      const body = `
+        <div class="fila-summary">
+          <div class="fila-kpi"><strong>${pend.length}</strong><span>pendentes na competência ${escapeHtml(comp.label)}</span></div>
+          <div class="fila-kpi"><strong>${meus.length}</strong><span>atribuídos a você</span></div>
+        </div>
+        ${pend.length === 0 ? '<div class="empty"><strong>Tudo em dia 🎉</strong><br>Nenhum indicador mensal pendente para esta competência.</div>' :
+          ordem.map(resp => `<div class="fila-group"><div class="fila-group-head">${escapeHtml(resp)} <span>${grupos[resp].length}</span></div>${grupos[resp].map(linhaInd).join('')}</div>`).join('')}`;
+      ui.openDrawer('Fila de preenchimento', 'Indicadores mensais ainda sem lançamento na última competência.', body);
+    }
+
+    /* ===================== Dicas contextuais (onboarding leve) ===================== */
+    const VIEW_TIPS = {
+      acompanhamento: 'Dica: clique no card de uma unidade para ver etapas, link da planilha de gestão e histórico de comentários.',
+      processos: 'Dica: o status é calculado automaticamente pelas marcações de modelagem, validações e publicação.',
+      mapeamento: 'Dica: a barra em cada processo mostra a maturidade (modelagem + indicadores + ficha + publicação). Clique para o raio-x.',
+      indicadores: 'Dica: use "Fila de preenchimento" para ver o que falta lançar no mês e o filtro "Meus indicadores" para focar no que é seu.',
+      admin: 'Dica: em "Auditoria" você navega toda a trilha de alterações. Dados sensíveis dos gestores ficam restritos a administradores.'
+    };
+    function updateViewTip(view) {
+      const el = document.getElementById('viewTip');
+      if (!el) return;
+      let dismissed = false;
+      try { dismissed = localStorage.getItem('sigep_tip_' + view) === '1'; } catch (e) { dismissed = false; }
+      const tip = VIEW_TIPS[view];
+      if (!tip || dismissed) { el.hidden = true; el.innerHTML = ''; return; }
+      el.hidden = false;
+      el.innerHTML = `<span>${escapeHtml(tip)}</span><button class="view-tip-close" aria-label="Dispensar dica" onclick="dismissViewTip('${view}')">×</button>`;
+    }
+    function dismissViewTip(view) {
+      try { localStorage.setItem('sigep_tip_' + view, '1'); } catch (e) {}
+      const el = document.getElementById('viewTip');
+      if (el) { el.hidden = true; el.innerHTML = ''; }
+    }
+
     function renderIndicadores() {
       let rows = state.data.indicadores || [];
       rows = filterRows(rows, ['CATEGORIA', 'PROCESSO', 'NOME_INDICADOR', 'RESULTADO_ESPERADO', 'UNIDADE', 'SETOR']);
@@ -2659,9 +2874,9 @@
         const ultimo = historicoOrdenado.slice().reverse().find(l => l.hasData);
         const metaIndicador = parseNumericValue(ind.META);
         const referenciaStatus = getReferenciaStatus(historicoOrdenado);
-        const statusCard = getStatusIndicador(referenciaStatus, metaIndicador, ind.META_OPERADOR);
+        const statusCard = getStatusIndicador(referenciaStatus, metaIndicador, ind.META_OPERADOR, ind.POLARIDADE_META);
         const sparkline = buildMiniSparkline(filterByPeriodo(historicoOrdenado, state.filtroPeriodoIndicador), metaIndicador);
-        const mesCritico = getMesesAbaixoMeta(historicoOrdenado, metaIndicador, ind.META_OPERADOR);
+        const mesCritico = getMesesAbaixoMeta(historicoOrdenado, metaIndicador, ind.META_OPERADOR, ind.POLARIDADE_META);
         const comparacaoTxt = buildComparacaoPeriodo(historicoOrdenado, state.filtroCompetenciaIndicador, state.filtroComparacaoCompetencia, state.filtroPeriodoIndicador);
         return `
           <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
@@ -2808,8 +3023,8 @@ function getIndicatorUnit(ind) {
       return `${avg > 0 ? '+' : ''}${avg.toFixed(2)}`;
     }
 
-    function getMesesAbaixoMeta(historico, meta, operador) {
-      return historico.filter(h => h.hasData && !compareAgainstMeta(h.numericValue, meta, operador)).map(h => h.COMPETENCIA).join(', ');
+    function getMesesAbaixoMeta(historico, meta, operador, polaridade) {
+      return historico.filter(h => h.hasData && !compareAgainstMeta(h.numericValue, meta, operador, polaridade)).map(h => h.COMPETENCIA).join(', ');
     }
 
     function showAcompanhamento(item) {
@@ -3221,7 +3436,7 @@ function getIndicatorUnit(ind) {
       const metaNumerica = parseNumericValue(ind.META || '');
       const variacao = getVariacaoMensal(historico);
       const tendencia = getTendencia(historico);
-      const status = getStatusIndicador(ultimo, metaNumerica, ind.META_OPERADOR);
+      const status = getStatusIndicador(ultimo, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META);
       const svg = buildHistoryChart(historico, metaNumerica, periodo);
       ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
         <div class="indicator-modal">
@@ -3285,7 +3500,7 @@ function getIndicatorUnit(ind) {
             </div>
           </div>
           <div class="history-list">
-            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td data-label="Competência" class="${h.hasData && !compareAgainstMeta(h.numericValue, metaNumerica, ind.META_OPERADOR) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td data-label="Valor">${escapeHtml(h.valor)}</td><td data-label="Meta">${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td data-label="Status"><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
+            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td data-label="Competência" class="${h.hasData && !compareAgainstMeta(h.numericValue, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td data-label="Valor">${escapeHtml(h.valor)}</td><td data-label="Meta">${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td data-label="Status"><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
@@ -3412,8 +3627,13 @@ function getIndicatorUnit(ind) {
     function parseCompetencia(comp) { const txt = String(comp || '').toLowerCase().trim(); const m={jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11}; const mm=txt.match(/(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[\.\-/ ]*(\d{2,4})/); if(mm){const y=Number(mm[2].length===2?'20'+mm[2]:mm[2]); return new Date(y,m[mm[1]],1).getTime();} const iso=Date.parse(txt); return Number.isFinite(iso)?iso:0; }
     function getVariacaoMensal(hist){ const vals=hist.filter(h=>h.hasData); if(vals.length<2) return 'Sem base comparativa'; const a=vals[vals.length-1].numericValue; const b=vals[vals.length-2].numericValue; const d=a-b; const p=b!==0?((d/Math.abs(b))*100):0; return `${d>=0?'+':''}${d.toFixed(1).replace('.',',')} (${d>=0?'+':''}${p.toFixed(1).replace('.',',')}%)`; }
     function getTendencia(hist){ const vals=hist.filter(h=>h.hasData).map(h=>h.numericValue); if(vals.length<3) return 'Estável'; const d=vals[vals.length-1]-vals[vals.length-3]; if(d>0.5) return 'Melhorando'; if(d<-0.5) return 'Piorando'; return 'Estável'; }
-    function compareAgainstMeta(valor, meta, operador) {
+    function compareAgainstMeta(valor, meta, operador, polaridade) {
       if (!Number.isFinite(valor) || !Number.isFinite(meta)) return false;
+      // A polaridade, quando informada, tem prioridade sobre o operador.
+      const pol = normalize(polaridade || '');
+      if (pol.indexOf('MENOR') === 0 || pol.includes('MENOR E MELHOR')) return valor <= meta;
+      if (pol.indexOf('IGUAL') === 0 || pol.includes('IGUAL AO ALVO')) return valor === meta;
+      if (pol.indexOf('MAIOR') === 0 || pol.includes('MAIOR E MELHOR')) return valor >= meta;
       const op = String(operador || '>=').trim();
       if (op === '>') return valor > meta;
       if (op === '<') return valor < meta;
@@ -3422,7 +3642,7 @@ function getIndicatorUnit(ind) {
       return valor >= meta;
     }
 
-    function getStatusIndicador(item, meta, operador){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return compareAgainstMeta(item.numericValue, meta, operador)?{label:'Dentro da meta',className:'ok'}:{label:'Fora da meta',className:'bad'}; }
+    function getStatusIndicador(item, meta, operador, polaridade){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return compareAgainstMeta(item.numericValue, meta, operador, polaridade)?{label:'Dentro da meta',className:'ok'}:{label:'Fora da meta',className:'bad'}; }
     function getReferenciaStatus(historico){ const comDados = historico.filter(h => h.hasData); return comDados.length ? comDados[comDados.length - 1] : null; }
     function buildMiniSparkline(historico, meta){
       const pontos = historico.filter(h => h.hasData);
@@ -3600,6 +3820,18 @@ function getIndicatorUnit(ind) {
         OBSERVACAO: form.OBSERVACAO.value.trim(),
         MOTIVO_ALTERACAO: form.MOTIVO_ALTERACAO.value.trim()
       };
+      // Justificativa obrigatória quando o resultado fica fora da meta (espelha a regra do backend).
+      const ind = getById(state.data?.indicadores, 'ID_INDICADOR', idIndicador);
+      if (ind) {
+        const valorNum = parseNumericValue(payload.VALOR);
+        const metaNum = parseNumericValue(ind.META);
+        if (Number.isFinite(valorNum) && Number.isFinite(metaNum) &&
+            !compareAgainstMeta(valorNum, metaNum, ind.META_OPERADOR, ind.POLARIDADE_META) &&
+            !payload.OBSERVACAO) {
+          await ui.dialog.alert('Resultado fora da meta: preencha a observação/justificativa do desvio antes de salvar.');
+          return;
+        }
+      }
       showSaveFeedback('Salvando lançamento...');
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
@@ -3888,6 +4120,7 @@ function getIndicatorUnit(ind) {
         <article class="card" onclick="showAdminStatus()"><h4>Status</h4><p>${(a.status||[]).length} opções configuradas</p></article>
         <article class="card" onclick="showAdminTipos()"><h4>Tipos de processo</h4><p>${(a.tiposProcesso||[]).length} tipos ativos</p></article>
         <article class="card" onclick="showAdminDataReview()"><h4>Central de saneamento</h4><p>${(a.review?.totalFindings||0)} inconsistências detectadas</p></article>
+        <article class="card" onclick="showAdminAuditoria()"><h4>Auditoria</h4><p>Trilha navegável de alterações</p></article>
       `;
     }
 
@@ -4093,6 +4326,42 @@ function getIndicatorUnit(ind) {
       ui.openDrawer('Tipos de processo', 'Lista de tipos para processos.', `<div class="steps">${rows.map(r => `<div class="step"><b>${escapeHtml(r.TIPO_PROCESSO||'-')}</b><span>${escapeHtml(r.DESCRICAO||'-')}</span></div>`).join('')}</div>`);
     }
     
+    let auditEventos = [];
+    function showAdminAuditoria() {
+      ui.openDrawer('Auditoria', 'Trilha navegável das alterações mais recentes.', '<div class="empty">Carregando trilha de auditoria...</div>');
+      asyncUi.start('Carregando auditoria...');
+      google.script.run
+        .withSuccessHandler(res => {
+          asyncUi.finish();
+          auditEventos = (res && res.eventos) || [];
+          const entidades = unique(auditEventos.map(e => e.entidade));
+          document.getElementById('drawerContent').innerHTML = `
+            <div class="audit-filterbar">
+              <input type="search" id="auditBusca" placeholder="Buscar por usuário, ação, ID, motivo..." oninput="state.auditBusca=this.value; renderAuditoriaTable()">
+              <select id="auditEntidade" onchange="state.auditEntidade=this.value; renderAuditoriaTable()"><option value="">Todas as entidades</option>${entidades.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')}</select>
+              <span class="pill" id="auditCount"></span>
+            </div>
+            <div id="auditTableHost" class="table-wrap"></div>`;
+          renderAuditoriaTable();
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); const host = document.getElementById('drawerContent'); if (host) host.innerHTML = '<div class="empty">Falha ao carregar auditoria: ' + escapeHtml(err.message || err) + '</div>'; })
+        .getHistoricoRecente({ limit: 200 });
+    }
+    function renderAuditoriaTable() {
+      const host = document.getElementById('auditTableHost');
+      if (!host) return;
+      const termo = (state.auditBusca || '').toLowerCase();
+      const ent = state.auditEntidade || '';
+      let rows = auditEventos;
+      if (ent) rows = rows.filter(e => e.entidade === ent);
+      if (termo) rows = rows.filter(e => [e.usuario, e.acao, e.entidade, e.id, e.motivo].some(v => String(v || '').toLowerCase().includes(termo)));
+      const count = document.getElementById('auditCount');
+      if (count) count.textContent = `${rows.length} evento(s)`;
+      host.innerHTML = `<table class="audit-table"><thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>ID</th><th>Motivo</th></tr></thead><tbody>
+        ${rows.map(e => `<tr><td>${escapeHtml(e.data)}</td><td>${escapeHtml(e.usuario)}</td><td>${escapeHtml(formatAcaoLabel(e.acao))}</td><td>${escapeHtml(e.entidade)}</td><td>${escapeHtml(e.id)}</td><td>${escapeHtml(e.motivo || '-')}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center">Nenhum evento encontrado.</td></tr>'}
+      </tbody></table>`;
+    }
+
     function showAdminDataReview() {
       const review = (state.adminData && state.adminData.review) || { findings: [], totalFindings: 0 };
       const rows = review.findings || [];
