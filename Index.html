@@ -3766,6 +3766,7 @@ function getIndicatorUnit(ind) {
       if (s.type === 'ok') return 'pill ok';
       if (s.type === 'bad') return 'pill bad';
       if (s.type === 'warn') return 'pill warn';
+      if (s.type === 'neutral') return 'pill';
       return '';
     }
 
@@ -3815,6 +3816,7 @@ function getIndicatorUnit(ind) {
     }
     function getUnifiedStatus(v){
       const n = normalize(v);
+      if (n.includes('NAO SE APLICA') || n === 'N/A' || n === 'NA') return {label:'Não se aplica', type:'neutral'};
       if (n.includes('CONCLUID') || n.includes('REALIZADA') || n === 'SIM') return {label:'Concluído', type:'ok'};
       if (n.includes('BLOQUE') || n.includes('REAGEND')) return {label:'Bloqueado', type:'bad'};
       if (n.includes('NAO INICIAD') || n.includes('PENDENTE') || n === 'NAO') return {label:'Atrasado', type:'bad'};
