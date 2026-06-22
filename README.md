@@ -1,6 +1,6 @@
-# Hospital Process Management System
+# Clinical Operations Command Center
 
-Repository: `hospital-process-management-system`
+Repository: `clinical-operations-command-center`
 
 ## Overview
 
