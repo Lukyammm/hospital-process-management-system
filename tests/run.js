@@ -86,6 +86,17 @@ section('Backend (Code.gs) — sintaxe e regras de negócio');
   assert(gov.compKey_('05/2026') === 2026 * 12 + 5 && gov.compKey_('abr./25') === 2025 * 12 + 4, 'compKey_ ordena competências (MM/AAAA e mmm/aa)');
   assert(gov.sameComp_('5/2026', '05/2026') === true, 'sameComp_ normaliza competências equivalentes');
 
+  // Metas por período (vigência)
+  const indBase = { META: '90', META_OPERADOR: '>=', POLARIDADE_META: '' };
+  const metas = [
+    { ID_INDICADOR: 'IND-1', VIGENCIA_INICIO: '01/2026', META: '95', META_OPERADOR: '>=', ATIVO: 'SIM' },
+    { ID_INDICADOR: 'IND-1', VIGENCIA_INICIO: '06/2026', META: '80', META_OPERADOR: '>=', ATIVO: 'SIM' }
+  ];
+  assert(IS.resolveMeta_(indBase, '03/2026', metas).meta === '95', 'resolveMeta_: 03/2026 usa a vigência de 01/2026 (95)');
+  assert(IS.resolveMeta_(indBase, '07/2026', metas).meta === '80', 'resolveMeta_: 07/2026 usa a vigência de 06/2026 (80)');
+  assert(IS.resolveMeta_(indBase, '12/2025', metas).meta === '90' && IS.resolveMeta_(indBase, '12/2025', metas).origem === 'base', 'resolveMeta_: antes de qualquer vigência cai na meta base (90)');
+  assert(IS.resolveMeta_(indBase, '03/2026', []).meta === '90', 'resolveMeta_: sem metas por período usa a base');
+
   // Conteúdo padrão do mapeamento deve cobrir os três blocos.
   const def = api.MapeamentoService.defaultContent();
   assert(def.Gerencial.length === 8 && def.Finalístico.length === 19 && def.Apoio.length === 20,
@@ -135,6 +146,7 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
     acompanhamento: [{ ID_ACOMPANHAMENTO: 'ACOMP-0001', UNIDADE: 'UTI', DATA_AGENDAMENTO: '01/06/2026', STATUS_AGENDAMENTO: 'Realizada', INTRODUCAO: 'Concluído', PERFIL: 'Em andamento', FLUXO_PROCESSO: 'Não se aplica', MODELAGEM: '', INDICADORES: '', FICHA_TECNICA_INDICADORES: '', LINK_PLANILHA_GESTAO: '' }],
     indicadores: [{ ID_INDICADOR: 'IND-0001', NOME_INDICADOR: 'Taxa X', TIPO_INDICADOR: 'Resultado', META: '90', META_OPERADOR: '>=', CATEGORIA: 'Resultado', CATEGORIA_INDICADOR: 'Resultado', TIPO_OPERACIONAL: 'Finalista', EIXO_ASSISTENCIAL: 'Cirúrgico', ANALISTA_RESPONSAVEL: 'Lukyam', GESTOR_RESPONSAVEL: 'Maria', PERIODICIDADE: 'Mensal', POLARIDADE_META: 'Maior é melhor', LINK_FICHA_TECNICA_CONECTA: '', PROCESSO: 'Proc A', UNIDADE: 'UTI' }],
     lancamentos: [{ ID_INDICADOR: 'IND-0001', COMPETENCIA: '05/2026', VALOR: '92' }],
+    metasIndicadores: [{ ID_META: 'META-0001', ID_INDICADOR: 'IND-0001', VIGENCIA_INICIO: '01/2026', META: '95', META_OPERADOR: '>=', POLARIDADE_META: 'Maior é melhor', ATIVO: 'SIM' }],
     unidades: [{ ID_UNIDADE: 'U1', UNIDADE: 'UTI' }],
     mapeamento: [{ ID_MAPEAMENTO: 'MAP-0001', NOME_PROCESSO: 'Gestão da Clínica', GRUPO_PROCESSO: 'Gerencial', STATUS: 'Em andamento', RESPONSAVEL: 'Ana', ATIVO: 'SIM' }],
     featureFlags: { PROCESSOS: true, INDICADORES: true, ACOMPANHAMENTO: true, MAPEAMENTO: true, GESTORES: true, FILTROS_AVANCADOS: true }

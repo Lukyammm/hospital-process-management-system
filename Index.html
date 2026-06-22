@@ -1533,6 +1533,10 @@
     .audit-table th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
     .audit-filterbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
     .audit-filterbar input, .audit-filterbar select { border:1px solid var(--line-strong); border-radius:10px; padding:8px 10px; font-size:13px; background:var(--surface); }
+    /* Metas por período */
+    .metas-periodo { border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px; background:var(--surface-soft); }
+    .metas-periodo-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .metas-periodo-head span { font-size:.82rem; color:var(--muted); }
     /* Dica contextual */
     .view-tip { display:flex; align-items:center; gap:12px; justify-content:space-between; background:var(--primary-2); border:1px solid var(--primary-3); color:var(--primary); border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:14px; font-size:.86rem; }
     .view-tip-close { background:transparent; border:none; color:inherit; font-size:1.15rem; cursor:pointer; line-height:1; padding:0 4px; }
@@ -2874,9 +2878,11 @@
         const ultimo = historicoOrdenado.slice().reverse().find(l => l.hasData);
         const metaIndicador = parseNumericValue(ind.META);
         const referenciaStatus = getReferenciaStatus(historicoOrdenado);
-        const statusCard = getStatusIndicador(referenciaStatus, metaIndicador, ind.META_OPERADOR, ind.POLARIDADE_META);
-        const sparkline = buildMiniSparkline(filterByPeriodo(historicoOrdenado, state.filtroPeriodoIndicador), metaIndicador);
-        const mesCritico = getMesesAbaixoMeta(historicoOrdenado, metaIndicador, ind.META_OPERADOR, ind.POLARIDADE_META);
+        const refComp = referenciaStatus ? (resolvePeriodoLabel(referenciaStatus) || referenciaStatus.COMPETENCIA) : '';
+        const mvRef = resolveMetaFront(ind, refComp);
+        const statusCard = getStatusIndicador(referenciaStatus, mvRef.meta, mvRef.operador, mvRef.polaridade);
+        const sparkline = buildMiniSparkline(filterByPeriodo(historicoOrdenado, state.filtroPeriodoIndicador), mvRef.meta);
+        const mesCritico = getMesesAbaixoMeta(historicoOrdenado, ind);
         const comparacaoTxt = buildComparacaoPeriodo(historicoOrdenado, state.filtroCompetenciaIndicador, state.filtroComparacaoCompetencia, state.filtroPeriodoIndicador);
         return `
           <article class="indicator-row ${statusCard.className === 'ok' ? 'hit' : statusCard.className === 'bad' ? 'miss' : ''}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick='showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
@@ -2887,7 +2893,7 @@
             <div class="indicator-meta">
               <div class="indicator-col"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
               <div class="indicator-col"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
-              <div class="indicator-col"><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
+              <div class="indicator-col"><b>Meta${mvRef.origem === 'periodo' ? ' (vig.)' : ''}</b><span>${escapeHtml(compMetaLabel(mvRef))}</span></div>
               <div class="indicator-col"><b>Último valor</b><span>${escapeHtml(ultimo ? (ultimo.VALOR || '-') : '-')}</span></div>
             </div>
             <div class="indicator-col"><b>Miniatura de evolução</b>${sparkline}</div>
@@ -3023,8 +3029,12 @@ function getIndicatorUnit(ind) {
       return `${avg > 0 ? '+' : ''}${avg.toFixed(2)}`;
     }
 
-    function getMesesAbaixoMeta(historico, meta, operador, polaridade) {
-      return historico.filter(h => h.hasData && !compareAgainstMeta(h.numericValue, meta, operador, polaridade)).map(h => h.COMPETENCIA).join(', ');
+    function getMesesAbaixoMeta(historico, ind) {
+      return historico.filter(h => {
+        if (!h.hasData) return false;
+        const mv = resolveMetaFront(ind, resolvePeriodoLabel(h) || h.COMPETENCIA);
+        return Number.isFinite(mv.meta) && !compareAgainstMeta(h.numericValue, mv.meta, mv.operador, mv.polaridade);
+      }).map(h => h.COMPETENCIA).join(', ');
     }
 
     function showAcompanhamento(item) {
@@ -3433,10 +3443,11 @@ function getIndicatorUnit(ind) {
       const ultimo = preenchidos[preenchidos.length - 1] || historico[historico.length - 1] || null;
       const valorAtual = ultimo ? ultimo.valor : 'Sem registro';
       const periodo = ultimo ? (ultimo.comp || '-') : '-';
-      const metaNumerica = parseNumericValue(ind.META || '');
+      const mvUltimo = resolveMetaFront(ind, ultimo ? ultimo.comp : periodo);
+      const metaNumerica = Number.isFinite(mvUltimo.meta) ? mvUltimo.meta : parseNumericValue(ind.META || '');
       const variacao = getVariacaoMensal(historico);
       const tendencia = getTendencia(historico);
-      const status = getStatusIndicador(ultimo, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META);
+      const status = getStatusIndicador(ultimo, metaNumerica, mvUltimo.operador, mvUltimo.polaridade);
       const svg = buildHistoryChart(historico, metaNumerica, periodo);
       ui.openDrawer(ind.NOME_INDICADOR || 'Indicador', ind.PROCESSO || '', `
         <div class="indicator-modal">
@@ -3462,7 +3473,7 @@ function getIndicatorUnit(ind) {
             <div class="meta-item"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
             <div class="meta-item"><b>Tipo operacional</b><span>${escapeHtml(ind.TIPO_OPERACIONAL || '-')}</span></div>
             <div class="meta-item"><b>Eixo assistencial</b><span>${escapeHtml(ind.EIXO_ASSISTENCIAL || '-')}</span></div>
-            <div class="meta-item"><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
+            <div class="meta-item"><b>Meta base</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || '-'))}</span></div>
             <div class="meta-item"><b>Polaridade</b><span>${escapeHtml(ind.POLARIDADE_META || '-')}</span></div>
             <div class="meta-item"><b>Periodicidade</b><span>${escapeHtml(ind.PERIODICIDADE || '-')}</span></div>
             <div class="meta-item"><b>Analista responsável</b><span>${escapeHtml(ind.ANALISTA_RESPONSAVEL || '-')}</span></div>
@@ -3472,6 +3483,7 @@ function getIndicatorUnit(ind) {
           <div class="steps">
             ${linkRow('Ficha técnica no Conecta', ind.LINK_FICHA_TECNICA_CONECTA, `editarLinkFichaConecta(${JSON.stringify(ind).replace(/'/g, "&apos;")})`)}
           </div>
+          ${renderMetasPeriodoSection(ind)}
           <h4 class="section-title">Resultado</h4>
           <div class="result-box">
             <div><b>Resultado atual</b><span class="result-main">${escapeHtml(valorAtual)}</span></div>
@@ -3500,7 +3512,7 @@ function getIndicatorUnit(ind) {
             </div>
           </div>
           <div class="history-list">
-            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => `<tr class="${h.comp === periodo ? 'current' : ''}"><td data-label="Competência" class="${h.hasData && !compareAgainstMeta(h.numericValue, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td data-label="Valor">${escapeHtml(h.valor)}</td><td data-label="Meta">${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</td><td data-label="Status"><span class="history-status ${h.hasData ? getStatusIndicador(h, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META).className : 'warn'}">${h.hasData ? escapeHtml(getStatusIndicador(h, metaNumerica, ind.META_OPERADOR, ind.POLARIDADE_META).label) : 'Sem registro'}</span></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
+            ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => { const mv = resolveMetaFront(ind, h.comp); const st = h.hasData ? getStatusIndicador(h, mv.meta, mv.operador, mv.polaridade) : { className: 'warn', label: 'Sem registro' }; return `<tr class="${h.comp === periodo ? 'current' : ''}"><td data-label="Competência" class="${h.hasData && !compareAgainstMeta(h.numericValue, mv.meta, mv.operador, mv.polaridade) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td data-label="Valor">${escapeHtml(h.valor)}</td><td data-label="Meta">${escapeHtml(compMetaLabel(mv))}${mv.origem === 'periodo' ? ' <span class="pill" style="padding:0 6px">vig. ' + escapeHtml(mv.vigencia) + '</span>' : ''}</td><td data-label="Status"><span class="history-status ${st.className}">${escapeHtml(st.label)}</span></td></tr>`; }).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
@@ -3536,6 +3548,112 @@ function getIndicatorUnit(ind) {
         })
         .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao salvar link: ' + (err.message || err)); })
         .atualizarIndicador({ ID_INDICADOR: ind.ID_INDICADOR, LINK_FICHA_TECNICA_CONECTA: String(values.LINK_FICHA_TECNICA_CONECTA || '').trim(), MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
+    }
+
+    /* ===================== Metas por período (CRUD na ficha do indicador) ===================== */
+    function renderMetasPeriodoSection(ind) {
+      const metas = metasDoIndicador(ind.ID_INDICADOR);
+      const linhas = metas.map(m => {
+        const mvLabel = (m.META_OPERADOR || '>=') + ' ' + (m.META || '-');
+        return `<tr>
+          <td data-label="Vigência a partir de">${escapeHtml(m.VIGENCIA_INICIO || '-')}</td>
+          <td data-label="Meta">${escapeHtml(mvLabel)}</td>
+          <td data-label="Polaridade">${escapeHtml(m.POLARIDADE_META || '-')}</td>
+          <td data-label="Ações">
+            <button class="btn secondary small" onclick='editarMetaPeriodo(${JSON.stringify(ind).replace(/'/g, "&apos;")}, ${JSON.stringify(m).replace(/'/g, "&apos;")})'>Editar</button>
+            <button class="btn secondary small" onclick='excluirMetaPeriodoUi(${JSON.stringify(ind).replace(/'/g, "&apos;")}, "${escapeHtml(m.ID_META || '')}")'>Excluir</button>
+          </td></tr>`;
+      }).join('');
+      return `
+        <h4 class="section-title">Metas por período</h4>
+        <div class="metas-periodo">
+          <div class="metas-periodo-head">
+            <span>A meta passa a valer a partir da competência informada. Sem metas por período, usa-se a meta base.</span>
+            <button class="btn small" onclick='novaMetaPeriodo(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>Adicionar meta</button>
+          </div>
+          ${metas.length
+            ? `<div class="table-wrap"><table class="audit-table"><thead><tr><th>Vigência a partir de</th><th>Meta</th><th>Polaridade</th><th>Ações</th></tr></thead><tbody>${linhas}</tbody></table></div>`
+            : '<div class="pill">Nenhuma meta por período cadastrada — usando a meta base do indicador.</div>'}
+        </div>`;
+    }
+
+    const META_OP_OPTIONS = ['>=', '>', '<=', '<', '='];
+    const META_POL_OPTIONS = ['', 'Maior é melhor', 'Menor é melhor', 'Igual ao alvo'];
+
+    async function novaMetaPeriodo(ind) {
+      const values = await ui.dialog.form({
+        title: 'Nova meta por período',
+        description: 'A meta valerá a partir da competência informada (MM/AAAA).',
+        confirmText: 'Adicionar',
+        fields: [
+          { name: 'VIGENCIA_INICIO', label: 'Vigência a partir de (MM/AAAA)', required: true, value: '', placeholder: 'Ex.: 01/2026' },
+          { name: 'META', label: 'Meta (numérica)', required: true, value: ind.META || '' },
+          { name: 'META_OPERADOR', label: 'Operador', type: 'select', value: ind.META_OPERADOR || '>=', options: META_OP_OPTIONS },
+          { name: 'POLARIDADE_META', label: 'Polaridade', type: 'select', value: ind.POLARIDADE_META || '', options: META_POL_OPTIONS }
+        ]
+      });
+      if (!values) return;
+      salvarMetaPeriodo(ind, {
+        ID_INDICADOR: ind.ID_INDICADOR,
+        VIGENCIA_INICIO: String(values.VIGENCIA_INICIO || '').trim(),
+        META: String(values.META || '').trim().replace(',', '.'),
+        META_OPERADOR: String(values.META_OPERADOR || '>=').trim(),
+        POLARIDADE_META: String(values.POLARIDADE_META || '').trim()
+      }, 'criar');
+    }
+
+    async function editarMetaPeriodo(ind, m) {
+      const values = await ui.dialog.form({
+        title: 'Editar meta por período',
+        description: 'Ajuste a vigência e os valores da meta.',
+        confirmText: 'Salvar',
+        fields: [
+          { name: 'VIGENCIA_INICIO', label: 'Vigência a partir de (MM/AAAA)', required: true, value: m.VIGENCIA_INICIO || '' },
+          { name: 'META', label: 'Meta (numérica)', required: true, value: m.META || '' },
+          { name: 'META_OPERADOR', label: 'Operador', type: 'select', value: m.META_OPERADOR || '>=', options: META_OP_OPTIONS },
+          { name: 'POLARIDADE_META', label: 'Polaridade', type: 'select', value: m.POLARIDADE_META || '', options: META_POL_OPTIONS }
+        ]
+      });
+      if (!values) return;
+      salvarMetaPeriodo(ind, {
+        ID_META: m.ID_META,
+        VIGENCIA_INICIO: String(values.VIGENCIA_INICIO || '').trim(),
+        META: String(values.META || '').trim().replace(',', '.'),
+        META_OPERADOR: String(values.META_OPERADOR || '>=').trim(),
+        POLARIDADE_META: String(values.POLARIDADE_META || '').trim()
+      }, 'editar');
+    }
+
+    function salvarMetaPeriodo(ind, payload, modo) {
+      asyncUi.start('Sincronizando com Google Sheets...');
+      const runner = google.script.run
+        .withSuccessHandler(result => {
+          asyncUi.finish();
+          const row = (result && result.data) || payload;
+          upsertLocal('metasIndicadores', 'ID_META', row);
+          showToast('Meta por período salva.', 'success');
+          showIndicador(ind);
+          scheduleBackgroundRefresh();
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao salvar meta: ' + (err.message || err)); });
+      if (modo === 'editar') runner.atualizarMetaPeriodo(payload);
+      else runner.criarMetaPeriodo(payload);
+    }
+
+    async function excluirMetaPeriodoUi(ind, idMeta) {
+      if (!idMeta) return;
+      if (!await ui.dialog.confirm('Excluir esta meta por período?')) return;
+      asyncUi.start('Sincronizando com Google Sheets...');
+      google.script.run
+        .withSuccessHandler(() => {
+          asyncUi.finish();
+          removeLocal('metasIndicadores', 'ID_META', idMeta);
+          showToast('Meta por período excluída.', 'success');
+          showIndicador(ind);
+          scheduleBackgroundRefresh();
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao excluir meta: ' + (err.message || err)); })
+        .excluirMetaPeriodo({ ID_META: idMeta });
     }
 
 
@@ -3644,6 +3762,33 @@ function getIndicatorUnit(ind) {
 
     function getStatusIndicador(item, meta, operador, polaridade){ if(!item || !item.hasData) return {label:'Sem registro', className:'warn'}; if(!Number.isFinite(meta)) return {label:'Sem meta', className:'warn'}; return compareAgainstMeta(item.numericValue, meta, operador, polaridade)?{label:'Dentro da meta',className:'ok'}:{label:'Fora da meta',className:'bad'}; }
     function getReferenciaStatus(historico){ const comDados = historico.filter(h => h.hasData); return comDados.length ? comDados[comDados.length - 1] : null; }
+
+    /* ===================== Metas por período (vigência) ===================== */
+    function metasDoIndicador(id) {
+      return ((state.data && state.data.metasIndicadores) || [])
+        .filter(m => String(m.ID_INDICADOR || '').trim() === String(id || '').trim())
+        .sort((a, b) => parseCompetencia(a.VIGENCIA_INICIO) - parseCompetencia(b.VIGENCIA_INICIO));
+    }
+    // Resolve a meta vigente do indicador na competência informada.
+    function resolveMetaFront(ind, comp) {
+      const base = { meta: parseNumericValue(ind.META), operador: ind.META_OPERADOR || '>=', polaridade: ind.POLARIDADE_META || '', vigencia: '', origem: 'base' };
+      const compK = parseCompetencia(comp);
+      const metas = metasDoIndicador(ind.ID_INDICADOR);
+      if (!compK || !metas.length) return base;
+      let chosen = null;
+      metas.forEach(m => {
+        if (normalize(m.ATIVO || 'SIM') === 'NAO') return;
+        const k = parseCompetencia(m.VIGENCIA_INICIO);
+        if (!k || k > compK) return;
+        if (!chosen || k > chosen.k) chosen = { k, m };
+      });
+      if (!chosen) return base;
+      return { meta: parseNumericValue(chosen.m.META), operador: chosen.m.META_OPERADOR || base.operador, polaridade: chosen.m.POLARIDADE_META || '', vigencia: chosen.m.VIGENCIA_INICIO, origem: 'periodo' };
+    }
+    function compMetaLabel(mv) {
+      if (!mv || !Number.isFinite(mv.meta)) return 'Não informada';
+      return (mv.operador || '>=') + ' ' + formatNumberBR(mv.meta);
+    }
     function buildMiniSparkline(historico, meta){
       const pontos = historico.filter(h => h.hasData);
       if (!pontos.length) {

@@ -42,6 +42,10 @@ const SIGEP = {
     'OBSERVACOES', 'ATIVO', 'ULTIMA_ATUALIZACAO'
   ],
   gestorSensitiveColumns: ['CPF', 'TELEFONE', 'NOTIFICA_LOGIN', 'NOTIFICA_SENHA'],
+  metaColumns: [
+    'ID_META', 'ID_INDICADOR', 'VIGENCIA_INICIO', 'META', 'META_OPERADOR',
+    'POLARIDADE_META', 'ATIVO', 'ULTIMA_ATUALIZACAO'
+  ],
   statusPadrao: ['Não iniciado', 'Em andamento', 'Concluído', 'Não se aplica'],
   featureFlags: {
     PROCESSOS: { sheet: 'CONFIG_FEATURE_FLAGS', key: 'MODULO_PROCESSOS', defaultValue: true },
@@ -56,6 +60,7 @@ const SIGEP = {
     acompanhamento: 'BASE_ACOMPANHAMENTO',
     indicadores: 'BASE_INDICADORES',
     lancamentos: 'BASE_LANCAMENTOS_INDICADORES',
+    metas: 'BASE_METAS_INDICADORES',
     unidades: 'BASE_UNIDADES',
     mapeamento: 'BASE_MAPEAMENTO',
     gestores: 'BASE_GESTORES',
@@ -229,6 +234,18 @@ function excluirIndicador(payload) {
   return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.remove(payload)));
 }
 
+function criarMetaPeriodo(payload) {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.criarMetaPeriodo(payload)));
+}
+
+function atualizarMetaPeriodo(payload) {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.atualizarMetaPeriodo(payload)));
+}
+
+function excluirMetaPeriodo(payload) {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.excluirMetaPeriodo(payload)));
+}
+
 function getMapeamento() {
   const app = new SigepApplication();
   return app.mapeamento.list();
@@ -351,6 +368,23 @@ function clearSigepRuntimeCache_() {
   }
 }
 
+// Converte competência (MM/AAAA, MM/AA, mmm/aa) em chave ordenável (ano*12+mês).
+function competenciaKey_(raw) {
+  const s = String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!s) return 0;
+  const meses = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
+  let mes = 0, ano = 0;
+  let m = s.match(/^(\d{1,2})[\/-](\d{2}|\d{4})$/);
+  if (m) { mes = Number(m[1]); ano = Number(m[2]); }
+  else {
+    m = s.match(/^([a-zç]{3})\.?[\/-]?(\d{2}|\d{4})$/);
+    if (m && meses[m[1]]) { mes = meses[m[1]]; ano = Number(m[2]); }
+  }
+  if (!mes || !ano || mes < 1 || mes > 12) return 0;
+  if (ano < 100) ano += 2000;
+  return ano * 12 + mes;
+}
+
 class SigepApplication {
   constructor() {
     this.repo = new SheetRepository();
@@ -379,6 +413,7 @@ class SigepApplication {
     const acompanhamento = featureFlags.ACOMPANHAMENTO ? this.auth.applyDataScope(this.acompanhamento.list(), user) : [];
     const indicadores = featureFlags.INDICADORES ? this.auth.applyDataScope(this.indicadores.list(), user) : [];
     const lancamentos = featureFlags.INDICADORES ? this.indicadores.listLancamentos() : [];
+    const metasIndicadores = featureFlags.INDICADORES ? this.indicadores.listMetasPeriodo() : [];
     const unidades = this.repo.getObjects(SIGEP.sheets.unidades);
     const mapeamento = featureFlags.MAPEAMENTO ? this.mapeamento.listRows() : [];
     const result = {
@@ -393,6 +428,7 @@ class SigepApplication {
       acompanhamento,
       indicadores,
       lancamentos,
+      metasIndicadores,
       unidades,
       mapeamento,
       featureFlags
@@ -1192,16 +1228,21 @@ class IndicadorService {
       if (payload[k] !== undefined) patch[k] = payload[k];
     });
     // Justificativa obrigatória quando o resultado fica fora da meta (governança de desvios).
+    // Usa a meta vigente na competência do lançamento (metas por período).
     if (patch.VALOR !== undefined) {
       const ind = this.repo.getObjects(SIGEP.sheets.indicadores)
         .find(r => String(r.ID_INDICADOR || '').trim() === String(payload.ID_INDICADOR).trim());
       const valorNum = IndicadorService.parseNum_(patch.VALOR);
-      const metaNum = ind ? IndicadorService.parseNum_(ind.META) : NaN;
-      if (ind && Number.isFinite(valorNum) && Number.isFinite(metaNum)) {
-        const dentro = IndicadorService.metaAtingida_(valorNum, metaNum, ind.META_OPERADOR, ind.POLARIDADE_META);
-        const justificativa = String(patch.OBSERVACAO !== undefined ? patch.OBSERVACAO : (before.OBSERVACAO || '')).trim();
-        if (!dentro && !justificativa) {
-          throw new Error('Resultado fora da meta: a observação/justificativa é obrigatória para registrar o desvio.');
+      if (ind && Number.isFinite(valorNum)) {
+        const metasInd = this.listMetasPeriodo().filter(mt => String(mt.ID_INDICADOR || '').trim() === String(payload.ID_INDICADOR).trim());
+        const vig = IndicadorService.resolveMeta_(ind, comp, metasInd);
+        const metaNum = IndicadorService.parseNum_(vig.meta);
+        if (Number.isFinite(metaNum)) {
+          const dentro = IndicadorService.metaAtingida_(valorNum, metaNum, vig.operador, vig.polaridade);
+          const justificativa = String(patch.OBSERVACAO !== undefined ? patch.OBSERVACAO : (before.OBSERVACAO || '')).trim();
+          if (!dentro && !justificativa) {
+            throw new Error('Resultado fora da meta: a observação/justificativa é obrigatória para registrar o desvio.');
+          }
         }
       }
     }
@@ -1244,6 +1285,107 @@ class IndicadorService {
     if (op === '<=') return valor <= meta;
     if (op === '=') return valor === meta;
     return valor >= meta;
+  }
+
+  // Resolve a meta vigente em uma competência: a meta por período com a maior
+  // VIGENCIA_INICIO <= competência; se não houver, a meta base do indicador.
+  static resolveMeta_(indicador, competencia, metasDoIndicador) {
+    const base = {
+      meta: (indicador && indicador.META) || '',
+      operador: (indicador && indicador.META_OPERADOR) || '>=',
+      polaridade: (indicador && indicador.POLARIDADE_META) || '',
+      vigencia: '',
+      origem: 'base'
+    };
+    const compK = competenciaKey_(competencia);
+    if (!compK || !Array.isArray(metasDoIndicador) || !metasDoIndicador.length) return base;
+    let escolhido = null;
+    metasDoIndicador.forEach(mt => {
+      if (String(mt.ATIVO || 'SIM').toUpperCase() === 'NAO' || String(mt.ATIVO || 'SIM').toUpperCase() === 'NÃO') return;
+      const k = competenciaKey_(mt.VIGENCIA_INICIO);
+      if (!k || k > compK) return;
+      if (!escolhido || k > escolhido.k) escolhido = { k, mt };
+    });
+    if (!escolhido) return base;
+    return {
+      meta: escolhido.mt.META,
+      operador: escolhido.mt.META_OPERADOR || base.operador,
+      polaridade: escolhido.mt.POLARIDADE_META || '',
+      vigencia: escolhido.mt.VIGENCIA_INICIO || '',
+      origem: 'periodo'
+    };
+  }
+
+  listMetasPeriodo() {
+    return this.repo.getObjectsSafe(SIGEP.sheets.metas, [])
+      .filter(r => String(r.ID_INDICADOR || '').trim());
+  }
+
+  ensureMetasSheet_() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(SIGEP.sheets.metas);
+    if (!sh) {
+      sh = ss.insertSheet(SIGEP.sheets.metas);
+      sh.getRange(1, 1, 1, SIGEP.metaColumns.length).setValues([SIGEP.metaColumns]);
+      this.repo.headersCache[SIGEP.sheets.metas] = SIGEP.metaColumns.slice();
+      delete this.repo.objectsCache[SIGEP.sheets.metas];
+    }
+    return sh;
+  }
+
+  criarMetaPeriodo(payload) {
+    this.ensureMetasSheet_();
+    const idInd = String(payload && payload.ID_INDICADOR || '').trim();
+    const vigencia = String(payload && payload.VIGENCIA_INICIO || '').trim();
+    const meta = String(payload && payload.META || '').trim();
+    if (!idInd) throw new Error('ID_INDICADOR obrigatório.');
+    if (!competenciaKey_(vigencia)) throw new Error('VIGENCIA_INICIO inválida. Use MM/AAAA.');
+    if (!meta || !Number.isFinite(IndicadorService.parseNum_(meta))) throw new Error('META numérica obrigatória.');
+    const row = {
+      ID_META: this.generateMetaId_(),
+      ID_INDICADOR: idInd,
+      VIGENCIA_INICIO: vigencia,
+      META: meta,
+      META_OPERADOR: String(payload.META_OPERADOR || '>=').trim(),
+      POLARIDADE_META: String(payload.POLARIDADE_META || '').trim(),
+      ATIVO: 'SIM',
+      ULTIMA_ATUALIZACAO: this.repo.formatDateOperational(new Date())
+    };
+    const saved = this.repo.insertObject(SIGEP.sheets.metas, row, 'ID_META');
+    this.audit.logChange({ acao: 'CRIAR_META_PERIODO', entidade: 'INDICADOR', id: idInd, before: null, after: saved, patch: row, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || ('Meta vigente a partir de ' + vigencia) });
+    return { ok: true, data: saved };
+  }
+
+  atualizarMetaPeriodo(payload) {
+    this.ensureMetasSheet_();
+    const id = String(payload && payload.ID_META || '').trim();
+    if (!id) throw new Error('ID_META obrigatório.');
+    const patch = {};
+    ['VIGENCIA_INICIO', 'META', 'META_OPERADOR', 'POLARIDADE_META', 'ATIVO'].forEach(k => {
+      if (payload[k] !== undefined) patch[k] = payload[k];
+    });
+    if (patch.VIGENCIA_INICIO !== undefined && !competenciaKey_(patch.VIGENCIA_INICIO)) throw new Error('VIGENCIA_INICIO inválida. Use MM/AAAA.');
+    if (patch.META !== undefined && !Number.isFinite(IndicadorService.parseNum_(patch.META))) throw new Error('META numérica obrigatória.');
+    patch.ULTIMA_ATUALIZACAO = this.repo.formatDateOperational(new Date());
+    const current = this.repo.getById(SIGEP.sheets.metas, 'ID_META', id);
+    const updated = this.repo.updateById(SIGEP.sheets.metas, 'ID_META', id, patch, current);
+    this.audit.logChange({ acao: 'ATUALIZAR_META_PERIODO', entidade: 'INDICADOR', id: current.ID_INDICADOR || id, before: current, after: updated, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
+    return { ok: true, data: updated };
+  }
+
+  excluirMetaPeriodo(payload) {
+    this.ensureMetasSheet_();
+    const id = String(payload && payload.ID_META || '').trim();
+    if (!id) throw new Error('ID_META obrigatório.');
+    const current = this.repo.getById(SIGEP.sheets.metas, 'ID_META', id);
+    this.repo.deleteById(SIGEP.sheets.metas, 'ID_META', id);
+    this.audit.logChange({ acao: 'EXCLUIR_META_PERIODO', entidade: 'INDICADOR', id: current.ID_INDICADOR || id, before: current, after: null, patch: null, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
+    return { ok: true };
+  }
+
+  generateMetaId_() {
+    const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.metas, 'ID_META');
+    return `META-${String(max + 1).padStart(4, '0')}`;
   }
 }
 
@@ -1912,19 +2054,7 @@ class GovernanceService {
 
   // Converte competência (MM/AAAA, MM/AA, mmm/aa) em chave ordenável (ano*12+mês).
   compKey_(raw) {
-    const s = String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
-    if (!s) return 0;
-    const meses = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
-    let mes = 0, ano = 0;
-    let m = s.match(/^(\d{1,2})[\/-](\d{2}|\d{4})$/);
-    if (m) { mes = Number(m[1]); ano = Number(m[2]); }
-    else {
-      m = s.match(/^([a-zç]{3})\.?[\/-]?(\d{2}|\d{4})$/);
-      if (m && meses[m[1]]) { mes = meses[m[1]]; ano = Number(m[2]); }
-    }
-    if (!mes || !ano || mes < 1 || mes > 12) return 0;
-    if (ano < 100) ano += 2000;
-    return ano * 12 + mes;
+    return competenciaKey_(raw);
   }
 }
 
