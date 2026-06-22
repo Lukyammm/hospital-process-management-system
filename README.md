@@ -44,6 +44,41 @@ The repository documentation and guide images use fictitious sample data only.
 - Google Apps Script
 - Google Sheets
 
+## Modules
+
+- **Acompanhamento** — tracking by unit, scheduling and stage progress.
+- **Modelagem de Processos** — modeling/validation/publication pipeline.
+- **Mapeamento** — value chain board (management / core / support processes).
+- **Indicadores** — KPI portfolio with targets, polarity, periodicity and filters.
+- **Administração** — users, managers (Gestores), sectors and data sanitation.
+
+## Architecture
+
+- **Frontend:** single `index.html` (HTML/CSS/vanilla JS) served by `HtmlService`.
+- **Backend:** `Code.gs` — layered (`SheetRepository`, domain services,
+  `SigepApplication`) with `LockService` for writes, `CacheService` for reads,
+  RBAC by profile and an audit trail in the `HISTORICO` sheet.
+- **Data store:** Google Sheets (`BASE_*` tables).
+
+## Development & tests
+
+Tests are dependency‑free (Node only) and run both business‑logic checks on
+`Code.gs` and a DOM‑stub smoke test on `index.html` (covering the load‑failure
+path so the UI can never become unresponsive again):
+
+```bash
+node tests/run.js   # or: npm test
+```
+
+CI runs the same suite on every push to `main` and on every pull request
+(`.github/workflows/ci.yml`).
+
+## Deployment
+
+This is a Google Apps Script Web App. After merging changes you must
+**create a new deployment** (Apps Script → Deploy) for the published Web App to
+serve the updated code — merging to `main` alone does not republish it.
+
 ## Status
 
-Completed
+Active — continuously maintained.
