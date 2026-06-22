@@ -1,0 +1,9 @@
+{
+  "name": "sigep-huc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SIGEP-HUC — Sistema de Gestão Estratégica de Processos Hospitalares (Google Apps Script + Sheets).",
+  "scripts": {
+    "test": "node tests/run.js"
+  }
+}

@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    name: Testes e qualidade
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Sem dependências externas: o runner usa apenas Node (vm + DOM stub).
+      - name: Rodar testes (regras de negócio + smoke de UI)
+        run: node tests/run.js
