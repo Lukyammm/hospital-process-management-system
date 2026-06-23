@@ -26,7 +26,8 @@ const SIGEP = {
       BASE_INDICADORES: [
         'META_OPERADOR', 'POLARIDADE_META', 'PERIODICIDADE',
         'CATEGORIA_INDICADOR', 'TIPO_OPERACIONAL', 'EIXO_ASSISTENCIAL',
-        'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA'
+        'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA',
+        'LINK_PLANILHA_GESTAO', 'ABA_PLANILHA_GESTAO', 'FONTE_LANCAMENTO'
       ],
       BASE_ACOMPANHAMENTO: ['LINK_PLANILHA_GESTAO']
     }
@@ -232,6 +233,24 @@ function excluirProcesso(payload) {
 
 function excluirIndicador(payload) {
   return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.remove(payload)));
+}
+
+function listarAbasPlanilhaIndicador(url) {
+  const app = new SigepApplication();
+  const abas = app.indicadores.listarAbas_(url);
+  return { ok: true, abas };
+}
+
+function salvarAbaPlanilhaIndicador(payload) {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.salvarAbaPlanilha(payload)));
+}
+
+function importarTodosLancamentosAutomatico() {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => {
+    app.indicadores.importarTodosLancamentos();
+    const lancamentos = app.indicadores.listLancamentos();
+    return { ok: true, lancamentos };
+  }));
 }
 
 function criarMetaPeriodo(payload) {
@@ -596,6 +615,8 @@ class DomainNormalizer {
       ANALISTA_RESPONSAVEL: this.asText(raw.ANALISTA_RESPONSAVEL),
       GESTOR_RESPONSAVEL: this.asText(raw.GESTOR_RESPONSAVEL),
       LINK_FICHA_TECNICA_CONECTA: this.asText(raw.LINK_FICHA_TECNICA_CONECTA),
+      LINK_PLANILHA_GESTAO: this.asText(raw.LINK_PLANILHA_GESTAO),
+      ABA_PLANILHA_GESTAO: this.asText(raw.ABA_PLANILHA_GESTAO),
       RESULTADO_ESPERADO: this.asText(raw.RESULTADO_ESPERADO)
     };
   }
@@ -1262,6 +1283,114 @@ class IndicadorService {
   generateId_() {
     const max = this.repo.getMaxNumericSuffix_(SIGEP.sheets.indicadores, 'ID_INDICADOR');
     return `IND-${String(max + 1).padStart(4, '0')}`;
+  }
+
+  salvarAbaPlanilha(payload) {
+    if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
+    const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
+    const patch = {
+      LINK_PLANILHA_GESTAO: String(payload.LINK_PLANILHA_GESTAO || '').trim(),
+      ABA_PLANILHA_GESTAO: String(payload.ABA_PLANILHA_GESTAO || '').trim()
+    };
+    const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch, current);
+    this.audit.logChange({ acao: 'CONFIGURAR_PLANILHA_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch, origem: 'INDICADORES', motivo: 'Configuração de planilha de gestão' });
+    // Importa imediatamente após salvar
+    this.importarLancamentos_(Object.assign({}, current, patch));
+    return { ok: true, data: updated };
+  }
+
+  listarAbas_(url) {
+    const ss = SpreadsheetApp.openByUrl(url);
+    const sheets = ss.getSheets();
+    const normalizeStr = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+    const valid = [];
+    sheets.forEach(sh => {
+      try {
+        const lastCol = sh.getLastColumn();
+        const lastRow = sh.getLastRow();
+        if (lastRow < 4 || lastCol < 1) return;
+
+        // Testa A4:B4 para "META"
+        const a4b4 = sh.getRange(4, 1, 1, Math.min(2, lastCol)).getDisplayValues()[0].join(' ');
+        const hasMeta = normalizeStr(a4b4).indexOf('META') > -1;
+
+        // Testa G4:I4 para "RESPONSÁVEL PELA META:"
+        let hasResp = false;
+        if (lastCol >= 9) {
+          const g4i4 = sh.getRange(4, 7, 1, 3).getDisplayValues()[0].join(' ');
+          hasResp = normalizeStr(g4i4).indexOf('RESPONSAVEL PELA META') > -1;
+        }
+
+        if (hasMeta || hasResp) valid.push(sh.getName());
+      } catch (e) { /* aba inacessível, ignora */ }
+    });
+    return valid;
+  }
+
+  deleteLancamentosDaPlanilha_(indicadorId) {
+    const sheetName = SIGEP.sheets.lancamentos;
+    const sheet = this.repo.getSheet(sheetName);
+    const headers = this.repo.getHeaders(sheetName);
+    const idIdx = headers.indexOf('ID_INDICADOR');
+    const fonteIdx = headers.indexOf('FONTE');
+    if (idIdx === -1) return;
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    const rowsToDelete = [];
+    values.forEach((row, i) => {
+      const rowId = String(row[idIdx] || '').trim();
+      const fonte = fonteIdx > -1 ? String(row[fonteIdx] || '').trim() : '';
+      if (rowId === String(indicadorId).trim() && fonte === 'PLANILHA_GESTAO') {
+        rowsToDelete.push(i + 2);
+      }
+    });
+    // Deleta de baixo pra cima pra não deslocar índices
+    rowsToDelete.reverse().forEach(rowNum => sheet.deleteRow(rowNum));
+    delete this.repo.objectsCache[sheetName];
+  }
+
+  importarLancamentos_(indicador) {
+    const url = String(indicador.LINK_PLANILHA_GESTAO || '').trim();
+    const aba = String(indicador.ABA_PLANILHA_GESTAO || '').trim();
+    if (!url || !aba) return 0;
+    try {
+      const ss = SpreadsheetApp.openByUrl(url);
+      const sheet = ss.getSheetByName(aba);
+      if (!sheet) return 0;
+      const lastRow = sheet.getLastRow();
+      if (lastRow < 5) return 0;
+      const numRows = lastRow - 4;
+      // V=22, W=23, X=24, Y=25 (1-indexed)
+      const data = sheet.getRange(5, 22, numRows, 4).getValues();
+      const novas = data
+        .filter(r => r[0] !== null && r[0] !== undefined && String(r[0]).trim() !== '')
+        .map(r => ({
+          ID_INDICADOR: indicador.ID_INDICADOR,
+          COMPETENCIA: String(r[0]).trim(),
+          NUMERADOR: r[1] !== '' && r[1] !== null ? String(r[1]) : '',
+          DENOMINADOR: r[2] !== '' && r[2] !== null ? String(r[2]) : '',
+          VALOR: r[3] !== '' && r[3] !== null ? String(r[3]) : '',
+          FONTE: 'PLANILHA_GESTAO'
+        }));
+      if (!novas.length) return 0;
+      this.deleteLancamentosDaPlanilha_(indicador.ID_INDICADOR);
+      novas.forEach(lan => {
+        try { this.repo.insertObject(SIGEP.sheets.lancamentos, lan, 'ID_INDICADOR'); } catch (e) { /* ignora linha com erro */ }
+      });
+      return novas.length;
+    } catch (e) {
+      console.error('importarLancamentos_ error for ' + indicador.ID_INDICADOR + ': ' + e.message);
+      return 0;
+    }
+  }
+
+  importarTodosLancamentos() {
+    const inds = this.repo.getObjects(SIGEP.sheets.indicadores)
+      .filter(ind => String(ind.ABA_PLANILHA_GESTAO || '').trim() && String(ind.LINK_PLANILHA_GESTAO || '').trim());
+    let total = 0;
+    inds.forEach(ind => { total += this.importarLancamentos_(ind); });
+    return total;
   }
 
   // Converte texto (ex.: ">= 90", "92,3%", "1.234,5") em número.
