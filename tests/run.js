@@ -198,6 +198,9 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
       'Mapeamento mostra maturidade por processo');
     const grid = getEl('indicatorGrid');
     assert(grid && /Taxa X/.test(grid.innerHTML), 'Indicadores renderiza a lista');
+    const gov = getEl('govKpis');
+    assert(gov && /gov-card/.test(gov.innerHTML) && /Maturidade média do mapa/.test(gov.innerHTML),
+      'Dashboard renderiza o bloco de governança');
   })();
 
   // Caminho de falha — a navegação precisa sobreviver

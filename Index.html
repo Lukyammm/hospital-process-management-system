@@ -1533,6 +1533,29 @@
     .audit-table th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
     .audit-filterbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
     .audit-filterbar input, .audit-filterbar select { border:1px solid var(--line-strong); border-radius:10px; padding:8px 10px; font-size:13px; background:var(--surface); }
+    /* Abas dentro do drawer (ficha do indicador) */
+    .drawer-tabs { display:flex; gap:4px; flex-wrap:wrap; border-bottom:1px solid var(--line); margin:6px 0 16px; }
+    .drawer-tab-btn { background:transparent; border:none; border-bottom:2px solid transparent; padding:9px 14px; font-size:.88rem; font-weight:600; color:var(--muted); cursor:pointer; border-radius:8px 8px 0 0; }
+    .drawer-tab-btn:hover { color:var(--text); background:var(--surface-field); }
+    .drawer-tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
+    .drawer-tab[hidden] { display:none; }
+    /* Dashboard — bloco de governança */
+    .gov-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px; margin-bottom:18px; }
+    .gov-card { text-align:left; cursor:pointer; border:1px solid var(--line); border-left-width:5px; border-radius:var(--radius); background:var(--surface-card); padding:16px 18px; display:flex; flex-direction:column; gap:3px; box-shadow:var(--shadow-sm); transition:transform var(--ease), box-shadow var(--ease); }
+    .gov-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+    .gov-card strong { font-size:1.9rem; line-height:1; color:var(--ink); }
+    .gov-card span { font-weight:700; color:var(--text); font-size:.9rem; }
+    .gov-card small { color:var(--muted); font-size:.74rem; }
+    .gov-card.ok { border-left-color:var(--success); }
+    .gov-card.warn { border-left-color:var(--warning); }
+    .gov-card.bad { border-left-color:var(--danger); }
+    .gov-card.bad strong { color:var(--danger); }
+    /* Menu de ações (overflow) */
+    .menu-wrap { position:relative; display:inline-block; }
+    .menu-pop { position:absolute; right:0; top:calc(100% + 6px); background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); padding:6px; min-width:210px; display:none; z-index:25; flex-direction:column; gap:2px; }
+    .menu-wrap.open .menu-pop { display:flex; }
+    .menu-pop button { text-align:left; background:transparent; border:none; padding:9px 12px; border-radius:8px; font-size:.86rem; cursor:pointer; color:var(--text); }
+    .menu-pop button:hover { background:var(--surface-field); }
     /* Metas por período */
     .metas-periodo { border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px; background:var(--surface-soft); }
     .metas-periodo-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
@@ -1624,6 +1647,7 @@
         <div class="work-queue" id="workQueue"></div>
         <div class="ops-alert" id="opsAlert">Carregando priorização operacional...</div>
         <div class="kpi-grid" id="kpis"></div>
+        <div class="gov-grid" id="govKpis"></div>
         <div class="panel">
           <div class="panel-head"><div><h3>Resumo de acompanhamento</h3><span>Unidades com suas datas/status preservados</span></div></div>
           <div class="content-pad" id="dashboardAcompanhamento"></div>
@@ -1667,7 +1691,7 @@
         <div class="panel">
           <div class="panel-head indicator-head-clean">
             <div><h3>Indicadores</h3><span>Monitoramento analítico hospitalar com foco operacional</span></div>
-            <div class="actions"><button class="btn secondary indicator-advanced-toggle" id="toggleFiltrosBtn" aria-expanded="false" aria-controls="indicatorFilterShell" onclick="toggleIndicadorFiltro()">Filtros avançados</button><button class="btn secondary" onclick="abrirFilaPreenchimento()">Fila de preenchimento</button><button class="btn secondary" onclick="exportIndicadoresCsv()">Exportar CSV</button><button class="btn secondary" onclick="novoIndicador()">Novo indicador</button></div>
+            <div class="actions"><button class="btn secondary indicator-advanced-toggle" id="toggleFiltrosBtn" aria-expanded="false" aria-controls="indicatorFilterShell" onclick="toggleIndicadorFiltro()">Filtros avançados</button><div class="menu-wrap"><button class="btn secondary" aria-haspopup="true" aria-expanded="false" onclick="toggleActionMenu(event)">Mais ações ▾</button><div class="menu-pop" role="menu"><button role="menuitem" onclick="closeActionMenus(); abrirFilaPreenchimento()">Fila de preenchimento</button><button role="menuitem" onclick="closeActionMenus(); exportIndicadoresCsv()">Exportar CSV (filtrado)</button></div></div><button class="btn secondary" onclick="novoIndicador()">Novo indicador</button></div>
           </div>
           <div class="content-pad indicators-layout">
             <div class="indicator-main-area">
@@ -1978,8 +2002,9 @@
           if (e.target === drawer) ui.closeDrawer();
         });
         document.addEventListener('keydown', e => {
-          if (e.key === 'Escape') ui.closeDrawer();
+          if (e.key === 'Escape') { ui.closeDrawer(); closeActionMenus(); }
         });
+        document.addEventListener('click', closeActionMenus);
         loadData();
       },
       applyTheme(theme) {
@@ -2249,11 +2274,50 @@
       ];
       document.getElementById('workQueue').innerHTML = queue.map(q => `<button class="task-chip ${state.taskFilter===q[0]?'active':''}" onclick="setTaskFilter('${q[0]}')">${q[1]}</button>`).join('');
       document.getElementById('opsAlert').textContent = buildOpsAlert();
+      renderGovKpis();
       document.getElementById('dashboardAcompanhamento').innerHTML = renderUnitCards(getGroupedAcompanhamento().slice(0, 4));
     }
 
+    // Indicadores fora da meta na última competência com dados (usa meta vigente).
+    function countIndicadoresForaDaMeta() {
+      let fora = 0;
+      (state.data.indicadores || []).forEach(ind => {
+        const lans = (state.data.lancamentos || []).filter(l => String(l.ID_INDICADOR || '') === String(ind.ID_INDICADOR));
+        const comDados = lans
+          .map(l => ({ comp: resolvePeriodoLabel(l) || l.COMPETENCIA, num: parseNumericValue(l.VALOR) }))
+          .filter(l => Number.isFinite(l.num) && parseCompetencia(l.comp) > 0)
+          .sort((a, b) => parseCompetencia(a.comp) - parseCompetencia(b.comp));
+        if (!comDados.length) return;
+        const ultimo = comDados[comDados.length - 1];
+        const mv = resolveMetaFront(ind, ultimo.comp);
+        if (Number.isFinite(mv.meta) && !compareAgainstMeta(ultimo.num, mv.meta, mv.operador, mv.polaridade)) fora++;
+      });
+      return fora;
+    }
+    function maturidadeMediaMapa() {
+      const itens = state.data.mapeamento || [];
+      if (!itens.length) return null;
+      const soma = itens.reduce((acc, r) => acc + computeMaturidade(r.NOME_PROCESSO).score, 0);
+      return Math.round(soma / itens.length);
+    }
+    function renderGovKpis() {
+      const host = document.getElementById('govKpis');
+      if (!host) return;
+      const fora = countIndicadoresForaDaMeta();
+      const pend = getPendenciasPreenchimento(new Date()).length;
+      const mat = maturidadeMediaMapa();
+      const cards = [
+        { value: fora, label: 'Indicadores fora da meta', detail: 'última competência', cls: fora > 0 ? 'bad' : 'ok', action: "ui.setView('indicadores')" },
+        { value: pend, label: 'Pendências de preenchimento', detail: 'período corrente', cls: pend > 0 ? 'warn' : 'ok', action: 'abrirFilaPreenchimento()' },
+        { value: mat == null ? '—' : mat + '%', label: 'Maturidade média do mapa', detail: 'modelagem + indicadores + ficha + publicação', cls: mat == null ? '' : (mat >= 70 ? 'ok' : mat >= 40 ? 'warn' : 'bad'), action: "ui.setView('mapeamento')" }
+      ];
+      host.innerHTML = cards.map(c => `<button class="gov-card ${c.cls}" onclick="${c.action}"><strong>${escapeHtml(String(c.value))}</strong><span>${escapeHtml(c.label)}</span><small>${escapeHtml(c.detail)}</small></button>`).join('');
+    }
+
     function renderAcompanhamento() {
-      document.getElementById('acompGrid').innerHTML = renderUnitCards(getGroupedAcompanhamento());
+      const groups = getGroupedAcompanhamento();
+      state.filteredAcompanhamento = groups.reduce((acc, g) => acc.concat(g.items || []), []);
+      document.getElementById('acompGrid').innerHTML = renderUnitCards(groups);
     }
 
     function getGroupedAcompanhamento() {
@@ -2312,6 +2376,7 @@
       rows = filterRows(rows, ['SETOR', 'TIPO_PROCESSO', 'PROCESSO', 'STATUS_GERAL']);
       if (state.filtroTipoProcesso) rows = rows.filter(x => x.TIPO_PROCESSO === state.filtroTipoProcesso);
       rows = rows.filter(x => passTaskFilter(x, 'proc'));
+      state.filteredProcessos = rows;
       const total = rows.length;
       const emModelagem = rows.filter(p => normalizeStatus(p.MODELAGEM_REALIZADA) === 'SIM').length;
       const emValidacao = rows.filter(p => normalizeStatus(p.VALIDACAO_NUGESP) === 'SIM' || normalizeStatus(p.VALIDACAO_DIRECAO) === 'SIM').length;
@@ -2404,6 +2469,7 @@
       if (!board) return;
       let rows = (state.data.mapeamento || []).slice();
       rows = filterRows(rows, ['NOME_PROCESSO', 'GRUPO_PROCESSO', 'STATUS', 'RESPONSAVEL', 'ANALISTA']);
+      state.filteredMapeamento = rows;
       const seedBtn = document.getElementById('mapSeedBtn');
       const hasAny = (state.data.mapeamento || []).length > 0;
       if (seedBtn) seedBtn.style.display = (!hasAny && isAdminUser()) ? '' : 'none';
@@ -2674,6 +2740,23 @@
       return String(acao || '').replace(/_/g, ' ').toLowerCase();
     }
 
+    /* ===================== Menu de ações (overflow) ===================== */
+    function toggleActionMenu(e) {
+      e.stopPropagation();
+      const wrap = e.currentTarget.closest('.menu-wrap');
+      if (!wrap) return;
+      const open = wrap.classList.contains('open');
+      closeActionMenus();
+      if (!open) { wrap.classList.add('open'); e.currentTarget.setAttribute('aria-expanded', 'true'); }
+    }
+    function closeActionMenus() {
+      document.querySelectorAll('.menu-wrap.open').forEach(w => {
+        w.classList.remove('open');
+        const b = w.querySelector('[aria-haspopup]');
+        if (b) b.setAttribute('aria-expanded', 'false');
+      });
+    }
+
     /* ===================== Exportação CSV ===================== */
     function csvCell(v) {
       const s = String(v == null ? '' : v);
@@ -2691,38 +2774,29 @@
       URL.revokeObjectURL(url);
       showToast('Exportação gerada: ' + filename, 'success');
     }
+    // Exporta a lista FILTRADA (o que está na tela); cai para a base completa se ainda não renderizou.
     function exportIndicadoresCsv() {
       const cols = ['ID_INDICADOR', 'NOME_INDICADOR', 'PROCESSO', 'UNIDADE', 'CATEGORIA', 'TIPO_INDICADOR', 'TIPO_OPERACIONAL', 'EIXO_ASSISTENCIAL', 'META_OPERADOR', 'META', 'POLARIDADE_META', 'PERIODICIDADE', 'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA'];
-      const rows = (state.data.indicadores || []).map(r => cols.map(c => r[c] || ''));
-      downloadCsv('indicadores.csv', cols, rows);
+      const src = state.filteredIndicadores || state.data.indicadores || [];
+      downloadCsv('indicadores.csv', cols, src.map(r => cols.map(c => r[c] || '')));
     }
     function exportProcessosCsv() {
       const cols = ['ID_PROCESSO', 'PROCESSO', 'TIPO_PROCESSO', 'STATUS_GERAL', 'MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
-      const rows = (state.data.processos || []).map(r => cols.map(c => r[c] || ''));
-      downloadCsv('processos.csv', cols, rows);
+      const src = state.filteredProcessos || state.data.processos || [];
+      downloadCsv('processos.csv', cols, src.map(r => cols.map(c => r[c] || '')));
     }
     function exportAcompanhamentoCsv() {
       const cols = ['ID_ACOMPANHAMENTO', 'UNIDADE', 'DATA_AGENDAMENTO', 'STATUS_AGENDAMENTO', 'STATUS_GERAL', 'PROGRESSO_PERCENTUAL', 'INTRODUCAO', 'PERFIL', 'FLUXO_PROCESSO', 'MODELAGEM', 'INDICADORES', 'FICHA_TECNICA_INDICADORES', 'LINK_PLANILHA_GESTAO'];
-      const rows = (state.data.acompanhamento || []).map(r => cols.map(c => r[c] || ''));
-      downloadCsv('acompanhamento.csv', cols, rows);
+      const src = state.filteredAcompanhamento || state.data.acompanhamento || [];
+      downloadCsv('acompanhamento.csv', cols, src.map(r => cols.map(c => r[c] || '')));
     }
     function exportMapeamentoCsv() {
       const cols = ['ID_MAPEAMENTO', 'NOME_PROCESSO', 'GRUPO_PROCESSO', 'STATUS', 'RESPONSAVEL', 'ANALISTA', 'LINK_PLANILHA', 'LINK_CONECTA', 'COMENTARIO'];
-      const rows = (state.data.mapeamento || []).map(r => cols.map(c => r[c] || ''));
-      downloadCsv('mapeamento.csv', cols, rows);
+      const src = state.filteredMapeamento || state.data.mapeamento || [];
+      downloadCsv('mapeamento.csv', cols, src.map(r => cols.map(c => r[c] || '')));
     }
 
     /* ===================== Fila de preenchimento de indicadores ===================== */
-    function latestCompetenciaInfo() {
-      const lans = state.data && state.data.lancamentos || [];
-      let key = 0, label = '';
-      lans.forEach(l => {
-        const c = resolvePeriodoLabel(l) || l.COMPETENCIA;
-        const k = parseCompetencia(c);
-        if (k > key) { key = k; label = c; }
-      });
-      return { key, label };
-    }
     function isIndicadorMeu(ind) {
       const meEmail = normalize(state.data && state.data.user || '');
       const meNome = normalize(state.data && state.data.userNome || '');
@@ -2730,39 +2804,62 @@
       const alvo = normalize((ind.ANALISTA_RESPONSAVEL || '') + ' | ' + (ind.GESTOR_RESPONSAVEL || ''));
       return termos.some(t => alvo.includes(t));
     }
-    function abrirFilaPreenchimento() {
-      const comp = latestCompetenciaInfo();
-      if (!comp.key) { ui.dialog.alert('Ainda não há competências lançadas para calcular a fila.'); return; }
+    // Converte competência em índice ano*12+mês (ou -1 se inválida).
+    function compYM(comp) {
+      const ts = parseCompetencia(comp);
+      if (!ts) return -1;
+      const d = new Date(ts);
+      return d.getFullYear() * 12 + d.getMonth();
+    }
+    // Janela do período corrente conforme a periodicidade do indicador.
+    function periodWindow(periodicidade, now) {
+      const n = normalize(periodicidade);
+      const y = now.getFullYear(), m = now.getMonth();
+      if (n.includes('ANUAL')) return { start: y * 12, end: y * 12 + 11, label: 'ano ' + y };
+      if (n.includes('SEMESTR')) { const s = Math.floor(m / 6); return { start: y * 12 + s * 6, end: y * 12 + s * 6 + 5, label: (s + 1) + 'º semestre/' + y }; }
+      if (n.includes('QUADRIM')) { const q = Math.floor(m / 4); return { start: y * 12 + q * 4, end: y * 12 + q * 4 + 3, label: (q + 1) + 'º quadrim./' + y }; }
+      return { start: y * 12 + m, end: y * 12 + m, label: String(m + 1).padStart(2, '0') + '/' + y };
+    }
+    // Pendências de preenchimento do período corrente, considerando a periodicidade.
+    function getPendenciasPreenchimento(now) {
+      now = now || new Date();
       const lans = state.data && state.data.lancamentos || [];
-      const preenchidos = new Set();
+      const byInd = {};
       lans.forEach(l => {
-        const c = resolvePeriodoLabel(l) || l.COMPETENCIA;
-        if (parseCompetencia(c) === comp.key && String(l.VALOR || '').trim() !== '') preenchidos.add(String(l.ID_INDICADOR));
+        if (String(l.VALOR || '').trim() === '') return;
+        const ym = compYM(resolvePeriodoLabel(l) || l.COMPETENCIA);
+        if (ym < 0) return;
+        (byInd[String(l.ID_INDICADOR)] = byInd[String(l.ID_INDICADOR)] || []).push(ym);
       });
-      const pend = (state.data && state.data.indicadores || []).filter(ind => {
-        const periodic = normalize(ind.PERIODICIDADE);
-        const mensal = !periodic || periodic.includes('MENSAL');
-        return mensal && !preenchidos.has(String(ind.ID_INDICADOR));
+      const pend = [];
+      (state.data && state.data.indicadores || []).forEach(ind => {
+        const w = periodWindow(ind.PERIODICIDADE, now);
+        const filled = (byInd[String(ind.ID_INDICADOR)] || []).some(ym => ym >= w.start && ym <= w.end);
+        if (!filled) pend.push({ ind: ind, periodoLabel: w.label });
       });
-      const meus = pend.filter(isIndicadorMeu);
+      return pend;
+    }
+    function abrirFilaPreenchimento() {
+      const pendArr = getPendenciasPreenchimento(new Date());
+      const meus = pendArr.filter(p => isIndicadorMeu(p.ind));
       const grupos = {};
-      pend.forEach(ind => {
-        const resp = (ind.ANALISTA_RESPONSAVEL || ind.GESTOR_RESPONSAVEL || '').trim() || 'Sem responsável definido';
-        (grupos[resp] = grupos[resp] || []).push(ind);
+      pendArr.forEach(p => {
+        const resp = (p.ind.ANALISTA_RESPONSAVEL || p.ind.GESTOR_RESPONSAVEL || '').trim() || 'Sem responsável definido';
+        (grupos[resp] = grupos[resp] || []).push(p);
       });
       const ordem = Object.keys(grupos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-      const linhaInd = (ind) => `<button class="fila-item" onclick='ui.closeDrawer(); showIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>
-        <span class="fila-item-name">${escapeHtml(ind.NOME_INDICADOR || 'Indicador')}</span>
-        <span class="fila-item-meta">${escapeHtml(ind.PROCESSO || '-')}${isIndicadorMeu(ind) ? ' · <b>meu</b>' : ''}</span>
+      const linhaInd = (p) => `<button class="fila-item" onclick='ui.closeDrawer(); showIndicador(${JSON.stringify(p.ind).replace(/'/g, "&apos;")})'>
+        <span class="fila-item-name">${escapeHtml(p.ind.NOME_INDICADOR || 'Indicador')}</span>
+        <span class="fila-item-meta">${escapeHtml(p.ind.PROCESSO || '-')} · período ${escapeHtml(p.periodoLabel)}${isIndicadorMeu(p.ind) ? ' · <b>meu</b>' : ''}</span>
       </button>`;
       const body = `
         <div class="fila-summary">
-          <div class="fila-kpi"><strong>${pend.length}</strong><span>pendentes na competência ${escapeHtml(comp.label)}</span></div>
+          <div class="fila-kpi"><strong>${pendArr.length}</strong><span>pendentes no período corrente</span></div>
           <div class="fila-kpi"><strong>${meus.length}</strong><span>atribuídos a você</span></div>
         </div>
-        ${pend.length === 0 ? '<div class="empty"><strong>Tudo em dia 🎉</strong><br>Nenhum indicador mensal pendente para esta competência.</div>' :
+        ${pendArr.length === 0 ? '<div class="empty"><strong>Tudo em dia 🎉</strong><br>Nenhum indicador pendente para o período corrente.</div>' :
           ordem.map(resp => `<div class="fila-group"><div class="fila-group-head">${escapeHtml(resp)} <span>${grupos[resp].length}</span></div>${grupos[resp].map(linhaInd).join('')}</div>`).join('')}`;
-      ui.openDrawer('Fila de preenchimento', 'Indicadores mensais ainda sem lançamento na última competência.', body);
+      ui.openDrawer('Fila de preenchimento', 'Indicadores sem lançamento no período corrente (por periodicidade).', body);
     }
 
     /* ===================== Dicas contextuais (onboarding leve) ===================== */
@@ -2869,6 +2966,7 @@
       const pendentes = Math.max(total - preenchidos, 0);
       if (state.processosIndicadorSelecionados && state.processosIndicadorSelecionados.length) rows = rows.filter(x => state.processosIndicadorSelecionados.includes(x.PROCESSO));
       rows = rows.slice().sort((a,b)=>(a.NOME_INDICADOR||'').localeCompare((b.NOME_INDICADOR||''), 'pt-BR'));
+      state.filteredIndicadores = rows;
       const html = rows.map(ind => {
         const lans = byInd.get(ind.ID_INDICADOR) || [];
         const historicoOrdenado = lans
@@ -3468,6 +3566,14 @@ function getIndicatorUnit(ind) {
               <button class="btn secondary icon" onclick='excluirIndicadorUi(${JSON.stringify(ind).replace(/'/g, "&apos;")})'><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V5h6v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Excluir indicador</button>
             </div>
           </div>
+          <div class="drawer-tabs" role="tablist">
+            <button class="drawer-tab-btn active" role="tab" onclick="drawerTab(this,'ind-resumo')">Resumo</button>
+            <button class="drawer-tab-btn" role="tab" onclick="drawerTab(this,'ind-historico')">Histórico</button>
+            <button class="drawer-tab-btn" role="tab" onclick="drawerTab(this,'ind-metas')">Metas por período</button>
+            <button class="drawer-tab-btn" role="tab" onclick="drawerTab(this,'ind-auditoria')">Auditoria</button>
+          </div>
+
+          <div class="drawer-tab" data-tab="ind-resumo">
           <div class="meta-grid">
             <div class="meta-item"><b>Categoria</b><span>${escapeHtml(ind.CATEGORIA || '-')}</span></div>
             <div class="meta-item"><b>Tipo</b><span>${escapeHtml(ind.TIPO_INDICADOR || '-')}</span></div>
@@ -3483,16 +3589,20 @@ function getIndicatorUnit(ind) {
           <div class="steps">
             ${linkRow('Ficha técnica no Conecta', ind.LINK_FICHA_TECNICA_CONECTA, `editarLinkFichaConecta(${JSON.stringify(ind).replace(/'/g, "&apos;")})`)}
           </div>
-          ${renderMetasPeriodoSection(ind)}
           <h4 class="section-title">Resultado</h4>
           <div class="result-box">
             <div><b>Resultado atual</b><span class="result-main">${escapeHtml(valorAtual)}</span></div>
             <div><b>Status</b><span>${escapeHtml(status.label)}</span></div>
             <div><b>Período referência</b><span>${escapeHtml(periodo)}</span></div>
-            <div><b>Meta</b><span>${escapeHtml((ind.META_OPERADOR || '>=') + ' ' + (ind.META || 'Não informada'))}</span></div>
+            <div><b>Meta</b><span>${escapeHtml(compMetaLabel(mvUltimo))}</span></div>
             <div><b>Variação mensal</b><span>${escapeHtml(variacao)}</span></div>
             <div><b>Tendência</b><span>${escapeHtml(tendencia)}</span></div>
           </div>
+          <h4 class="section-title">Observações</h4>
+          <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
+          </div>
+
+          <div class="drawer-tab" data-tab="ind-historico" hidden>
           <h4 class="section-title">Série histórica</h4>
           <div class="history-chart">
             <div class="history-chart-head">
@@ -3514,15 +3624,28 @@ function getIndicatorUnit(ind) {
           <div class="history-list">
             ${historico.length ? `<table class="history-table"><thead><tr><th>Competência</th><th>Valor</th><th>Meta</th><th>Status</th></tr></thead><tbody>${historico.map(h => { const mv = resolveMetaFront(ind, h.comp); const st = h.hasData ? getStatusIndicador(h, mv.meta, mv.operador, mv.polaridade) : { className: 'warn', label: 'Sem registro' }; return `<tr class="${h.comp === periodo ? 'current' : ''}"><td data-label="Competência" class="${h.hasData && !compareAgainstMeta(h.numericValue, mv.meta, mv.operador, mv.polaridade) ? 'competencia-miss' : ''}">${escapeHtml(h.comp)}</td><td data-label="Valor">${escapeHtml(h.valor)}</td><td data-label="Meta">${escapeHtml(compMetaLabel(mv))}${mv.origem === 'periodo' ? ' <span class="pill" style="padding:0 6px">vig. ' + escapeHtml(mv.vigencia) + '</span>' : ''}</td><td data-label="Status"><span class="history-status ${st.className}">${escapeHtml(st.label)}</span></td></tr>`; }).join('')}</tbody></table>` : '<div class="empty">Sem histórico disponível.</div>'}
           </div>
-          <h4 class="section-title">Observações</h4>
-          <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
+          </div>
+
+          <div class="drawer-tab" data-tab="ind-metas" hidden>
+            ${renderMetasPeriodoSection(ind)}
+          </div>
+
+          <div class="drawer-tab" data-tab="ind-auditoria" hidden>
+            <h4 class="section-title">Histórico de comentários</h4>
+            ${renderHistoricoBlock('INDICADOR', ind.ID_INDICADOR)}
+          </div>
+
           <div id="indicatorLaunchHost"></div>
           <div id="indicatorEditHost"></div>
-          <h4 class="section-title">Histórico de comentários</h4>
-          ${renderHistoricoBlock('INDICADOR', ind.ID_INDICADOR)}
         </div>
       `);
       loadHistorico('INDICADOR', ind.ID_INDICADOR);
+    }
+
+    function drawerTab(btn, name) {
+      const scope = btn.closest('.indicator-modal') || document;
+      scope.querySelectorAll('.drawer-tab').forEach(t => { t.hidden = (t.dataset.tab !== name); });
+      scope.querySelectorAll('.drawer-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
     }
 
     async function editarLinkFichaConecta(ind) {
