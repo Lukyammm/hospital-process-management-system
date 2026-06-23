@@ -1726,12 +1726,58 @@
     // Diagnóstico global: se algum erro de JS escapar, mostramos a mensagem na
     // tela em vez de deixar o app "travado" silenciosamente. Ajuda a identificar
     // a causa real de regressões de carregamento.
+    // Boot diagnostics — painel laranja no canto inferior esquerdo, visível
+    // enquanto o sistema inicializa. Mostra exatamente em que etapa está.
+    // Remove-se automaticamente depois que os dados carregam (ou após 90s).
+    var _boot = (function() {
+      var panel, logEl, steps = [], t0 = Date.now();
+      function _ensurePanel() {
+        if (panel) return panel;
+        panel = document.createElement('div');
+        panel.id = '_bootPanel';
+        panel.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:99999;background:rgba(0,0,0,.82);color:#fff;font:12px/1.5 monospace;padding:10px 14px;border-radius:8px;max-width:360px;max-height:220px;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,.5);';
+        logEl = document.createElement('div');
+        panel.appendChild(logEl);
+        var close = document.createElement('div');
+        close.textContent = '✕ fechar';
+        close.style.cssText = 'cursor:pointer;color:#aaa;font-size:10px;margin-top:6px;';
+        close.onclick = function() { panel && panel.remove(); panel = null; };
+        panel.appendChild(close);
+        (document.body || document.documentElement).appendChild(panel);
+        return panel;
+      }
+      function log(msg, color) {
+        try {
+          _ensurePanel();
+          var row = document.createElement('div');
+          row.style.color = color || '#fff';
+          row.textContent = '+' + (Date.now() - t0) + 'ms ' + msg;
+          logEl.appendChild(row);
+          panel.scrollTop = panel.scrollHeight;
+        } catch(_) {}
+      }
+      var _autoHideTimer = setTimeout(function() {
+        try { panel && panel.remove(); } catch(_) {}
+      }, 90000);
+      return {
+        log: log,
+        ok: function(msg) { log('✓ ' + msg, '#4caf50'); },
+        warn: function(msg) { log('⚠ ' + msg, '#ff9800'); },
+        done: function() {
+          clearTimeout(_autoHideTimer);
+          setTimeout(function() { try { panel && panel.remove(); } catch(_) {} }, 3000);
+        }
+      };
+    })();
+    _boot.log('JS iniciado');
+
     (function installGlobalErrorReporter() {
       let shown = 0;
       function report(msg) {
         try {
-          if (shown >= 3) return; // não inundar a tela
+          if (shown >= 3) return;
           shown += 1;
+          _boot.warn('ERRO: ' + msg);
           let bar = document.getElementById('globalErrorBar');
           if (!bar) {
             bar = document.createElement('div');
@@ -1740,7 +1786,7 @@
             (document.body || document.documentElement).appendChild(bar);
           }
           bar.textContent = 'Erro de JavaScript: ' + msg + ' — recarregue a página (F5). Se persistir, copie esta mensagem.';
-        } catch (_) { /* nada a fazer */ }
+        } catch (_) {}
       }
       if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
         window.addEventListener('error', e => report((e && e.message) || 'erro desconhecido'));
@@ -2020,6 +2066,7 @@
           document.addEventListener('click', closeActionMenus);
         });
 
+        _boot.ok('ui.init() concluído — listeners anexados');
         // O carregamento de dados precisa rodar SEMPRE, mesmo que algo acima
         // tenha falhado — caso contrário a tela fica parada sem dados.
         loadData();
@@ -2201,6 +2248,7 @@
     }
 
     function loadData() {
+      _boot.log('loadData() iniciado');
       setLoading();
       showSectionSkeletons();
       asyncUi.start('Sincronizando com Google Sheets...');
@@ -2214,12 +2262,23 @@
           if (el) el.innerHTML = banner;
         });
       };
+
+      // Verifica se google.script.run está disponível (pode estar ausente se a página
+      // for aberta fora do contexto de web app do Apps Script).
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        _boot.warn('google.script.run indisponível — verifique se está acessando via URL do Apps Script');
+        showLoadError('Ambiente Apps Script não detectado. Acesse o sistema pela URL do web app implantado.');
+        return;
+      }
+      _boot.log('google.script.run disponível — chamando getSigepData()');
+
       // Watchdog: se o servidor não responder em 45s, paramos de esperar e
       // oferecemos "Tentar novamente" — evita a tela ficar eternamente parada.
       const watchdog = setTimeout(() => {
         if (settled) return;
         settled = true;
         asyncUi.finish();
+        _boot.warn('watchdog: 45s sem resposta do servidor');
         showLoadError('O servidor demorou para responder (tempo esgotado). Verifique sua conexão e tente novamente.');
         showToast('O carregamento demorou demais. Tente novamente.', 'warning');
       }, 45000);
@@ -2229,12 +2288,15 @@
           settled = true;
           clearTimeout(watchdog);
           asyncUi.finish();
+          _boot.ok('dados recebidos do servidor');
           try {
             state.data = normalizeDataPayload(payload);
             refreshDashboardFromLocal();
             hydrateFilters();
             render();
+            _boot.done();
           } catch (e) {
+            _boot.warn('erro ao processar dados: ' + (e && e.message ? e.message : e));
             console.error('Falha ao processar dados carregados:', e);
             showLoadError('Erro ao processar os dados recebidos: ' + (e && e.message ? e.message : e));
           }
@@ -2245,6 +2307,7 @@
           clearTimeout(watchdog);
           asyncUi.finish();
           const msg = (err && (err.message || err)) || 'Erro desconhecido';
+          _boot.warn('falha do servidor: ' + msg);
           showLoadError(msg);
           showToast('Erro ao carregar o SIGEP-HUC: ' + msg, 'error');
         })
@@ -5041,11 +5104,13 @@ Falhas: ${failed}${firstError}`);
       return Array.from(suggestions);
     }
 window.ui = ui;
+    _boot.ok('todas as funções definidas — chamando ui.init()');
     // Garante o boot mesmo que init lance algo inesperado: ao menos os dados
     // são carregados e a tela não fica parada sem explicação.
     try {
       ui.init();
     } catch (e) {
+      _boot.warn('ui.init() lançou exceção: ' + (e && e.message ? e.message : e));
       console.error('Falha na inicialização da interface:', e);
       try { loadData(); } catch (_) {}
     }
