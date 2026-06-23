@@ -2675,7 +2675,7 @@
     function linkRow(label, url, onEditAttr) {
       const has = String(url || '').trim();
       const open = has ? `<a class="btn secondary small" href="${escapeHtml(has)}" target="_blank" rel="noopener">Abrir</a>` : '<span class="pill">Sem link</span>';
-      const edit = onEditAttr ? `<button class="btn secondary small" onclick="${onEditAttr}">Editar link</button>` : '';
+      const edit = onEditAttr ? `<button class="btn secondary small" onclick='${onEditAttr}'>Editar link</button>` : '';
       return `<div class="step"><b>${escapeHtml(label)}</b><span class="link-actions">${open}${edit}</span></div>`;
     }
 
