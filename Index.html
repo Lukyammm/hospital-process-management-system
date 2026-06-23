@@ -2936,7 +2936,12 @@
       }).length;
       const pendentes = Math.max(total - preenchidos, 0);
       if (state.processosIndicadorSelecionados && state.processosIndicadorSelecionados.length) rows = rows.filter(x => state.processosIndicadorSelecionados.includes(x.PROCESSO));
-      rows = rows.slice().sort((a,b)=>(a.NOME_INDICADOR||'').localeCompare((b.NOME_INDICADOR||''), 'pt-BR'));
+      rows = rows.slice().sort((a,b)=>{
+        const aHasData = (byInd.get(a.ID_INDICADOR) || []).some(l => String(l.VALOR || '').trim() !== '');
+        const bHasData = (byInd.get(b.ID_INDICADOR) || []).some(l => String(l.VALOR || '').trim() !== '');
+        if (aHasData !== bHasData) return bHasData - aHasData;
+        return (a.NOME_INDICADOR||'').localeCompare((b.NOME_INDICADOR||''), 'pt-BR');
+      });
       state.filteredIndicadores = rows;
       const html = rows.map(ind => {
         const lans = byInd.get(ind.ID_INDICADOR) || [];
