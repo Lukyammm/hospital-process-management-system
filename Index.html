@@ -2165,19 +2165,6 @@
           refreshDashboardFromLocal();
           hydrateFilters();
           render();
-          // Auto-import silencioso: se algum indicador tem aba configurada, puxa dados em background
-          const indsComPlanilha = (state.data.indicadores || []).filter(ind => ind.ABA_PLANILHA_GESTAO && ind.LINK_PLANILHA_GESTAO);
-          if (indsComPlanilha.length > 0) {
-            google.script.run
-              .withSuccessHandler(result => {
-                if (result && result.lancamentos) {
-                  state.data.lancamentos = result.lancamentos;
-                  renderIndicadores();
-                }
-              })
-              .withFailureHandler(() => { /* falha silenciosa, dados manuais permanecem */ })
-              .importarTodosLancamentosAutomatico();
-          }
         })
         .withFailureHandler(err => {
           asyncUi.finish();
