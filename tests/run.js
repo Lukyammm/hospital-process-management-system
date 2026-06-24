@@ -191,6 +191,11 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
     try { vm.runInNewContext(code, sandbox, { filename: 'index.html' }); }
     catch (e) { threw = e; }
     assert(!threw, 'init + render no caminho de sucesso não lança' + (threw ? ': ' + threw.message : ''));
+    // O bloco principal precisa chegar até o fim e desarmar o watchdog de boot
+    // (window.__SIGEP_BOOTED = true). Se uma regressão abortar o script no meio,
+    // esta sinalização não é alcançada e o watchdog mostraria a tela de erro.
+    assert(sandbox.window.__SIGEP_BOOTED === true,
+      'Boot completo desarma o watchdog (window.__SIGEP_BOOTED = true ao fim do script principal)');
     const board = getEl('mapeamentoBoard');
     assert(board && /Processos Gerenciais/.test(board.innerHTML) && /map-legend/.test(board.innerHTML),
       'Mapeamento renderiza blocos + legenda');
@@ -276,6 +281,41 @@ section('Higiene de caracteres — sem invisíveis/combinantes crus no fonte');
     if (hits.length) hits.slice(0, 10).forEach(h => console.error('    -> ' + h));
     assert(hits.length === 0, `${fn} sem caracteres invisíveis/combinantes/controle crus`);
   });
+})();
+
+/* ------------------------------------------------------------------ */
+/* Watchdog de inicialização — trava de regressão da "tela inerte"      */
+/* ------------------------------------------------------------------ */
+/*
+ * A falha recorrente "tela aparece mas nada funciona" acontece quando o
+ * <script> principal aborta (caractere cru, SyntaxError ou versão publicada
+ * antiga). Os diagnósticos internos (_boot, barra de erro) vivem DENTRO desse
+ * bloco e ficam mudos justamente quando ele não roda. O watchdog é um bloco
+ * INDEPENDENTE, no topo do <body> e antes do principal, que exibe um aviso
+ * acionável se window.__SIGEP_BOOTED não virar true. Estes testes garantem que
+ * o mecanismo não seja removido por engano e que o bloco continue 100% ASCII.
+ */
+section('Watchdog de inicialização — trava de regressão da tela inerte');
+(function bootWatchdog() {
+  const html = fs.readFileSync(path.join(ROOT, 'Index.html'), 'utf8');
+  const bodyAt = html.indexOf('<body');
+  const wdOpen = html.indexOf('<script>', bodyAt);
+  const wdClose = html.indexOf('</script>', wdOpen);
+  const mainOpen = html.lastIndexOf('<script>');
+  const watchdog = wdOpen > -1 && wdClose > -1 ? html.slice(wdOpen + '<script>'.length, wdClose) : '';
+
+  assert(wdOpen > -1 && wdOpen < mainOpen, 'Watchdog roda em bloco próprio antes do script principal');
+  assert(/window\.__SIGEP_BOOTED\s*=\s*false/.test(watchdog), 'Watchdog inicializa window.__SIGEP_BOOTED = false');
+  assert(/setTimeout/.test(watchdog) && /location\.reload\(\)/.test(watchdog),
+    'Watchdog arma timer e oferece recarregar a página');
+  // O bloco do watchdog precisa ser 100% ASCII: ele existe para sobreviver
+  // exatamente à classe de bug em que um caractere cru quebra o script.
+  const nonAscii = [...watchdog].filter(c => c.codePointAt(0) > 0x7E);
+  assert(nonAscii.length === 0, 'Watchdog é 100% ASCII (sem acentos/símbolos que poderiam quebrá-lo)');
+  // O script principal precisa terminar desarmando o watchdog.
+  const mainCode = html.slice(mainOpen + '<script>'.length, html.lastIndexOf('</script>'));
+  assert(/window\.__SIGEP_BOOTED\s*=\s*true/.test(mainCode),
+    'Script principal sinaliza boot completo (window.__SIGEP_BOOTED = true)');
 })();
 
 /* ------------------------------------------------------------------ */

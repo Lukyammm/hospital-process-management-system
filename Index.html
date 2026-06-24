@@ -1556,6 +1556,47 @@
 </style>
 </head>
 <body class="min-h-screen bg-slate-50 font-sans antialiased selection:bg-teal-200/70 selection:text-slate-950">
+  <script>
+    /* Watchdog de inicializacao: bloco INDEPENDENTE e 100% ASCII (de proposito).
+       Roda ANTES do bloco de script principal. Se aquele bloco abortar por
+       qualquer motivo (um caractere cru corrompendo a re-serializacao do sandbox
+       IFRAME do Apps Script, um SyntaxError, ou uma versao publicada antiga),
+       window.__SIGEP_BOOTED nunca vira true. Os diagnosticos antigos (_boot,
+       barra de erro) vivem DENTRO do bloco principal e por isso ficam mudos
+       justamente quando ele nao executa, deixando a "tela inerte" silenciosa.
+       Este watchdog cobre essa lacuna: roda em bloco separado, ja parseado antes
+       de qualquer ponto de corrupcao adiante, e troca a tela morta por um aviso
+       acionavel. Mantenha este bloco SEM acentos e SEM tags HTML literais. */
+    window.__SIGEP_BOOTED = false;
+    (function () {
+      function arm() {
+        setTimeout(function () {
+          if (window.__SIGEP_BOOTED) return;
+          try {
+            if (document.getElementById('__sigepBootFail')) return;
+            var bar = document.createElement('div');
+            bar.id = '__sigepBootFail';
+            bar.setAttribute('role', 'alert');
+            bar.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:100000;background:#b3261e;color:#fff;font:600 13px/1.5 Inter,system-ui,sans-serif;padding:12px 16px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.28);';
+            bar.innerHTML = 'O sistema nao terminou de inicializar. '
+              + 'Recarregue a pagina (F5). Se persistir, publique novamente a '
+              + 'implantacao no Apps Script (Implantar &gt; Gerenciar implantacoes) '
+              + 'para servir a versao mais recente. '
+              + '<button type="button" onclick="location.reload()" '
+              + 'style="margin-left:10px;background:#fff;color:#b3261e;border:0;'
+              + 'border-radius:6px;padding:6px 12px;font-weight:700;cursor:pointer;">'
+              + 'Recarregar</button>';
+            (document.body || document.documentElement).appendChild(bar);
+          } catch (e) {}
+        }, 8000);
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', arm);
+      } else {
+        arm();
+      }
+    })();
+  </script>
   <div class="app relative overflow-hidden" id="appRoot">
     <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
     <aside class="sidebar shadow-premium">
@@ -5114,6 +5155,13 @@ window.ui = ui;
       console.error('Falha na inicialização da interface:', e);
       try { loadData(); } catch (_) {}
     }
+    // Sinaliza ao watchdog de boot (bloco independente no topo do body) que este
+    // bloco principal foi parseado e executado por inteiro. Se ele abortar antes
+    // daqui (caractere cru, SyntaxError, versão publicada antiga), __SIGEP_BOOTED
+    // fica false e o watchdog exibe um aviso acionável em vez de deixar a tela
+    // inerte e silenciosa. Mantenha estas duas linhas como as ÚLTIMAS do bloco.
+    window.__SIGEP_BOOTED = true;
+    _boot.ok('boot completo — watchdog de inicialização desarmado');
   </script>
 </body>
 </html>
