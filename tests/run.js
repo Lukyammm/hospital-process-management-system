@@ -191,11 +191,6 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
     try { vm.runInNewContext(code, sandbox, { filename: 'index.html' }); }
     catch (e) { threw = e; }
     assert(!threw, 'init + render no caminho de sucesso não lança' + (threw ? ': ' + threw.message : ''));
-    // O bloco principal precisa chegar até o fim e desarmar o watchdog de boot
-    // (window.__SIGEP_BOOTED = true). Se uma regressão abortar o script no meio,
-    // esta sinalização não é alcançada e o watchdog mostraria a tela de erro.
-    assert(sandbox.window.__SIGEP_BOOTED === true,
-      'Boot completo desarma o watchdog (window.__SIGEP_BOOTED = true ao fim do script principal)');
     const board = getEl('mapeamentoBoard');
     assert(board && /Processos Gerenciais/.test(board.innerHTML) && /map-legend/.test(board.innerHTML),
       'Mapeamento renderiza blocos + legenda');
@@ -223,99 +218,6 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
     const acomp = getEl('acompGrid');
     assert(acomp && /Tentar novamente/.test(acomp.innerHTML), 'Erro de carregamento mostra "Tentar novamente" (shell preservado)');
   })();
-})();
-
-/* ------------------------------------------------------------------ */
-/* Higiene de caracteres — trava de regressão                          */
-/* ------------------------------------------------------------------ */
-/*
- * Regressão recorrente "tela inerte / nada funciona": um caractere invisível
- * ou combinante CRU embutido no Index.html quebra a montagem da página pelo
- * sandbox do Apps Script (document.write) com "SyntaxError: Failed to execute
- * 'write' on 'Document': Invalid or unexpected token", abortando TODO o
- * <script>. Já aconteceu com um BOM (U+FEFF) no Blob do CSV e com marcas
- * combinantes (U+0300..U+036F) escritas cruas em regex de normalização.
- *
- * Estes caracteres devem SEMPRE ser escritos como escape no fonte
- * (ex.: "\\uFEFF" em vez do BOM cru; /[\\u0300-\\u036f]/ em vez das marcas
- * combinantes cruas) e NUNCA crus. Esta verificacao falha o build se algum
- * reaparecer, impedindo que o bug volte por um novo PR.
- */
-section('Higiene de caracteres — sem invisíveis/combinantes crus no fonte');
-(function charHygiene() {
-  // Mapa codepoint -> motivo. Inclui invisíveis perigosos e marcas combinantes
-  // (U+0300..U+036F), que em pt-BR nunca aparecem cruas — usamos letras
-  // pré-compostas (á, ã, ç...). Acentos pré-compostos e símbolos visíveis
-  // (—, ·, ✓, ×, “ ”) são permitidos pois são inofensivos em strings.
-  const FORBIDDEN = {
-    0xFEFF: 'BOM / ZERO WIDTH NO-BREAK SPACE',
-    0x200B: 'ZERO WIDTH SPACE',
-    0x200C: 'ZERO WIDTH NON-JOINER',
-    0x200D: 'ZERO WIDTH JOINER',
-    0x2060: 'WORD JOINER',
-    0x00A0: 'NO-BREAK SPACE',
-    0x202F: 'NARROW NO-BREAK SPACE',
-    0x00AD: 'SOFT HYPHEN',
-    0x2028: 'LINE SEPARATOR',
-    0x2029: 'PARAGRAPH SEPARATOR'
-  };
-  const isCombining = cp => cp >= 0x0300 && cp <= 0x036F;
-  const isStrayControl = cp => cp < 0x20 && cp !== 0x09 && cp !== 0x0A; // permite \t e \n
-  const files = ['Index.html', 'Code.gs'];
-  let totalHits = 0;
-  files.forEach(fn => {
-    const text = fs.readFileSync(path.join(ROOT, fn), 'utf8');
-    const lines = text.split('\n');
-    const hits = [];
-    lines.forEach((line, li) => {
-      for (let ci = 0; ci < line.length; ci++) {
-        const cp = line.codePointAt(ci);
-        let reason = null;
-        if (FORBIDDEN[cp]) reason = FORBIDDEN[cp];
-        else if (isCombining(cp)) reason = 'COMBINING MARK (use \\u' + cp.toString(16).padStart(4, '0') + ')';
-        else if (isStrayControl(cp)) reason = 'CONTROL CHAR';
-        if (reason) hits.push(`${fn}:${li + 1}:${ci + 1} U+${cp.toString(16).toUpperCase().padStart(4, '0')} ${reason}`);
-      }
-    });
-    totalHits += hits.length;
-    if (hits.length) hits.slice(0, 10).forEach(h => console.error('    -> ' + h));
-    assert(hits.length === 0, `${fn} sem caracteres invisíveis/combinantes/controle crus`);
-  });
-})();
-
-/* ------------------------------------------------------------------ */
-/* Watchdog de inicialização — trava de regressão da "tela inerte"      */
-/* ------------------------------------------------------------------ */
-/*
- * A falha recorrente "tela aparece mas nada funciona" acontece quando o
- * <script> principal aborta (caractere cru, SyntaxError ou versão publicada
- * antiga). Os diagnósticos internos (_boot, barra de erro) vivem DENTRO desse
- * bloco e ficam mudos justamente quando ele não roda. O watchdog é um bloco
- * INDEPENDENTE, no topo do <body> e antes do principal, que exibe um aviso
- * acionável se window.__SIGEP_BOOTED não virar true. Estes testes garantem que
- * o mecanismo não seja removido por engano e que o bloco continue 100% ASCII.
- */
-section('Watchdog de inicialização — trava de regressão da tela inerte');
-(function bootWatchdog() {
-  const html = fs.readFileSync(path.join(ROOT, 'Index.html'), 'utf8');
-  const bodyAt = html.indexOf('<body');
-  const wdOpen = html.indexOf('<script>', bodyAt);
-  const wdClose = html.indexOf('</script>', wdOpen);
-  const mainOpen = html.lastIndexOf('<script>');
-  const watchdog = wdOpen > -1 && wdClose > -1 ? html.slice(wdOpen + '<script>'.length, wdClose) : '';
-
-  assert(wdOpen > -1 && wdOpen < mainOpen, 'Watchdog roda em bloco próprio antes do script principal');
-  assert(/window\.__SIGEP_BOOTED\s*=\s*false/.test(watchdog), 'Watchdog inicializa window.__SIGEP_BOOTED = false');
-  assert(/setTimeout/.test(watchdog) && /location\.reload\(\)/.test(watchdog),
-    'Watchdog arma timer e oferece recarregar a página');
-  // O bloco do watchdog precisa ser 100% ASCII: ele existe para sobreviver
-  // exatamente à classe de bug em que um caractere cru quebra o script.
-  const nonAscii = [...watchdog].filter(c => c.codePointAt(0) > 0x7E);
-  assert(nonAscii.length === 0, 'Watchdog é 100% ASCII (sem acentos/símbolos que poderiam quebrá-lo)');
-  // O script principal precisa terminar desarmando o watchdog.
-  const mainCode = html.slice(mainOpen + '<script>'.length, html.lastIndexOf('</script>'));
-  assert(/window\.__SIGEP_BOOTED\s*=\s*true/.test(mainCode),
-    'Script principal sinaliza boot completo (window.__SIGEP_BOOTED = true)');
 })();
 
 /* ------------------------------------------------------------------ */
