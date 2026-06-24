@@ -2165,6 +2165,19 @@
           refreshDashboardFromLocal();
           hydrateFilters();
           render();
+          // Auto-import silencioso: se algum indicador tem aba configurada, puxa dados em background
+          const indsComPlanilha = (state.data.indicadores || []).filter(ind => ind.ABA_PLANILHA_GESTAO && ind.LINK_PLANILHA_GESTAO);
+          if (indsComPlanilha.length > 0) {
+            google.script.run
+              .withSuccessHandler(result => {
+                if (result && result.lancamentos) {
+                  state.data.lancamentos = result.lancamentos;
+                  renderIndicadores();
+                }
+              })
+              .withFailureHandler(() => { /* falha silenciosa, dados manuais permanecem */ })
+              .importarTodosLancamentosAutomatico();
+          }
         })
         .withFailureHandler(err => {
           asyncUi.finish();
@@ -2737,7 +2750,7 @@
       if (!rows.length) { showToast('Nada para exportar com os dados atuais.', 'warning'); return; }
       const lines = [headerLabels.map(csvCell).join(';')];
       rows.forEach(r => lines.push(r.map(csvCell).join(';')));
-      const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = filename;
@@ -3560,6 +3573,13 @@ function getIndicatorUnit(ind) {
           <div class="steps">
             ${linkRow('Ficha técnica no Conecta', ind.LINK_FICHA_TECNICA_CONECTA, `editarLinkFichaConecta(${JSON.stringify(ind).replace(/'/g, "&apos;")})`)}
           </div>
+          <h4 class="section-title">Planilha de gestão</h4>
+          <div class="steps">
+            ${linkRow('Link da planilha', ind.LINK_PLANILHA_GESTAO || '', `configurarPlanilhaGestaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})`)}
+          </div>
+          ${ind.ABA_PLANILHA_GESTAO
+            ? `<div class="note-soft">Puxando dados automaticamente da aba: <strong>${escapeHtml(ind.ABA_PLANILHA_GESTAO)}</strong> <button class="btn secondary small" style="margin-left:8px" onclick='configurarPlanilhaGestaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>Reconfigurar</button></div>`
+            : `<div class="note-soft">Nenhuma aba configurada. <button class="btn secondary small" onclick='configurarPlanilhaGestaoIndicador(${JSON.stringify(ind).replace(/'/g, "&apos;")})'>Configurar puxada automática</button></div>`}
           <h4 class="section-title">Resultado</h4>
           <div class="result-box">
             <div><b>Resultado atual</b><span class="result-main">${escapeHtml(valorAtual)}</span></div>
@@ -3642,6 +3662,81 @@ function getIndicatorUnit(ind) {
         })
         .withFailureHandler(async err => { asyncUi.finish(); await ui.dialog.alert('Erro ao salvar link: ' + (err.message || err)); })
         .atualizarIndicador({ ID_INDICADOR: ind.ID_INDICADOR, LINK_FICHA_TECNICA_CONECTA: String(values.LINK_FICHA_TECNICA_CONECTA || '').trim(), MOTIVO_ALTERACAO: String(values.MOTIVO_ALTERACAO || '').trim() });
+    }
+
+    async function configurarPlanilhaGestaoIndicador(ind) {
+      // Passo 1: pede URL da planilha
+      const urlAtual = ind.LINK_PLANILHA_GESTAO || '';
+      const urlValues = await ui.dialog.form({
+        title: 'Planilha de gestão',
+        description: 'Informe o link da planilha de gestão para puxar os dados automaticamente.',
+        confirmText: 'Buscar abas',
+        fields: [
+          { name: 'LINK_PLANILHA_GESTAO', label: 'Link da planilha', value: urlAtual, placeholder: 'https://docs.google.com/spreadsheets/...' }
+        ]
+      });
+      if (!urlValues) return;
+      const url = String(urlValues.LINK_PLANILHA_GESTAO || '').trim();
+      if (!url) return;
+
+      // Passo 2: lista abas válidas da planilha
+      asyncUi.start('Buscando abas da planilha...');
+      let abas = [];
+      try {
+        abas = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(r => resolve((r && r.abas) || []))
+            .withFailureHandler(reject)
+            .listarAbasPlanilhaIndicador(url);
+        });
+      } catch (err) {
+        asyncUi.finish();
+        await ui.dialog.alert('Erro ao acessar a planilha: ' + (err.message || err));
+        return;
+      }
+      asyncUi.finish();
+
+      if (!abas.length) {
+        await ui.dialog.alert('Nenhuma aba válida encontrada.\n\nAs abas devem ter "META" em A4:B4 ou "RESPONSÁVEL PELA META:" em G4:I4.');
+        return;
+      }
+
+      // Passo 3: usuário escolhe a aba
+      const abaAtual = ind.ABA_PLANILHA_GESTAO || '';
+      const abaValues = await ui.dialog.form({
+        title: 'Escolher aba',
+        description: `${abas.length} aba(s) encontrada(s). Escolha qual será usada para puxar os dados do indicador.`,
+        confirmText: 'Salvar e importar',
+        fields: [
+          {
+            name: 'ABA_PLANILHA_GESTAO',
+            label: 'Aba',
+            type: 'select',
+            value: abaAtual,
+            options: abas
+          }
+        ]
+      });
+      if (!abaValues) return;
+      const aba = String(abaValues.ABA_PLANILHA_GESTAO || '').trim();
+      if (!aba) return;
+
+      // Passo 4: salva e importa
+      asyncUi.start('Salvando configuração e importando dados...');
+      google.script.run
+        .withSuccessHandler(result => {
+          asyncUi.finish();
+          const serverRow = (result && result.data) || { ...ind, LINK_PLANILHA_GESTAO: url, ABA_PLANILHA_GESTAO: aba };
+          upsertLocal('indicadores', 'ID_INDICADOR', serverRow);
+          showToast('Planilha configurada! Dados importados automaticamente.', 'success');
+          scheduleBackgroundRefresh();
+          showIndicador(serverRow);
+        })
+        .withFailureHandler(async err => {
+          asyncUi.finish();
+          await ui.dialog.alert('Erro ao salvar: ' + (err.message || err));
+        })
+        .salvarAbaPlanilhaIndicador({ ID_INDICADOR: ind.ID_INDICADOR, LINK_PLANILHA_GESTAO: url, ABA_PLANILHA_GESTAO: aba });
     }
 
     /* ===================== Metas por período (CRUD na ficha do indicador) ===================== */
@@ -3799,7 +3894,7 @@ function getIndicatorUnit(ind) {
 
       const normalizeKey = (v) => String(v || '')
         .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
+        .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^A-Z0-9]/gi, '')
         .toUpperCase();
 

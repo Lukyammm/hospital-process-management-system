@@ -26,9 +26,11 @@ const SIGEP = {
       BASE_INDICADORES: [
         'META_OPERADOR', 'POLARIDADE_META', 'PERIODICIDADE',
         'CATEGORIA_INDICADOR', 'TIPO_OPERACIONAL', 'EIXO_ASSISTENCIAL',
-        'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA'
+        'ANALISTA_RESPONSAVEL', 'GESTOR_RESPONSAVEL', 'LINK_FICHA_TECNICA_CONECTA',
+        'LINK_PLANILHA_GESTAO', 'ABA_PLANILHA_GESTAO'
       ],
-      BASE_ACOMPANHAMENTO: ['LINK_PLANILHA_GESTAO']
+      BASE_ACOMPANHAMENTO: ['LINK_PLANILHA_GESTAO'],
+      BASE_LANCAMENTOS_INDICADORES: ['NUMERADOR', 'DENOMINADOR', 'FONTE']
     }
   },
   mapeamentoColumns: [
@@ -232,6 +234,54 @@ function excluirProcesso(payload) {
 
 function excluirIndicador(payload) {
   return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.remove(payload)));
+}
+
+function listarAbasPlanilhaIndicador(url) {
+  try {
+    const ss = SpreadsheetApp.openByUrl(url);
+    const sheets = ss.getSheets();
+    const normalizeStr = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    const valid = [];
+    sheets.forEach(sh => {
+      try {
+        const lastCol = sh.getLastColumn();
+        const lastRow = sh.getLastRow();
+        if (lastRow < 4 || lastCol < 1) return;
+        const a4b4 = sh.getRange(4, 1, 1, Math.min(2, lastCol)).getDisplayValues()[0].join(' ');
+        const hasMeta = normalizeStr(a4b4).indexOf('META') > -1;
+        let hasResp = false;
+        if (lastCol >= 9) {
+          const g4i4 = sh.getRange(4, 7, 1, 3).getDisplayValues()[0].join(' ');
+          hasResp = normalizeStr(g4i4).indexOf('RESPONSAVEL PELA META') > -1;
+        }
+        if (hasMeta || hasResp) valid.push(sh.getName());
+      } catch (e) { /* aba inacessível, ignora */ }
+    });
+    return { ok: true, abas: valid };
+  } catch (e) {
+    throw new Error('Não foi possível acessar a planilha: ' + e.message);
+  }
+}
+
+function salvarAbaPlanilhaIndicador(payload) {
+  const result = runWithWriteLock_(() => withWritePermission_('INDICADORES', app => app.indicadores.salvarAbaPlanilha(payload)));
+  if (result && result.ok && result.data) {
+    try {
+      const app = new SigepApplication();
+      app.indicadores.importarLancamentos_(result.data);
+    } catch (e) {
+      console.warn('Importação automática após configuração falhou:', e && e.message ? e.message : e);
+    }
+  }
+  return result;
+}
+
+function importarTodosLancamentosAutomatico() {
+  return runWithWriteLock_(() => withWritePermission_('INDICADORES', app => {
+    app.indicadores.importarTodosLancamentos();
+    const lancamentos = app.indicadores.listLancamentos();
+    return { ok: true, lancamentos };
+  }));
 }
 
 function criarMetaPeriodo(payload) {
@@ -596,6 +646,8 @@ class DomainNormalizer {
       ANALISTA_RESPONSAVEL: this.asText(raw.ANALISTA_RESPONSAVEL),
       GESTOR_RESPONSAVEL: this.asText(raw.GESTOR_RESPONSAVEL),
       LINK_FICHA_TECNICA_CONECTA: this.asText(raw.LINK_FICHA_TECNICA_CONECTA),
+      LINK_PLANILHA_GESTAO: this.asText(raw.LINK_PLANILHA_GESTAO),
+      ABA_PLANILHA_GESTAO: this.asText(raw.ABA_PLANILHA_GESTAO),
       RESULTADO_ESPERADO: this.asText(raw.RESULTADO_ESPERADO)
     };
   }
@@ -1098,7 +1150,7 @@ class AcompanhamentoService {
   }
 
   isNaoSeAplica_(value) {
-    const normalized = String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
     return normalized.includes('NAO SE APLICA') || normalized === 'N/A' || normalized === 'NA';
   }
 
@@ -1264,6 +1316,82 @@ class IndicadorService {
     return `IND-${String(max + 1).padStart(4, '0')}`;
   }
 
+  salvarAbaPlanilha(payload) {
+    if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
+    const current = this.repo.getById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR);
+    const patch = {
+      LINK_PLANILHA_GESTAO: String(payload.LINK_PLANILHA_GESTAO || '').trim(),
+      ABA_PLANILHA_GESTAO: String(payload.ABA_PLANILHA_GESTAO || '').trim()
+    };
+    const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch, current);
+    this.audit.logChange({ acao: 'CONFIGURAR_PLANILHA_INDICADOR', entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch, origem: 'INDICADORES', motivo: 'Configuração de planilha de gestão' });
+    return { ok: true, data: updated };
+  }
+
+  deleteLancamentosDaPlanilha_(indicadorId) {
+    const sheetName = SIGEP.sheets.lancamentos;
+    const sheet = this.repo.getSheet(sheetName);
+    const headers = this.repo.getHeaders(sheetName);
+    const idIdx = headers.indexOf('ID_INDICADOR');
+    const fonteIdx = headers.indexOf('FONTE');
+    if (idIdx === -1) return;
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+    const rowsToDelete = [];
+    values.forEach((row, i) => {
+      const rowId = String(row[idIdx] || '').trim();
+      const fonte = fonteIdx > -1 ? String(row[fonteIdx] || '').trim() : '';
+      if (rowId === String(indicadorId).trim() && fonte === 'PLANILHA_GESTAO') {
+        rowsToDelete.push(i + 2);
+      }
+    });
+    rowsToDelete.reverse().forEach(rowNum => sheet.deleteRow(rowNum));
+    delete this.repo.objectsCache[sheetName];
+  }
+
+  importarLancamentos_(indicador) {
+    const url = String(indicador.LINK_PLANILHA_GESTAO || '').trim();
+    const aba = String(indicador.ABA_PLANILHA_GESTAO || '').trim();
+    if (!url || !aba) return 0;
+    try {
+      const ss = SpreadsheetApp.openByUrl(url);
+      const sheet = ss.getSheetByName(aba);
+      if (!sheet) return 0;
+      const lastRow = sheet.getLastRow();
+      if (lastRow < 5) return 0;
+      const numRows = lastRow - 4;
+      const data = sheet.getRange(5, 22, numRows, 4).getValues();
+      const novas = data
+        .filter(r => r[0] !== null && r[0] !== undefined && String(r[0]).trim() !== '')
+        .map(r => ({
+          ID_INDICADOR: indicador.ID_INDICADOR,
+          COMPETENCIA: String(r[0]).trim(),
+          NUMERADOR: r[1] !== '' && r[1] !== null ? String(r[1]) : '',
+          DENOMINADOR: r[2] !== '' && r[2] !== null ? String(r[2]) : '',
+          VALOR: r[3] !== '' && r[3] !== null ? String(r[3]) : '',
+          FONTE: 'PLANILHA_GESTAO'
+        }));
+      if (!novas.length) return 0;
+      this.deleteLancamentosDaPlanilha_(indicador.ID_INDICADOR);
+      novas.forEach(lan => {
+        try { this.repo.insertObject(SIGEP.sheets.lancamentos, lan, 'ID_INDICADOR'); } catch (e) { /* ignora linha com erro */ }
+      });
+      return novas.length;
+    } catch (e) {
+      console.error('importarLancamentos_ error for ' + indicador.ID_INDICADOR + ': ' + e.message);
+      return 0;
+    }
+  }
+
+  importarTodosLancamentos() {
+    const inds = this.repo.getObjects(SIGEP.sheets.indicadores)
+      .filter(ind => String(ind.ABA_PLANILHA_GESTAO || '').trim() && String(ind.LINK_PLANILHA_GESTAO || '').trim());
+    let total = 0;
+    inds.forEach(ind => { total += this.importarLancamentos_(ind); });
+    return total;
+  }
+
   // Converte texto (ex.: ">= 90", "92,3%", "1.234,5") em número.
   static parseNum_(raw) {
     const txt = String(raw == null ? '' : raw).replace(/[^0-9.,-]/g, '').trim();
@@ -1275,7 +1403,7 @@ class IndicadorService {
 
   // Avalia se o valor atinge a meta, priorizando a POLARIDADE quando informada.
   static metaAtingida_(valor, meta, operador, polaridade) {
-    const pol = String(polaridade || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const pol = String(polaridade || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (pol.indexOf('menor') === 0 || pol.indexOf('menor e melhor') > -1) return valor <= meta;
     if (pol.indexOf('igual') === 0 || pol.indexOf('igual ao alvo') > -1) return valor === meta;
     if (pol.indexOf('maior') === 0 || pol.indexOf('maior e melhor') > -1) return valor >= meta;
@@ -1500,7 +1628,7 @@ class MapeamentoService {
   }
 
   normalizeGrupo_(value) {
-    const n = String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    const n = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
     if (n.indexOf('GEREN') === 0) return 'Gerencial';
     if (n.indexOf('FINAL') === 0) return 'Finalístico';
     if (n.indexOf('APOIO') === 0) return 'Apoio';
@@ -2679,7 +2807,7 @@ class AuthorizationService {
   }
 
   normalizeRole_(role) {
-    return String(role || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    return String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
   }
 }
 
