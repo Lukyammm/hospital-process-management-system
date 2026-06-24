@@ -240,7 +240,7 @@ function listarAbasPlanilhaIndicador(url) {
   try {
     const ss = SpreadsheetApp.openByUrl(url);
     const sheets = ss.getSheets();
-    const normalizeStr = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+    const normalizeStr = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     const valid = [];
     sheets.forEach(sh => {
       try {
@@ -1152,7 +1152,7 @@ class AcompanhamentoService {
   }
 
   isNaoSeAplica_(value) {
-    const normalized = String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
     return normalized.includes('NAO SE APLICA') || normalized === 'N/A' || normalized === 'NA';
   }
 
@@ -1333,7 +1333,7 @@ class IndicadorService {
   listarAbas_(url) {
     const ss = SpreadsheetApp.openByUrl(url);
     const sheets = ss.getSheets();
-    const normalizeStr = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+    const normalizeStr = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     const valid = [];
     sheets.forEach(sh => {
       try {
@@ -1435,7 +1435,7 @@ class IndicadorService {
 
   // Avalia se o valor atinge a meta, priorizando a POLARIDADE quando informada.
   static metaAtingida_(valor, meta, operador, polaridade) {
-    const pol = String(polaridade || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const pol = String(polaridade || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (pol.indexOf('menor') === 0 || pol.indexOf('menor e melhor') > -1) return valor <= meta;
     if (pol.indexOf('igual') === 0 || pol.indexOf('igual ao alvo') > -1) return valor === meta;
     if (pol.indexOf('maior') === 0 || pol.indexOf('maior e melhor') > -1) return valor >= meta;
@@ -1660,7 +1660,7 @@ class MapeamentoService {
   }
 
   normalizeGrupo_(value) {
-    const n = String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    const n = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
     if (n.indexOf('GEREN') === 0) return 'Gerencial';
     if (n.indexOf('FINAL') === 0) return 'Finalístico';
     if (n.indexOf('APOIO') === 0) return 'Apoio';
@@ -2839,7 +2839,7 @@ class AuthorizationService {
   }
 
   normalizeRole_(role) {
-    return String(role || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    return String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
   }
 }
 

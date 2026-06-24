@@ -4019,7 +4019,7 @@ function getIndicatorUnit(ind) {
 
       const normalizeKey = (v) => String(v || '')
         .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
+        .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^A-Z0-9]/gi, '')
         .toUpperCase();
 
