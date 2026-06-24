@@ -337,58 +337,8 @@ function vincularGestor(payload) {
 }
 
 function getHistoricoRegistro(payload) {
-  const entidade = String(payload && payload.entidade || '').toUpperCase().trim();
-  const id = String(payload && payload.id || '').trim();
-  if (!id) return { ok: true, historico: [] };
-
-  // Cache curto: evita releitura da planilha ao reabrir o mesmo drawer em 60s.
-  const cacheKey = 'hist_v1_' + entidade + '_' + id;
-  try {
-    const cached = CacheService.getScriptCache().get(cacheKey);
-    if (cached) return JSON.parse(cached);
-  } catch (_) {}
-
-  // Leitura direta via repo mínimo — sem instanciar SigepApplication completo.
-  const repo = new SheetRepository();
-  let sh;
-  try {
-    sh = repo.getSheet(SIGEP.sheets.historico);
-  } catch (e) {
-    return { ok: true, historico: [] };
-  }
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) return { ok: true, historico: [] };
-
-  // Lê apenas os últimos 500 registros para não travar em planilhas grandes.
-  const MAX_ROWS = 500;
-  const startRow = Math.max(2, lastRow - MAX_ROWS + 1);
-  const count = lastRow - startRow + 1;
-  const values = sh.getRange(startRow, 1, count, 6).getDisplayValues();
-
-  const historico = [];
-  values.forEach(r => {
-    const rowEntidade = String(r[3] || '').toUpperCase().trim();
-    const rowId = String(r[4] || '').trim();
-    if (entidade && rowEntidade !== entidade) return;
-    if (rowId !== id) return;
-    let contexto = {};
-    try { contexto = JSON.parse(r[5] || '{}'); } catch (_) {}
-    historico.push({
-      data: contexto.timestampLocal || r[0] || '',
-      usuario: r[1] || contexto.usuario || '',
-      acao: r[2] || '',
-      motivo: contexto.motivo || '',
-      alteracoes: contexto.alteracoes || null
-    });
-  });
-  historico.reverse();
-
-  const result = { ok: true, historico };
-  try {
-    const encoded = JSON.stringify(result);
-    if (encoded.length < 95000) CacheService.getScriptCache().put(cacheKey, encoded, 60);
-  } catch (_) {}
-  return result;
+  const app = new SigepApplication();
+  return app.audit.getHistoryFor(payload);
 }
 
 function getHistoricoRecente(payload) {
