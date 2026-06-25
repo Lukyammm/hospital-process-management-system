@@ -1481,8 +1481,8 @@
         // Fecha o painel flutuante de processos ao clicar fora dele.
         document.addEventListener('click', e => {
           if (!state.processoPanelOpen) return;
-          const shell = document.getElementById('indicatorProcessTabsShell');
-          if (shell && !shell.contains(e.target)) closeProcessoPanel();
+          const panel = document.getElementById('indicatorProcessPanel');
+          if (panel && !panel.contains(e.target)) closeProcessoPanel();
         });
         document.addEventListener('keydown', e => {
           if (e.key === 'Escape' && state.processoPanelOpen) closeProcessoPanel();
