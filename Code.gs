@@ -1283,40 +1283,66 @@ class IndicadorService {
     if (!payload || !payload.ID_INDICADOR) throw new Error('ID_INDICADOR obrigatório.');
     PayloadValidator.validateLancamentoIndicadorUpdate(payload);
     const comp = String(payload.COMPETENCIA || '').trim();
+    const idIndicador = String(payload.ID_INDICADOR).trim();
     const sheetName = SIGEP.sheets.lancamentos;
     const sheet = this.repo.getSheet(sheetName);
     const headers = this.repo.getHeaders(sheetName);
+    const hasFonte = headers.indexOf('FONTE') > -1;
+
+    // Campos editáveis manualmente (numerador/denominador/resultado/status/observação).
+    const patch = {};
+    ['VALOR', 'STATUS', 'OBSERVACAO', 'NUMERADOR', 'DENOMINADOR'].forEach(k => {
+      if (payload[k] !== undefined && headers.indexOf(k) > -1) patch[k] = String(payload[k]).trim();
+    });
+    // Conveniência: numerador + denominador sem resultado → calcula o resultado.
+    if ((patch.VALOR === undefined || patch.VALOR === '') && patch.NUMERADOR && patch.DENOMINADOR) {
+      const n = IndicadorService.parseNum_(patch.NUMERADOR);
+      const d = IndicadorService.parseNum_(patch.DENOMINADOR);
+      if (Number.isFinite(n) && Number.isFinite(d) && d !== 0) patch.VALOR = String(n / d);
+    }
+
+    // Justificativa obrigatória quando o resultado fica fora da meta vigente na competência.
+    const validarDesvio = (valorRef, obsRef) => {
+      if (valorRef === undefined || valorRef === '') return;
+      const ind = this.repo.getObjects(SIGEP.sheets.indicadores)
+        .find(r => String(r.ID_INDICADOR || '').trim() === idIndicador);
+      const valorNum = IndicadorService.parseNum_(valorRef);
+      if (!ind || !Number.isFinite(valorNum)) return;
+      const metasInd = this.listMetasPeriodo().filter(mt => String(mt.ID_INDICADOR || '').trim() === idIndicador);
+      const vig = IndicadorService.resolveMeta_(ind, comp, metasInd);
+      const metaNum = IndicadorService.parseNum_(vig.meta);
+      if (!Number.isFinite(metaNum)) return;
+      const dentro = IndicadorService.metaAtingida_(valorNum, metaNum, vig.operador, vig.polaridade);
+      if (!dentro && !String(obsRef || '').trim()) {
+        throw new Error('Resultado fora da meta: a observação/justificativa é obrigatória para registrar o desvio.');
+      }
+    };
+
     const rowNumber = this.repo.findRowNumberByCriteria_(sheetName, {
-      ID_INDICADOR: String(payload.ID_INDICADOR).trim(),
+      ID_INDICADOR: idIndicador,
       COMPETENCIA: comp
     }, headers);
-    if (!rowNumber) throw new Error('Lançamento não encontrado para o indicador/competência informados.');
+
+    // Competência ainda não lançada: cria um lançamento manual (insert).
+    if (!rowNumber) {
+      validarDesvio(patch.VALOR, patch.OBSERVACAO);
+      const obj = { ID_INDICADOR: idIndicador, COMPETENCIA: comp };
+      Object.keys(patch).forEach(k => { obj[k] = patch[k]; });
+      if (hasFonte) obj.FONTE = 'MANUAL';
+      const row = headers.map(h => (obj[h] !== undefined ? obj[h] : ''));
+      const newRowNumber = sheet.getLastRow() + 1;
+      this.repo.appendRows(sheetName, [row]);
+      const created = this.repo.rowToObject_(headers, row, newRowNumber);
+      this.audit.logChange({ acao: 'CRIAR_LANCAMENTO_INDICADOR', entidade: 'LANCAMENTO_INDICADOR', id: `${idIndicador}:${comp}`, before: null, after: created, patch: obj, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
+      return { ok: true, data: created };
+    }
 
     const beforeValues = sheet.getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
     const before = this.repo.rowToObject_(headers, beforeValues, rowNumber);
-    const patch = {};
-    ['VALOR', 'STATUS', 'OBSERVACAO'].forEach(k => {
-      if (payload[k] !== undefined) patch[k] = payload[k];
-    });
-    // Justificativa obrigatória quando o resultado fica fora da meta (governança de desvios).
-    // Usa a meta vigente na competência do lançamento (metas por período).
-    if (patch.VALOR !== undefined) {
-      const ind = this.repo.getObjects(SIGEP.sheets.indicadores)
-        .find(r => String(r.ID_INDICADOR || '').trim() === String(payload.ID_INDICADOR).trim());
-      const valorNum = IndicadorService.parseNum_(patch.VALOR);
-      if (ind && Number.isFinite(valorNum)) {
-        const metasInd = this.listMetasPeriodo().filter(mt => String(mt.ID_INDICADOR || '').trim() === String(payload.ID_INDICADOR).trim());
-        const vig = IndicadorService.resolveMeta_(ind, comp, metasInd);
-        const metaNum = IndicadorService.parseNum_(vig.meta);
-        if (Number.isFinite(metaNum)) {
-          const dentro = IndicadorService.metaAtingida_(valorNum, metaNum, vig.operador, vig.polaridade);
-          const justificativa = String(patch.OBSERVACAO !== undefined ? patch.OBSERVACAO : (before.OBSERVACAO || '')).trim();
-          if (!dentro && !justificativa) {
-            throw new Error('Resultado fora da meta: a observação/justificativa é obrigatória para registrar o desvio.');
-          }
-        }
-      }
-    }
+    validarDesvio(
+      patch.VALOR !== undefined ? patch.VALOR : before.VALOR,
+      patch.OBSERVACAO !== undefined ? patch.OBSERVACAO : before.OBSERVACAO
+    );
     const updatedRow = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
     const indexByHeader = this.repo.indexHeaders_(headers);
     Object.keys(patch).forEach(key => {
@@ -1326,7 +1352,7 @@ class IndicadorService {
     sheet.getRange(rowNumber, 1, 1, updatedRow.length).setValues([updatedRow]);
     const refreshedValues = sheet.getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
     const refreshed = this.repo.rowToObject_(headers, refreshedValues, rowNumber);
-    this.audit.logChange({ acao: 'ATUALIZAR_LANCAMENTO_INDICADOR', entidade: 'LANCAMENTO_INDICADOR', id: `${payload.ID_INDICADOR}:${comp}`, before, after: refreshed, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
+    this.audit.logChange({ acao: 'ATUALIZAR_LANCAMENTO_INDICADOR', entidade: 'LANCAMENTO_INDICADOR', id: `${idIndicador}:${comp}`, before, after: refreshed, patch, origem: 'INDICADORES', motivo: payload.MOTIVO_ALTERACAO || '' });
     return { ok: true, data: refreshed };
   }
 
@@ -1346,7 +1372,8 @@ class IndicadorService {
     };
     const updated = this.repo.updateById(SIGEP.sheets.indicadores, 'ID_INDICADOR', payload.ID_INDICADOR, patch, current);
     const desvinculo = !patch.LINK_PLANILHA_GESTAO && !patch.ABA_PLANILHA_GESTAO;
-    if (desvinculo) this.deleteLancamentosDaPlanilha_(payload.ID_INDICADOR);
+    // Ao desconectar, NÃO apaga os dados: eles viram lançamentos manuais (editáveis e permanentes).
+    if (desvinculo) this.converterPlanilhaEmManual_(payload.ID_INDICADOR);
     this.audit.logChange({
       acao: desvinculo ? 'DESVINCULAR_PLANILHA_INDICADOR' : 'CONFIGURAR_PLANILHA_INDICADOR',
       entidade: 'INDICADOR', id: payload.ID_INDICADOR, before: current, after: updated, patch,
@@ -1381,6 +1408,34 @@ class IndicadorService {
     });
     rowsToDelete.reverse().forEach(rowNum => sheet.deleteRow(rowNum));
     delete this.repo.objectsCache[sheetName];
+  }
+
+  // Ao desconectar a planilha, os dados importados (FONTE = PLANILHA_GESTAO) viram MANUAIS:
+  // permanecem no histórico, passam a ser editáveis e não são apagados nem sobrescritos depois.
+  converterPlanilhaEmManual_(idIndicador) {
+    const sheetName = SIGEP.sheets.lancamentos;
+    const sheet = this.repo.getSheet(sheetName);
+    const headers = this.repo.getHeaders(sheetName);
+    const idIdx = headers.indexOf('ID_INDICADOR');
+    const fonteIdx = headers.indexOf('FONTE');
+    if (idIdx === -1 || fonteIdx === -1) return;
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const ids = sheet.getRange(2, idIdx + 1, lastRow - 1, 1).getDisplayValues();
+    const fonteRange = sheet.getRange(2, fonteIdx + 1, lastRow - 1, 1);
+    const fontes = fonteRange.getValues();
+    let changed = false;
+    for (let i = 0; i < fontes.length; i++) {
+      if (String(ids[i][0] || '').trim() === String(idIndicador).trim() &&
+          String(fontes[i][0] || '').trim() === 'PLANILHA_GESTAO') {
+        fontes[i][0] = 'MANUAL';
+        changed = true;
+      }
+    }
+    if (changed) {
+      fonteRange.setValues(fontes);
+      delete this.repo.objectsCache[sheetName];
+    }
   }
 
   // Lê V/W/X/Y (a partir da linha 5) da aba configurada e regrava os lançamentos do indicador.
@@ -3082,12 +3137,12 @@ class PayloadValidator {
   }
 
   static validateLancamentoIndicadorUpdate(payload) {
-    const allowed = ['COMPETENCIA', 'VALOR', 'STATUS', 'OBSERVACAO'];
+    const allowed = ['COMPETENCIA', 'VALOR', 'STATUS', 'OBSERVACAO', 'NUMERADOR', 'DENOMINADOR'];
     this.validateAllowedKeys_(payload, ['ID_INDICADOR', 'MOTIVO_ALTERACAO'].concat(allowed), 'lançamento de indicador');
     if (!String(payload.COMPETENCIA || '').trim()) {
       throw new Error('COMPETENCIA é obrigatória para atualizar lançamento.');
     }
-    this.validateRequiredChangeReason_(payload, ['VALOR', 'STATUS', 'OBSERVACAO'], 'lançamento de indicador');
+    this.validateRequiredChangeReason_(payload, ['VALOR', 'STATUS', 'OBSERVACAO', 'NUMERADOR', 'DENOMINADOR'], 'lançamento de indicador');
   }
 
   static validateAllowedKeys_(payload, allowed, context) {

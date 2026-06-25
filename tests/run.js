@@ -144,7 +144,7 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
     dashboard: { progressoMedio: 50, processosTotal: 2, processosConcluidos: 1, unidadesAcompanhadas: 1, acompanhamentoLinhas: 1, agendamentosRealizados: 1, reagendados: 0, indicadoresTotal: 1, lancamentosTotal: 1, lancamentosPreenchidos: 1 },
     processos: [{ ID_PROCESSO: 'PROC-0001', PROCESSO: 'Proc A', STATUS_GERAL: 'Em andamento', MODELAGEM_REALIZADA: 'SIM' }],
     acompanhamento: [{ ID_ACOMPANHAMENTO: 'ACOMP-0001', UNIDADE: 'UTI', DATA_AGENDAMENTO: '01/06/2026', STATUS_AGENDAMENTO: 'Realizada', INTRODUCAO: 'Concluído', PERFIL: 'Em andamento', FLUXO_PROCESSO: 'Não se aplica', MODELAGEM: '', INDICADORES: '', FICHA_TECNICA_INDICADORES: '', LINK_PLANILHA_GESTAO: '' }],
-    indicadores: [{ ID_INDICADOR: 'IND-0001', NOME_INDICADOR: 'Taxa X', TIPO_INDICADOR: 'Resultado', META: '90', META_OPERADOR: '>=', CATEGORIA: 'Resultado', CATEGORIA_INDICADOR: 'Resultado', TIPO_OPERACIONAL: 'Finalista', EIXO_ASSISTENCIAL: 'Cirúrgico', ANALISTA_RESPONSAVEL: 'Lukyam', GESTOR_RESPONSAVEL: 'Maria', PERIODICIDADE: 'Mensal', POLARIDADE_META: 'Maior é melhor', LINK_FICHA_TECNICA_CONECTA: '', PROCESSO: 'Proc A', UNIDADE: 'UTI' }],
+    indicadores: [{ ID_INDICADOR: 'IND-0001', NOME_INDICADOR: 'Taxa X', TIPO_INDICADOR: 'Resultado', META: '90', META_OPERADOR: '>=', CATEGORIA: 'Resultado', CATEGORIA_INDICADOR: 'Resultado', TIPO_OPERACIONAL: 'Finalista', EIXO_ASSISTENCIAL: 'Cirúrgico', ANALISTA_RESPONSAVEL: 'Lukyam', GESTOR_RESPONSAVEL: 'Maria', PERIODICIDADE: 'Mensal', POLARIDADE_META: 'Maior é melhor', LINK_FICHA_TECNICA_CONECTA: '', RESULTADO_ESPERADO: 'REALIZAR > 90% COM "SEGURANÇA" E EFICIÊNCIA p/ o cliente', PROCESSO: 'Proc A', UNIDADE: 'UTI' }],
     lancamentos: [{ ID_INDICADOR: 'IND-0001', COMPETENCIA: '05/2026', VALOR: '92' }],
     metasIndicadores: [{ ID_META: 'META-0001', ID_INDICADOR: 'IND-0001', VIGENCIA_INICIO: '01/2026', META: '95', META_OPERADOR: '>=', POLARIDADE_META: 'Maior é melhor', ATIVO: 'SIM' }],
     unidades: [{ ID_UNIDADE: 'U1', UNIDADE: 'UTI' }],
@@ -198,6 +198,22 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
       'Mapeamento mostra maturidade por processo');
     const grid = getEl('indicatorGrid');
     assert(grid && /Taxa X/.test(grid.innerHTML), 'Indicadores renderiza a lista');
+    // Regressão: handlers inline passam só o ID via withInd(), nunca JSON.stringify(ind)
+    // embutido (que vazava como texto quando o objeto tinha aspas/“>”).
+    assert(grid && grid.innerHTML.indexOf("withInd('showIndicador'") > -1 &&
+      !/onclick=['"]?showIndicador\(\{/.test(grid.innerHTML),
+      'Lista usa withInd(id) sem embutir JSON no onclick');
+    // Renderiza a ficha do indicador (com texto contendo aspas/“>”) e garante que
+    // nada de JSON cru vaza para o HTML do drawer.
+    let drawerThrew = null;
+    try { sandbox.showIndicador(sampleData.indicadores[0]); }
+    catch (e) { drawerThrew = e; }
+    assert(!drawerThrew, 'showIndicador renderiza a ficha sem lançar' + (drawerThrew ? ': ' + drawerThrew.message : ''));
+    const drawerHtml = getEl('drawerContent').innerHTML;
+    assert(drawerHtml.indexOf("withInd('editarLinkFichaConecta'") > -1 &&
+      drawerHtml.indexOf('"RESULTADO_ESPERADO"') === -1 &&
+      drawerHtml.indexOf('}}>') === -1,
+      'Ficha técnica não vaza JSON cru no onclick (bug do print corrigido)');
     const gov = getEl('govKpis');
     assert(gov && /gov-card/.test(gov.innerHTML) && /Maturidade média do mapa/.test(gov.innerHTML),
       'Dashboard renderiza o bloco de governança');
