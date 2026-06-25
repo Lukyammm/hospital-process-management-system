@@ -797,6 +797,16 @@
     }
     .history-table tr.current td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
     .history-table td.competencia-miss { color: var(--danger); font-weight: 800; }
+    .ledger-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+    .ledger-table td { vertical-align: middle; }
+    .ledger-table .ledger-input {
+      width: 100%; min-width: 84px; box-sizing: border-box; padding: 7px 9px;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--card);
+      color: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+    }
+    .ledger-table .ledger-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(31, 78, 121, .14); }
+    .ledger-table .ledger-actions { text-align: right; white-space: nowrap; }
+    .ledger-table .pill { padding: 0 6px; font-size: 10px; }
     .history-status {
       display: inline-flex;
       align-items: center;
@@ -3583,6 +3593,7 @@ function getIndicatorUnit(ind) {
           </div>
           <div class="drawer-tabs" role="tablist">
             <button class="drawer-tab-btn active" role="tab" onclick="drawerTab(this,'ind-resumo')">Resumo</button>
+            <button class="drawer-tab-btn" role="tab" onclick="drawerTab(this,'ind-lancamentos')">Lançamento mensal</button>
             <button class="drawer-tab-btn" role="tab" onclick="drawerTab(this,'ind-historico')">Histórico</button>
             <button class="drawer-tab-btn" role="tab" onclick="drawerTab(this,'ind-metas')">Metas por período</button>
             <button class="drawer-tab-btn" role="tab" onclick="drawerTab(this,'ind-auditoria')">Auditoria</button>
@@ -3617,6 +3628,10 @@ function getIndicatorUnit(ind) {
           </div>
           <h4 class="section-title">Observações</h4>
           <div class="note-soft">${escapeHtml(ind.RESULTADO_ESPERADO || 'Sem observações cadastradas para este indicador.')}</div>
+          </div>
+
+          <div class="drawer-tab" data-tab="ind-lancamentos" hidden>
+            ${renderLancamentoMensalGrid(ind)}
           </div>
 
           <div class="drawer-tab" data-tab="ind-historico" hidden>
@@ -3683,7 +3698,7 @@ function getIndicatorUnit(ind) {
               <div class="pg-icon">${sheetIcon}</div>
               <div class="pg-head-text">
                 <h5>Conecte a planilha de gestão</h5>
-                <p>O gestor preenche numerador, denominador e resultado na planilha. Ao conectar, os dados entram aqui automaticamente — sem digitação manual.</p>
+                <p>Conecte uma planilha de gestão para importar numerador, denominador e resultado automaticamente — ou use a aba <b>Lançamento mensal</b> para digitar os dados de cada mês direto no sistema.</p>
               </div>
               <span class="pg-status off"><span class="pg-dot"></span>Não conectada</span>
             </div>
@@ -4296,6 +4311,174 @@ function getIndicatorUnit(ind) {
     function fecharEdicaoLancamentoIndicador() {
       const host = document.getElementById('indicatorLaunchHost');
       if (host) host.innerHTML = '';
+    }
+
+    /* ===================== Lançamento mensal em formato de planilha ===================== */
+    // Passo da periodicidade em meses (Mensal=1, Bimestral=2, ... Anual=12).
+    function passoPeriodicidade(periodicidade) {
+      const p = normalize(periodicidade || '');
+      if (p.indexOf('BIMEST') > -1) return 2;
+      if (p.indexOf('TRIMEST') > -1) return 3;
+      if (p.indexOf('QUADRIMEST') > -1) return 4;
+      if (p.indexOf('SEMEST') > -1) return 6;
+      if (p.indexOf('ANUAL') > -1 || p.indexOf('ANO') > -1) return 12;
+      return 1; // mensal (padrão)
+    }
+
+    // Gera as últimas N competências (rótulo MM/AAAA) respeitando a periodicidade, da mais recente para a mais antiga.
+    function gerarCompetenciasRecentes(periodicidade, quantidade) {
+      const passo = passoPeriodicidade(periodicidade);
+      const total = quantidade || 12;
+      const hoje = new Date();
+      const comps = [];
+      for (let i = 0; i < total; i++) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth() - (i * passo), 1);
+        comps.push(String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear());
+      }
+      return comps;
+    }
+
+    // Monta as linhas da planilha mensal: junta competências já lançadas com as recentes em aberto.
+    function montarLinhasLancamento(ind) {
+      const lans = (state.data.lancamentos || []).filter(l => String(l.ID_INDICADOR || '') === String(ind.ID_INDICADOR));
+      const porComp = new Map();
+      lans.forEach(l => {
+        const comp = String(resolvePeriodoLabel(l) || l.COMPETENCIA || '').trim();
+        if (comp) porComp.set(comp, l);
+      });
+      gerarCompetenciasRecentes(ind.PERIODICIDADE, 12).forEach(c => { if (!porComp.has(c)) porComp.set(c, { COMPETENCIA: c }); });
+      return Array.from(porComp.values())
+        .sort((a, b) => parseCompetencia(resolvePeriodoLabel(b) || b.COMPETENCIA) - parseCompetencia(resolvePeriodoLabel(a) || a.COMPETENCIA));
+    }
+
+    // Renderiza uma linha editável da planilha mensal.
+    function renderLinhaLancamento(ind, lan) {
+      const comp = String(resolvePeriodoLabel(lan) || lan.COMPETENCIA || '').trim();
+      const id = escapeHtml(ind.ID_INDICADOR || '');
+      const mv = resolveMetaFront(ind, comp);
+      const valor = String(lan.VALOR || '').trim();
+      const item = { hasData: Number.isFinite(parseNumericValue(valor)), numericValue: parseNumericValue(valor) };
+      const st = getStatusIndicador(item, mv.meta, mv.operador, mv.polaridade);
+      const conectada = String(lan.FONTE || '').trim() === 'PLANILHA_GESTAO';
+      return `<tr data-comp="${escapeHtml(comp)}" data-ind="${id}">
+        <td data-label="Competência"><b>${escapeHtml(comp)}</b>${conectada ? ' <span class="pill" title="Importado da planilha de gestão">planilha</span>' : ''}</td>
+        <td data-label="Numerador"><input class="ledger-input" data-field="NUMERADOR" inputmode="decimal" value="${escapeHtml(lan.NUMERADOR || '')}" oninput="onLedgerInput(this)"></td>
+        <td data-label="Denominador"><input class="ledger-input" data-field="DENOMINADOR" inputmode="decimal" value="${escapeHtml(lan.DENOMINADOR || '')}" oninput="onLedgerInput(this)"></td>
+        <td data-label="Resultado"><input class="ledger-input" data-field="VALOR" inputmode="decimal" value="${escapeHtml(valor)}" oninput="this.dataset.touched='1';onLedgerInput(this)"></td>
+        <td data-label="Meta">${escapeHtml(compMetaLabel(mv))}</td>
+        <td data-label="Status"><span class="history-status ${st.className}" data-role="status">${escapeHtml(st.label)}</span></td>
+        <td data-label="Ações" class="ledger-actions"><button type="button" class="btn small" onclick="salvarLinhaLancamento(this, '${id}')">Salvar</button></td>
+      </tr>`;
+    }
+
+    function renderLancamentoMensalGrid(ind) {
+      const conectada = String(ind.LINK_PLANILHA_GESTAO || '').trim() && String(ind.ABA_PLANILHA_GESTAO || '').trim();
+      const aviso = conectada
+        ? '<div class="edit-form-note">Indicador conectado a uma planilha de gestão: a sincronização sobrescreve os meses presentes na planilha. Para lançar só manualmente, desconecte a planilha (os dados atuais são mantidos).</div>'
+        : '';
+      const linhas = montarLinhasLancamento(ind).map(l => renderLinhaLancamento(ind, l)).join('');
+      const id = escapeHtml(ind.ID_INDICADOR || '');
+      return `
+        <div class="ledger-head">
+          <div><h4 class="section-title" style="margin:0">Lançamento mensal</h4><p class="indicator-subtitle">Preencha numerador e denominador de cada mês. O resultado é calculado automaticamente e o status compara com a meta vigente. Clique em Salvar para gravar a competência.</p></div>
+          <button type="button" class="btn secondary small" onclick="adicionarCompetenciaLancamento('${id}')">+ Adicionar competência</button>
+        </div>
+        ${aviso}
+        <div class="history-list">
+          <table class="history-table ledger-table">
+            <thead><tr><th>Competência</th><th>Numerador</th><th>Denominador</th><th>Resultado</th><th>Meta</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="ledgerBody-${id}">${linhas}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // Recalcula resultado (num/den) e atualiza o badge de status da linha enquanto o usuário digita.
+    function onLedgerInput(input) {
+      const tr = input.closest('tr');
+      if (!tr) return;
+      const get = f => tr.querySelector(`[data-field="${f}"]`);
+      const valorEl = get('VALOR');
+      if (input.dataset.field !== 'VALOR' && valorEl && valorEl.dataset.touched !== '1') {
+        const n = parseNumericValue(get('NUMERADOR').value);
+        const d = parseNumericValue(get('DENOMINADOR').value);
+        if (Number.isFinite(n) && Number.isFinite(d) && d !== 0) valorEl.value = String(Math.round((n / d) * 10000) / 10000);
+      }
+      const ind = getById(state.data?.indicadores, 'ID_INDICADOR', tr.dataset.ind);
+      const badge = tr.querySelector('[data-role="status"]');
+      if (ind && badge) {
+        const mv = resolveMetaFront(ind, tr.dataset.comp);
+        const num = parseNumericValue(valorEl.value);
+        const st = getStatusIndicador({ hasData: Number.isFinite(num), numericValue: num }, mv.meta, mv.operador, mv.polaridade);
+        badge.className = 'history-status ' + st.className;
+        badge.textContent = st.label;
+      }
+    }
+
+    // Adiciona uma nova competência (MM/AAAA) ao topo da planilha mensal.
+    async function adicionarCompetenciaLancamento(idIndicador) {
+      const ind = getById(state.data?.indicadores, 'ID_INDICADOR', idIndicador);
+      if (!ind) return;
+      const valores = await ui.dialog.form({
+        title: 'Adicionar competência',
+        description: 'Informe a competência (MM/AAAA) que deseja lançar.',
+        confirmText: 'Adicionar',
+        fields: [{ name: 'COMPETENCIA', label: 'Competência (MM/AAAA)', required: true, placeholder: 'Ex.: 05/2026' }]
+      });
+      const comp = valores && String(valores.COMPETENCIA || '').trim();
+      if (!comp) return;
+      const body = document.getElementById('ledgerBody-' + idIndicador);
+      if (!body) return;
+      if (body.querySelector(`tr[data-comp="${comp.replace(/"/g, '')}"]`)) { showToast('Essa competência já está na planilha.', 'warn'); return; }
+      body.insertAdjacentHTML('afterbegin', renderLinhaLancamento(ind, { COMPETENCIA: comp }));
+    }
+
+    // Salva (cria/atualiza) uma linha da planilha mensal chamando o backend de lançamentos.
+    async function salvarLinhaLancamento(btn, idIndicador) {
+      const tr = btn.closest('tr');
+      if (!tr) return;
+      const get = f => (tr.querySelector(`[data-field="${f}"]`)?.value || '').trim();
+      const comp = tr.dataset.comp;
+      const payload = {
+        ID_INDICADOR: idIndicador, COMPETENCIA: comp,
+        NUMERADOR: get('NUMERADOR'), DENOMINADOR: get('DENOMINADOR'), VALOR: get('VALOR'),
+        MOTIVO_ALTERACAO: 'Lançamento mensal (planilha do sistema)'
+      };
+      if (!payload.VALOR && !payload.NUMERADOR && !payload.DENOMINADOR) { showToast('Informe ao menos numerador/denominador ou o resultado.', 'warn'); return; }
+      // Justificativa obrigatória quando o resultado fica fora da meta (espelha a regra do backend).
+      const ind = getById(state.data?.indicadores, 'ID_INDICADOR', idIndicador);
+      const mv = ind ? resolveMetaFront(ind, comp) : null;
+      const valorNum = parseNumericValue(payload.VALOR);
+      if (mv && Number.isFinite(valorNum) && Number.isFinite(mv.meta) && !compareAgainstMeta(valorNum, mv.meta, mv.operador, mv.polaridade)) {
+        const just = await ui.dialog.form({
+          title: 'Resultado fora da meta',
+          description: `A competência ${comp} ficou fora da meta. Registre a justificativa do desvio.`,
+          confirmText: 'Salvar com justificativa',
+          fields: [{ name: 'OBSERVACAO', label: 'Justificativa do desvio', type: 'textarea', required: true }]
+        });
+        if (!just || !String(just.OBSERVACAO || '').trim()) return;
+        payload.OBSERVACAO = String(just.OBSERVACAO).trim();
+      }
+      btn.disabled = true;
+      showSaveFeedback('Salvando ' + comp + '...');
+      asyncUi.start('Sincronizando com Google Sheets...');
+      google.script.run
+        .withSuccessHandler(result => {
+          asyncUi.finish();
+          btn.disabled = false;
+          const serverRow = (result && result.data) || payload;
+          if (serverRow.ID_LANCAMENTO) {
+            upsertLocal('lancamentos', 'ID_LANCAMENTO', serverRow);
+          } else {
+            const list = state.data?.lancamentos || (state.data.lancamentos = []);
+            const idx = list.findIndex(row => String(row.ID_INDICADOR || '') === String(idIndicador) && String(resolvePeriodoLabel(row) || row.COMPETENCIA || '') === String(comp));
+            if (idx >= 0) list[idx] = { ...list[idx], ...serverRow }; else list.push(serverRow);
+          }
+          showSaveFeedback('Competência ' + comp + ' salva.', true);
+          renderAfterLocalMutation({ toast: 'Lançamento de ' + comp + ' atualizado.' });
+          scheduleBackgroundRefresh();
+        })
+        .withFailureHandler(async err => { asyncUi.finish(); btn.disabled = false; showSaveFeedback('Falha ao salvar.'); await ui.dialog.alert('Erro ao salvar lançamento: ' + (err.message || err)); })
+        .atualizarLancamentoIndicador(payload);
     }
 
     async function salvarLancamentoIndicador(event, idIndicador) {
