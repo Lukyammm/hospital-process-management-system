@@ -1865,11 +1865,21 @@
       asyncUi.start('Sincronizando com Google Sheets...');
       google.script.run
         .withSuccessHandler(payload => {
-          asyncUi.finish();
           state.data = normalizeDataPayload(payload);
           refreshDashboardFromLocal();
           hydrateFilters();
-          render();
+
+          // Fase 4: Smart Load Inicial — Central renderiza imediatamente (TTFF ~200ms)
+          renderCentralOnly();
+          asyncUi.finish();
+
+          // Resto das seções em background (não bloqueia UX)
+          if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(() => renderOtherSections(), { timeout: 800 });
+          } else {
+            setTimeout(() => renderOtherSections(), 50);
+          }
+
           // Em 2º plano: puxa os dados das planilhas de gestão sem bloquear a tela.
           try { syncPlanilhasGestaoBackground(); } catch (e) {}
         })
@@ -1923,6 +1933,19 @@
     function render() {
       if (!state.data) return;
       [renderCentral, renderDashboard, renderAcompanhamento, renderProcessos, renderMapeamento, renderIndicadores, renderAdmin].forEach(fn => {
+        try { fn(); } catch (e) { console.error('Falha ao renderizar ' + (fn.name || 'seção') + ':', e); }
+      });
+    }
+
+    // Fase 4: Smart Load Inicial — renderiza Central imediatamente, resto em background
+    function renderCentralOnly() {
+      if (!state.data) return;
+      try { renderCentral(); } catch (e) { console.error('Falha ao renderizar Central:', e); }
+    }
+
+    function renderOtherSections() {
+      if (!state.data) return;
+      [renderDashboard, renderAcompanhamento, renderProcessos, renderMapeamento, renderIndicadores].forEach(fn => {
         try { fn(); } catch (e) { console.error('Falha ao renderizar ' + (fn.name || 'seção') + ':', e); }
       });
     }
@@ -4677,6 +4700,21 @@ function getIndicatorUnit(ind) {
       if (item.score >= 28) return 'warn';
       return 'info';
     }
+
+    // Fase 4: Busca Global Inteligente — search across ID, título, setor, unidade, tipo, etc
+    function matchesGlobalSearch(item, query) {
+      if (!query) return true;
+      const q = query.toLowerCase();
+      // Busca em múltiplos campos: ID, título, subtítulo, tipo
+      const searchFields = [
+        item.id || '',
+        item.titulo || '',
+        item.sub || '',
+        item.tipo || ''
+      ];
+      return searchFields.some(field => field.toLowerCase().includes(q));
+    }
+
     function setCentralPreset(key) { state.centralPreset = key; renderCentral(); }
 
     function renderCentral() {
@@ -4701,7 +4739,7 @@ function getIndicatorUnit(ind) {
 
       const filtered = queue
         .filter(i => matchCentralPreset(i, state.centralPreset))
-        .filter(i => !state.search || (i.titulo + ' ' + i.sub).toLowerCase().includes(state.search));
+        .filter(i => matchesGlobalSearch(i, state.search));
       if (!filtered.length) {
         host.innerHTML = '<div class="empty"><strong>Nada na fila com esse filtro.</strong><br>Sua operação está em dia para o recorte selecionado.</div>';
         updateBulkBar();
