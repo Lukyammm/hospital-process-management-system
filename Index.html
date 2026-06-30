@@ -668,6 +668,9 @@
 
     .indicator-filter-shell { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-soft); padding: 16px; }
     .indicator-filter-shell.is-hidden { display: none; }
+    .indicator-filter-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 29; backdrop-filter: blur(2px); animation: fadeInOverlay 0.2s var(--ease); cursor: pointer; }
+    .indicator-filter-shell:not(.is-hidden) ~ .indicator-filter-backdrop { display: block; }
+    @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
     .indicator-filter-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
     .indicator-filter-head h4 { margin: 0; font-size: 14px; color: var(--ink); }
     .indicator-filter-head p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
@@ -1004,6 +1007,15 @@
       .indicator-process-tabs { flex-direction: row; max-height: 200px; }
       .indicator-workspace .indicator-process-tabs { flex-direction: row; flex-wrap: wrap; }
       .admin-grid { grid-template-columns: 1fr; }
+      /* Fase 4: Filtros Smart Collapse — em tablets/mobile, filtros em drawer */
+      .indicator-filter-shell { position: fixed; bottom: 0; left: 0; right: 0; max-height: 80vh; overflow-y: auto; border-radius: var(--radius) var(--radius) 0 0; z-index: 30; transition: transform 0.3s var(--ease-emphasized); transform: translateY(100%); }
+      .indicator-filter-shell:not(.is-hidden) { transform: translateY(0); }
+    }
+    @media (min-width: 1101px) {
+      /* Fase 4: Desktop — filtros sempre visíveis */
+      .indicator-filter-shell { position: static; max-height: none; overflow-y: visible; border-radius: var(--radius); z-index: auto; transform: translateY(0) !important; display: block !important; }
+      .indicator-filter-shell.is-hidden { display: block !important; }
+      #toggleFiltrosBtn { display: none; }
     }
     @media (max-width: 760px) {
       .main { grid-column: 1; padding: 16px; }
@@ -1314,6 +1326,7 @@
                   <label class="indicator-filter-field indicator-filter-check"><b>Meus indicadores</b><span class="map-check"><input type="checkbox" id="filtroMeusIndicadores" aria-label="Mostrar apenas meus indicadores"><span>Somente analista/gestor = eu</span></span></label>
                 </div>
               </fieldset>
+              <div class="indicator-filter-backdrop" id="indicatorFilterBackdrop" onclick="document.getElementById('toggleFiltrosBtn')?.click()"></div>
               <div class="indicator-active-tags" id="indicatorActiveTags"></div>
             </form>
             <div class="indicator-workspace"><div id="indicatorProcessTabsShell" class="indicator-process-shell"></div><div id="indicatorGrid" class="indicator-list"></div></div>
