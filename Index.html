@@ -354,11 +354,11 @@
     .btn {
       border: 1px solid var(--primary); border-radius: var(--radius-sm);
       padding: 10px 15px; background: var(--primary); color: #fff; font-weight: 600; font-size: 14px;
-      cursor: pointer; box-shadow: none;
+      cursor: pointer; box-shadow: var(--shadow-sm);
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      transition: filter var(--ease), background-color var(--ease), border-color var(--ease), color var(--ease);
+      transition: filter var(--ease), background-color var(--ease), border-color var(--ease), color var(--ease), transform var(--ease), box-shadow var(--ease);
     }
-    .btn:hover { filter: brightness(.95); }
+    .btn:hover { filter: brightness(.95); transform: translateY(-2px); box-shadow: var(--shadow-md); }
     .btn:active { filter: brightness(.9); }
     .btn:disabled { opacity: .55; cursor: not-allowed; pointer-events: none; }
     .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); }
@@ -958,6 +958,20 @@
 
     @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
     @keyframes modalPop { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    /* Microinteractions — Wow Factor */
+    @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+    @keyframes lift { 0%, 100% { transform: translateY(0) translateZ(0); box-shadow: var(--shadow-sm); } 50% { transform: translateY(-3px) translateZ(0); box-shadow: var(--shadow-md); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .8; transform: scale(1.05); } }
+
+    /* Checkbox bounce on check */
+    input[type="checkbox"]:checked { animation: bounce 0.3s var(--ease-emphasized) 1; }
+
+    /* Button lift on hover */
+    .btn:hover { animation: lift 0.3s var(--ease-standard) forwards; }
+
+    /* Pulse on critical badges */
+    .wq-item.sev-crit .wq-sevdot { animation: pulse 1.5s var(--ease-standard) infinite; }
 
     /* State helpers */
     .state-success { background: var(--success-bg) !important; border-color: var(--color-border-success) !important; color: var(--color-text-success) !important; }
