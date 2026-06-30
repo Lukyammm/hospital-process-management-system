@@ -155,13 +155,13 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
   function buildContext(mode) {
     const byId = {};
     const getEl = (id) => { if (byId[id]) return byId[id]; if (realIds.has(id)) return (byId[id] = makeEl(id)); return null; };
-    const navButtons = ['acompanhamento', 'processos', 'mapeamento', 'indicadores', 'admin'].map(v => { const e = makeEl('nav-' + v); e.dataset.view = v; e.classList.add(v === 'acompanhamento' ? 'active' : 'x'); return e; });
+    const navButtons = ['central', 'acompanhamento', 'processos', 'mapeamento', 'indicadores', 'admin'].map(v => { const e = makeEl('nav-' + v); e.dataset.view = v; e.classList.add(v === 'central' ? 'active' : 'x'); return e; });
     const document = {
       getElementById: getEl,
       querySelector: (s) => (s === '.main' ? makeEl('main') : makeEl('sel')),
       querySelectorAll: (s) => {
         if (s === '.nav button') return navButtons;
-        if (s === '.view') return ['dashboard', 'acompanhamento', 'processos', 'mapeamento', 'indicadores', 'admin'].map(makeEl);
+        if (s === '.view') return ['central', 'dashboard', 'acompanhamento', 'processos', 'mapeamento', 'indicadores', 'admin'].map(makeEl);
         return [];
       },
       addEventListener() {}, createElement: () => makeEl('new'),
@@ -217,6 +217,51 @@ section('Frontend (index.html) — smoke (sucesso e falha)');
     const gov = getEl('govKpis');
     assert(gov && /gov-card/.test(gov.innerHTML) && /Maturidade média do mapa/.test(gov.innerHTML),
       'Dashboard renderiza o bloco de governança');
+
+    // ===== Aposta 1: Central de Ação (fila de trabalho priorizada) =====
+    const cq = getEl('centralQueue');
+    assert(cq && /wq-item/.test(cq.innerHTML), 'Central renderiza a fila de trabalho priorizada');
+    assert(cq && /wq-kind">Indicador</.test(cq.innerHTML), 'Central inclui indicadores pendentes na fila');
+    assert(cq && /wq-kind">Processo</.test(cq.innerHTML), 'Central inclui processos a concluir na fila');
+    const chips = getEl('centralChips');
+    assert(chips && /class="chip/.test(chips.innerHTML) && /Crítico/.test(chips.innerHTML),
+      'Central renderiza chips de preset');
+    // A fila deve estar ordenada por score (item de maior criticidade primeiro).
+    const q = sandbox.buildWorkQueue();
+    assert(Array.isArray(q) && q.length > 0 && q.every((it, i) => i === 0 || q[i - 1].score >= it.score),
+      'buildWorkQueue ordena por score de criticidade (desc)');
+
+    // ===== Aposta 2: Command Palette (Ctrl/Cmd+K) =====
+    const cp = sandbox.window.commandPalette;
+    let cpThrew = null;
+    try { cp.show(); cp.query('Taxa'); } catch (e) { cpThrew = e; }
+    assert(!cpThrew, 'Command palette abre e filtra sem lançar' + (cpThrew ? ': ' + cpThrew.message : ''));
+    assert(cp.items.some(it => it.grupo === 'Navegar' && /Central/.test(it.t)), 'Command palette indexa navegação (Central)');
+    assert(cp.filtered.some(it => /Taxa X/.test(it.t)), 'Command palette encontra indicador por busca');
+    cp.hide();
+
+    // ===== Aposta 3: UI otimista aplica e reverte ao falhar o servidor =====
+    const st = sandbox.window.__sigepState;
+    const idTeste = 'PROC-0001';
+    const origNugesp = st.data.processos.find(p => p.ID_PROCESSO === idTeste).VALIDACAO_NUGESP;
+    let midNugesp = null;
+    sandbox.optimisticPatch({
+      collection: 'processos', idField: 'ID_PROCESSO', id: idTeste,
+      patch: { VALIDACAO_NUGESP: 'SIM' }, normalize: sandbox.normalizeProcessRow,
+      call: (runner) => {
+        midNugesp = st.data.processos.find(p => p.ID_PROCESSO === idTeste).VALIDACAO_NUGESP;
+        runner._f(new Error('falha simulada'));
+      }
+    });
+    const afterNugesp = st.data.processos.find(p => p.ID_PROCESSO === idTeste).VALIDACAO_NUGESP;
+    assert(midNugesp === 'SIM', 'optimisticPatch aplica a mudança localmente na hora');
+    assert(afterNugesp === origNugesp, 'optimisticPatch reverte o estado quando o servidor falha');
+
+    // processRank: nº de etapas iniciais concluídas (para o Kanban e o avanço de etapa)
+    assert(sandbox.processRank({ MODELAGEM_REALIZADA: 'SIM' }) === 1 &&
+      sandbox.processRank({ MODELAGEM_REALIZADA: 'SIM', VALIDACAO_NUGESP: 'SIM', VALIDACAO_DIRECAO: 'SIM', PUBLICACAO: 'SIM' }) === 4 &&
+      sandbox.processRank({}) === 0,
+      'processRank conta etapas iniciais concluídas (0..4)');
   })();
 
   // Caminho de falha — a navegação precisa sobreviver

@@ -1060,6 +1060,81 @@
       }
     }
 </style>
+<style id="commandCenterStyles">
+  /* ===== Central de Ação (Mission Control) ===== */
+  .central-head{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:flex-end;justify-content:space-between;margin-bottom:var(--space-4)}
+  .central-score{display:flex;gap:var(--space-3);flex-wrap:wrap}
+  .central-score .cscore{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 16px;min-width:120px}
+  .central-score .cscore strong{display:block;font-size:1.6rem;line-height:1.1;font-weight:800;color:var(--ink)}
+  .central-score .cscore.is-crit strong{color:var(--danger)}
+  .central-score .cscore.is-warn strong{color:var(--warning)}
+  .central-score .cscore span{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:var(--space-4)}
+  .chip{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:999px;padding:6px 14px;font-size:.82rem;font-weight:700;cursor:pointer;transition:all var(--duration-base) var(--ease-standard)}
+  .chip:hover{border-color:var(--primary-3)}
+  .chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+  .chip .chip-n{opacity:.8;font-weight:800;margin-left:4px}
+  .wq{display:flex;flex-direction:column;gap:10px}
+  .wq-item{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:var(--radius);padding:14px 16px;transition:box-shadow var(--duration-base) var(--ease-standard),border-color var(--duration-base)}
+  .wq-item:hover{box-shadow:var(--shadow-md)}
+  .wq-item.sev-crit{border-left-color:var(--danger)}
+  .wq-item.sev-warn{border-left-color:var(--warning)}
+  .wq-item.sev-info{border-left-color:var(--primary)}
+  .wq-sel{width:18px;height:18px;cursor:pointer;accent-color:var(--primary)}
+  .wq-main{min-width:0}
+  .wq-title{font-weight:750;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .wq-kind{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--surface-soft);color:var(--muted);border:1px solid var(--line)}
+  .wq-sub{font-size:.82rem;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wq-reasons{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .wq-reason{font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--surface-soft);color:var(--text);border:1px solid var(--line)}
+  .wq-reason.r-crit{background:var(--danger-bg);color:var(--danger);border-color:var(--color-border-danger)}
+  .wq-reason.r-warn{background:var(--warning-bg);color:var(--warning);border-color:var(--color-border-warning)}
+  .wq-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+  .wq-sevdot{width:10px;height:10px;border-radius:50%;background:var(--line-strong)}
+  .wq-item.sev-crit .wq-sevdot{background:var(--danger)}
+  .wq-item.sev-warn .wq-sevdot{background:var(--warning)}
+  .wq-item.sev-info .wq-sevdot{background:var(--primary)}
+  .bulk-bar{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160%);background:var(--ink);color:#fff;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-md);z-index:60;transition:transform var(--duration-base) var(--ease-emphasized)}
+  .bulk-bar.active{transform:translate(-50%,0)}
+  .bulk-bar strong{font-weight:800}
+  .bulk-bar .btn{padding:7px 12px}
+  /* ===== Command Palette ===== */
+  #cmdkOverlay{position:fixed;inset:0;background:var(--modal-overlay);backdrop-filter:blur(3px);z-index:120;display:none;align-items:flex-start;justify-content:center;padding-top:11vh}
+  #cmdkOverlay.active{display:flex}
+  .cmdk-card{width:min(640px,92vw);max-height:70vh;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-md);overflow:hidden;display:flex;flex-direction:column}
+  .cmdk-input-wrap{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .cmdk-input-wrap svg{width:20px;height:20px;color:var(--muted);flex-shrink:0}
+  #cmdkInput{flex:1;border:none;outline:none;background:transparent;font-size:1.02rem;color:var(--ink);font-family:inherit}
+  .cmdk-results{overflow:auto;padding:6px}
+  .cmdk-group-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;font-weight:800;color:var(--muted);padding:10px 12px 4px}
+  .cmdk-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;color:var(--text)}
+  .cmdk-item .cmdk-ico{width:30px;height:30px;border-radius:8px;background:var(--surface-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--primary)}
+  .cmdk-item .cmdk-ico svg{width:17px;height:17px}
+  .cmdk-item.active{background:var(--primary-2)}
+  .cmdk-item .cmdk-t{font-weight:650;color:var(--ink)}
+  .cmdk-item .cmdk-s{font-size:.76rem;color:var(--muted)}
+  .cmdk-empty{padding:26px;text-align:center;color:var(--muted)}
+  .cmdk-foot{border-top:1px solid var(--line);padding:8px 14px;display:flex;gap:14px;font-size:.72rem;color:var(--muted)}
+  .cmdk-foot kbd{background:var(--surface-soft);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:.72rem}
+  /* ===== Kanban (Quadro de processos) ===== */
+  .pv-toggle{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-right:8px}
+  .pv-toggle button{border:none;background:var(--surface);color:var(--muted);padding:7px 13px;font-weight:700;font-size:.82rem;cursor:pointer}
+  .pv-toggle button.active{background:var(--primary);color:#fff}
+  .kanban{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:12px;align-items:start;overflow-x:auto;padding-bottom:6px}
+  .kcol{background:var(--surface-soft);border:1px solid var(--line);border-radius:var(--radius);min-height:120px;display:flex;flex-direction:column}
+  .kcol-head{padding:11px 13px;font-weight:800;font-size:.82rem;color:var(--ink);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+  .kcol-head .kn{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:.74rem;color:var(--muted)}
+  .kcol-body{padding:10px;display:flex;flex-direction:column;gap:9px;min-height:60px}
+  .kcol.drag-over{outline:2px dashed var(--primary);outline-offset:-4px}
+  .kcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:grab;box-shadow:var(--shadow-sm)}
+  .kcard:active{cursor:grabbing}
+  .kcard.dragging{opacity:.5}
+  .kcard h5{margin:0 0 4px;font-size:.9rem;font-weight:700;color:var(--ink)}
+  .kcard .kc-sector{font-size:.76rem;color:var(--muted)}
+  .kcard .kc-foot{margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+  .kcol-empty{font-size:.78rem;color:var(--muted);text-align:center;padding:14px 6px}
+  @media (max-width:760px){.kanban{grid-template-columns:1fr}.wq-item{grid-template-columns:auto 1fr;}.wq-actions{grid-column:2;justify-content:flex-end}}
+</style>
 </head>
 <body>
   <div class="app" id="appRoot">
@@ -1081,8 +1156,9 @@
         </div>
       </div>
       <nav class="nav" id="sidebarNav" aria-label="Navegação principal">
+        <button class="active" data-view="central"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/></svg>Central</button>
         <button data-view="dashboard"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9zM13 20h7V4h-7v16zM4 20h7v-4H4v4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Início</button>
-        <button class="active" data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Acompanhamento</button>
+        <button data-view="acompanhamento"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Acompanhamento</button>
         <button data-view="indicadores"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Indicadores</button>
         <button data-view="processos"><svg viewBox="0 0 24 24" fill="none"><path d="M8 7h12M8 12h12M8 17h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Processos</button>
         <div class="nav-section-label">Sistema</div>
@@ -1094,8 +1170,8 @@
       <header class="topbar">
         <div class="title">
           <div class="title-kicker">Hospital Universitário do Ceará</div>
-          <h2 id="pageTitle">Acompanhamento</h2>
-          <p id="pageSubtitle">Unidades, datas de agenda e evolução das etapas.</p>
+          <h2 id="pageTitle">Central de Ação</h2>
+          <p id="pageSubtitle">Sua fila de trabalho priorizada — processos, acompanhamento e indicadores.</p>
         </div>
         <div class="actions">
           <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu lateral" aria-controls="sidebarNav" aria-expanded="false"><span class="mobile-menu-icon" aria-hidden="true"></span><span class="mobile-menu-label">Menu</span></button>
@@ -1111,6 +1187,18 @@
       </header>
 
       <div id="viewTip" class="view-tip" hidden></div>
+
+      <section id="central" class="view active">
+        <div class="central-head">
+          <div>
+            <h3 id="centralLead">Sua fila de trabalho priorizada</h3>
+            <p id="centralLeadSub">O que mais precisa de ação agora, cruzando processos, acompanhamento e indicadores.</p>
+          </div>
+          <div class="central-score" id="centralScore"></div>
+        </div>
+        <div class="chips" id="centralChips"></div>
+        <div class="wq" id="centralQueue"></div>
+      </section>
 
       <section id="dashboard" class="view">
         <div class="hero">
@@ -1157,11 +1245,12 @@
               <button class="active" role="tab" onclick="ui.setView('processos')">Modelagem</button>
               <button role="tab" onclick="ui.setView('mapeamento')">Mapeamento</button>
             </div>
-            <div class="filters"><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select><button class="btn secondary" onclick="exportProcessosCsv()">Exportar CSV</button><button class="btn" onclick="novoProcesso()">Novo processo</button></div>
+            <div class="filters"><div class="pv-toggle" role="tablist" aria-label="Modo de visualização de processos"><button class="active" id="pvLista" role="tab" onclick="setProcessView('lista')">Lista</button><button id="pvQuadro" role="tab" onclick="setProcessView('quadro')">Quadro</button></div><select id="filtroTipoProcesso" aria-label="Filtrar processos por tipo"><option value="">Todos os tipos</option></select><button class="btn secondary" onclick="exportProcessosCsv()">Exportar CSV</button><button class="btn" onclick="novoProcesso()">Novo processo</button></div>
           </div>
           <div class="content-pad">
             <div id="processSummary" class="indicator-summary"></div>
             <div class="process-grid" id="processGrid"></div>
+            <div class="kanban" id="processKanban" style="display:none"></div>
           </div>
         </div>
       </section>
@@ -1238,6 +1327,17 @@
       <div id="drawerContent" class="drawer-body"></div>
     </div>
   </div>
+  <div id="cmdkOverlay" aria-hidden="true">
+    <div class="cmdk-card" role="dialog" aria-modal="true" aria-label="Paleta de comandos">
+      <div class="cmdk-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.6-3.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input id="cmdkInput" type="text" placeholder="Buscar processos, unidades, indicadores ou ações..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="cmdk-results" id="cmdkResults"></div>
+      <div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>↵</kbd> abrir</span><span><kbd>esc</kbd> fechar</span></div>
+    </div>
+  </div>
+  <div class="bulk-bar" id="bulkBar" aria-hidden="true"><strong id="bulkCount">0 selecionados</strong><button class="btn" id="bulkAdvance" onclick="bulkAvancarEtapa()">Avançar etapa</button><button class="btn secondary" onclick="clearBulkSelection()">Limpar</button></div>
   <div id="globalLoader" aria-live="polite" aria-busy="false"><div class="loader-card"><span class="loader-spinner" aria-hidden="true"></span><span id="globalLoaderText">Processando...</span><small id="globalLoaderHint">A interface continua disponível enquanto o Sheets confirma.</small><div class="loader-progress"><span></span></div></div></div>
   <div id="toastStack" aria-live="polite" aria-atomic="false"></div>
   <div id="systemDialog" aria-hidden="true"></div>
@@ -1296,7 +1396,10 @@
 
     const state = {
       data: null,
-      view: 'acompanhamento',
+      view: 'central',
+      centralPreset: 'all',
+      processView: 'lista',
+      bulkSel: {},
       search: '',
       filtroStatusAcomp: '',
       filtroTipoProcesso: '',
@@ -1509,6 +1612,24 @@
           if (e.key === 'Escape') { ui.closeDrawer(); closeActionMenus(); }
         });
         document.addEventListener('click', closeActionMenus);
+        // Command Palette (Ctrl/Cmd+K): lançador universal de navegação e ações.
+        document.addEventListener('keydown', e => {
+          if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            commandPalette.open ? commandPalette.hide() : commandPalette.show();
+            return;
+          }
+          if (commandPalette.open) {
+            if (e.key === 'Escape') { e.preventDefault(); commandPalette.hide(); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); commandPalette.move(1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); commandPalette.move(-1); }
+            else if (e.key === 'Enter') { e.preventDefault(); commandPalette.run(); }
+          }
+        });
+        const cmdkInput = document.getElementById('cmdkInput');
+        if (cmdkInput) cmdkInput.addEventListener('input', e => commandPalette.query(e.target.value));
+        const cmdkOverlay = document.getElementById('cmdkOverlay');
+        if (cmdkOverlay) cmdkOverlay.addEventListener('click', e => { if (e.target === cmdkOverlay) commandPalette.hide(); });
         loadData();
       },
       applyTheme(theme) {
@@ -1538,6 +1659,7 @@
         });
         document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
         const titles = {
+          central: ['Central de Ação', 'Sua fila de trabalho priorizada — processos, acompanhamento e indicadores.'],
           dashboard: ['Início', 'O que precisa de ação agora: pendências, prazos e indicadores.'],
           acompanhamento: ['Acompanhamento', 'Unidades, datas de agenda e evolução das etapas.'],
           processos: ['Processos', 'Modelagem, validação e publicação dos processos.'],
@@ -1768,7 +1890,7 @@
 
     function render() {
       if (!state.data) return;
-      [renderDashboard, renderAcompanhamento, renderProcessos, renderMapeamento, renderIndicadores, renderAdmin].forEach(fn => {
+      [renderCentral, renderDashboard, renderAcompanhamento, renderProcessos, renderMapeamento, renderIndicadores, renderAdmin].forEach(fn => {
         try { fn(); } catch (e) { console.error('Falha ao renderizar ' + (fn.name || 'seção') + ':', e); }
       });
     }
@@ -1952,6 +2074,14 @@
         </article>
       `;}).join('');
       document.getElementById('processGrid').innerHTML = html || '<div class="empty"><strong>Nenhum processo encontrado.</strong><br>Refine os filtros para carregar processos operacionais desta unidade.</div>';
+
+      // Quadro Kanban (mesmas linhas filtradas) + alternância lista/quadro.
+      renderProcessKanban(rows);
+      const quadro = state.processView === 'quadro';
+      const gridEl = document.getElementById('processGrid');
+      const kbEl = document.getElementById('processKanban');
+      if (gridEl) gridEl.style.display = quadro ? 'none' : '';
+      if (kbEl) kbEl.style.display = quadro ? 'grid' : 'none';
     }
 
     /* ===================== Mapeamento (cadeia de valor) ===================== */
@@ -2405,6 +2535,7 @@
 
     /* ===================== Dicas contextuais (onboarding leve) ===================== */
     const VIEW_TIPS = {
+      central: 'Esta é sua fila priorizada. Use os chips para focar no que é crítico e o atalho Ctrl/⌘+K para abrir a paleta de comandos.',
       dashboard: 'Comece pelas "Próximas ações": elas mostram o que está em atraso, sem lançamento ou fora da meta.',
       acompanhamento: 'Clique no card de uma unidade para ver as etapas, a data da agenda e o link da planilha de gestão.',
       processos: 'O status é calculado automaticamente pelas marcações de modelagem, validações e publicação.',
@@ -4343,7 +4474,474 @@ function getIndicatorUnit(ind) {
       return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     }
 
+    /* ============================================================= */
+    /* Command Center: RBAC no cliente + UI otimista                  */
+    /* ============================================================= */
+    // Espelho enxuto da matriz RBAC do backend (Code.gs). Serve só para
+    // mostrar/esconder ações; o servidor continua sendo a fonte de verdade.
+    function canDo(modulo, acao) {
+      const perfil = normalize(state.data && state.data.userPerfil || '');
+      if (perfil === 'ADMIN' || perfil === 'ADMINISTRADOR') return true;
+      if (perfil === 'LEITOR') return acao === 'LISTAR';
+      if (perfil === 'GESTOR' || perfil === 'EDITOR') return ['LISTAR', 'CRIAR', 'EDITAR', 'EXPORTAR'].includes(acao);
+      return acao === 'LISTAR';
+    }
 
+    // Aplica a mudança no estado local e re-renderiza imediatamente; reverte se o
+    // servidor falhar. Compensa a latência do Google Sheets (maior atrito atual).
+    function optimisticPatch(cfg) {
+      if (!state.data) return;
+      const { collection, idField, id, patch } = cfg;
+      const list = state.data[collection] || [];
+      const idx = list.findIndex(r => String(r[idField] || '') === String(id || ''));
+      if (idx < 0) return;
+      const before = { ...list[idx] };
+      const norm = cfg.normalize || (x => x);
+      list[idx] = norm({ ...before, ...patch });
+      state.data[collection] = list;
+      renderAfterLocalMutation({});
+      asyncUi.start(cfg.label || 'Sincronizando com Google Sheets...');
+      const runner = google.script.run
+        .withSuccessHandler(result => {
+          asyncUi.finish();
+          const serverRow = (result && result.data)
+            ? norm(result.data)
+            : (state.data[collection].find(r => String(r[idField] || '') === String(id || '')) || norm({ ...before, ...patch }));
+          upsertLocal(collection, idField, serverRow);
+          renderAfterLocalMutation({ toast: cfg.successToast || '' });
+          scheduleBackgroundRefresh();
+        })
+        .withFailureHandler(err => {
+          asyncUi.finish();
+          const l2 = state.data[collection] || [];
+          const j = l2.findIndex(r => String(r[idField] || '') === String(id || ''));
+          if (j >= 0) l2[j] = before; else l2.unshift(before);
+          state.data[collection] = l2;
+          renderAfterLocalMutation({});
+          const detail = (err && (err.message || err)) ? ' ' + (err.message || err) : '';
+          showToast((cfg.errorToast || 'Não foi possível salvar; alteração revertida.') + detail, 'error');
+          if (typeof cfg.onError === 'function') cfg.onError(err);
+        });
+      cfg.call(runner);
+    }
+
+    /* ============================================================= */
+    /* Aposta 1 — Central de Ação (fila de trabalho priorizada)       */
+    /* ============================================================= */
+    const PROC_STAGES = ['MODELAGEM_REALIZADA', 'VALIDACAO_NUGESP', 'VALIDACAO_DIRECAO', 'PUBLICACAO'];
+    const PROC_STAGE_LABEL = { MODELAGEM_REALIZADA: 'Modelagem', VALIDACAO_NUGESP: 'Validação NUGESP', VALIDACAO_DIRECAO: 'Validação Direção', PUBLICACAO: 'Publicação' };
+
+    // Posição do processo no fluxo: nº de etapas iniciais já marcadas como SIM (0..4).
+    function processRank(p) {
+      let r = 0;
+      for (; r < PROC_STAGES.length; r++) { if (normalize(p[PROC_STAGES[r]]) !== 'SIM') break; }
+      return r;
+    }
+
+    function parseBrDate(s) {
+      const m = String(s || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if (!m) return null;
+      const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+      const d = new Date(y, Number(m[2]) - 1, Number(m[1]));
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function isStaleAgendamento(base, now) {
+      const d = parseBrDate(base && base.DATA_AGENDAMENTO);
+      if (!d) return false;
+      return ((now || new Date()).getTime() - d.getTime()) / 86400000 > 30;
+    }
+
+    // Indicador fora da meta na última competência com dados (meta vigente).
+    function indicadorForaDaMeta(ind) {
+      const lans = (state.data.lancamentos || []).filter(l => String(l.ID_INDICADOR || '') === String(ind.ID_INDICADOR));
+      const comDados = lans
+        .map(l => ({ comp: resolvePeriodoLabel(l) || l.COMPETENCIA, num: parseNumericValue(l.VALOR) }))
+        .filter(l => Number.isFinite(l.num) && parseCompetencia(l.comp) > 0)
+        .sort((a, b) => parseCompetencia(a.comp) - parseCompetencia(b.comp));
+      if (!comDados.length) return false;
+      const ultimo = comDados[comDados.length - 1];
+      const mv = resolveMetaFront(ind, ultimo.comp);
+      return Number.isFinite(mv.meta) && !compareAgainstMeta(ultimo.num, mv.meta, mv.operador, mv.polaridade);
+    }
+
+    // Constrói a fila única e priorizada cruzando as três fontes de trabalho.
+    function buildWorkQueue() {
+      if (!state.data) return [];
+      const now = new Date();
+      const items = [];
+
+      (state.data.processos || []).map(normalizeProcessRow).forEach(p => {
+        if (isDoneStatus(p.STATUS_GERAL) || isNaoSeAplicaStatus(p.STATUS_GERAL)) return;
+        const rank = processRank(p);
+        const pendentes = PROC_STAGES.length - rank;
+        const naoIniciado = normalize(p.STATUS_GERAL).includes('NAO INICIAD') || rank === 0;
+        const reasons = [];
+        if (naoIniciado) reasons.push({ t: 'Não iniciado', c: 'r-warn' });
+        reasons.push({ t: pendentes + ' etapa(s) pendente(s)', c: pendentes >= 3 ? 'r-crit' : 'r-warn' });
+        const proxima = PROC_STAGES[rank] ? PROC_STAGE_LABEL[PROC_STAGES[rank]] : '';
+        items.push({
+          tipo: 'processo', id: p.ID_PROCESSO,
+          titulo: p.PROCESSO || 'Processo sem nome',
+          sub: (p.SETOR || 'Setor não informado') + ' · ' + (p.STATUS_GERAL || 'Sem status'),
+          reasons, score: (naoIniciado ? 40 : 20) + pendentes * 14,
+          canAdvance: rank < PROC_STAGES.length, proxima
+        });
+      });
+
+      getGroupedAcompanhamento().forEach(g => {
+        if (Number(g.progresso) >= 100) return;
+        const falta = 100 - Number(g.progresso);
+        const stale = isStaleAgendamento(g.base, now);
+        const reasons = [{ t: g.progresso + '% concluído', c: g.progresso < 40 ? 'r-crit' : 'r-warn' }];
+        if (stale) reasons.push({ t: 'Sem atualização > 30d', c: 'r-warn' });
+        items.push({
+          tipo: 'acompanhamento', id: g.unidade,
+          titulo: g.unidade,
+          sub: g.items.length + ' data(s) · ' + (g.base.STATUS_GERAL || ''),
+          reasons, score: Math.round(falta * 0.6) + (stale ? 18 : 0) + 10
+        });
+      });
+
+      const pendSet = new Set(getPendenciasPreenchimento(now).map(p => String(p.ind.ID_INDICADOR)));
+      (state.data.indicadores || []).forEach(ind => {
+        const fora = indicadorForaDaMeta(ind);
+        const semLanc = pendSet.has(String(ind.ID_INDICADOR));
+        if (!fora && !semLanc) return;
+        const reasons = [];
+        let score = 0;
+        if (fora) { reasons.push({ t: 'Fora da meta', c: 'r-crit' }); score += 50; }
+        if (semLanc) { reasons.push({ t: 'Sem lançamento no período', c: 'r-warn' }); score += 28; }
+        const unidade = getIndicatorUnit(ind) || '';
+        items.push({
+          tipo: 'indicador', id: ind.ID_INDICADOR,
+          titulo: ind.NOME_INDICADOR || 'Indicador',
+          sub: (ind.PROCESSO || '-') + (unidade ? ' · ' + unidade : ''),
+          reasons, score
+        });
+      });
+
+      return items.sort((a, b) => b.score - a.score);
+    }
+
+    const CENTRAL_PRESETS = [
+      { key: 'all', label: 'Tudo' },
+      { key: 'crit', label: 'Crítico' },
+      { key: 'fora', label: 'Fora da meta' },
+      { key: 'semlanc', label: 'Sem lançamento' },
+      { key: 'acomp', label: 'Acompanhamento' },
+      { key: 'proc', label: 'Processos' }
+    ];
+    function matchCentralPreset(item, preset) {
+      if (preset === 'all') return true;
+      if (preset === 'crit') return item.reasons.some(r => r.c === 'r-crit') || item.score >= 60;
+      if (preset === 'fora') return item.reasons.some(r => /fora da meta/i.test(r.t));
+      if (preset === 'semlanc') return item.reasons.some(r => /sem lançamento/i.test(r.t));
+      if (preset === 'acomp') return item.tipo === 'acompanhamento';
+      if (preset === 'proc') return item.tipo === 'processo';
+      return true;
+    }
+    function severityOf(item) {
+      if (item.reasons.some(r => r.c === 'r-crit') || item.score >= 60) return 'crit';
+      if (item.score >= 28) return 'warn';
+      return 'info';
+    }
+    function setCentralPreset(key) { state.centralPreset = key; renderCentral(); }
+
+    function renderCentral() {
+      const host = document.getElementById('centralQueue');
+      if (!host) return;
+      const queue = buildWorkQueue();
+      const crit = queue.filter(i => severityOf(i) === 'crit').length;
+      const warn = queue.filter(i => severityOf(i) === 'warn').length;
+
+      const scoreHost = document.getElementById('centralScore');
+      if (scoreHost) scoreHost.innerHTML = [
+        { n: queue.length, l: 'na fila', cls: '' },
+        { n: crit, l: 'críticos', cls: 'is-crit' },
+        { n: warn, l: 'em atenção', cls: 'is-warn' }
+      ].map(c => `<div class="cscore ${c.cls}"><strong>${c.n}</strong><span>${escapeHtml(c.l)}</span></div>`).join('');
+
+      const chipsHost = document.getElementById('centralChips');
+      if (chipsHost) chipsHost.innerHTML = CENTRAL_PRESETS.map(p => {
+        const n = p.key === 'all' ? queue.length : queue.filter(i => matchCentralPreset(i, p.key)).length;
+        return `<button class="chip ${state.centralPreset === p.key ? 'active' : ''}" onclick="setCentralPreset('${p.key}')">${escapeHtml(p.label)}<span class="chip-n">${n}</span></button>`;
+      }).join('');
+
+      const filtered = queue
+        .filter(i => matchCentralPreset(i, state.centralPreset))
+        .filter(i => !state.search || (i.titulo + ' ' + i.sub).toLowerCase().includes(state.search));
+      if (!filtered.length) {
+        host.innerHTML = '<div class="empty"><strong>Nada na fila com esse filtro.</strong><br>Sua operação está em dia para o recorte selecionado.</div>';
+        updateBulkBar();
+        return;
+      }
+      const canEditProc = canDo('PROCESSOS', 'EDITAR');
+      host.innerHTML = filtered.map(item => {
+        const sev = severityOf(item);
+        const kindLabel = { processo: 'Processo', acompanhamento: 'Acompanhamento', indicador: 'Indicador' }[item.tipo] || '';
+        const selectable = item.tipo === 'processo' && item.canAdvance && canEditProc;
+        const idEsc = escapeHtml(item.id);
+        const lead = selectable
+          ? `<input type="checkbox" class="wq-sel" ${state.bulkSel[item.id] ? 'checked' : ''} onclick="event.stopPropagation();toggleBulk('${idEsc}')" aria-label="Selecionar para ação em lote">`
+          : '<span class="wq-sevdot" aria-hidden="true"></span>';
+        let actions = '';
+        if (item.tipo === 'processo' && item.canAdvance && canEditProc) {
+          actions += `<button class="btn small" onclick="event.stopPropagation();avancarEtapaProcesso('${idEsc}')">Avançar etapa</button>`;
+        }
+        actions += `<button class="btn secondary small" onclick="event.stopPropagation();abrirItemCentral('${item.tipo}','${idEsc}')">Abrir</button>`;
+        return `<article class="wq-item sev-${sev}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirItemCentral('${item.tipo}','${idEsc}')}" onclick="abrirItemCentral('${item.tipo}','${idEsc}')">
+          ${lead}
+          <div class="wq-main">
+            <div class="wq-title"><span class="wq-kind">${kindLabel}</span>${escapeHtml(item.titulo)}</div>
+            <div class="wq-sub">${escapeHtml(item.sub)}</div>
+            <div class="wq-reasons">${item.reasons.map(r => `<span class="wq-reason ${r.c}">${escapeHtml(r.t)}</span>`).join('')}</div>
+          </div>
+          <div class="wq-actions">${actions}</div>
+        </article>`;
+      }).join('');
+      updateBulkBar();
+    }
+
+    function abrirItemCentral(tipo, id) {
+      if (!state.data) return;
+      if (tipo === 'processo') {
+        const p = getById(state.data.processos, 'ID_PROCESSO', id);
+        if (p) showProcesso(normalizeProcessRow(p));
+      } else if (tipo === 'indicador') {
+        const ind = getById(state.data.indicadores, 'ID_INDICADOR', id);
+        if (ind) showIndicador(ind);
+      } else if (tipo === 'acompanhamento') {
+        const grupo = getGroupedAcompanhamento().find(g => g.unidade === id);
+        if (grupo) showAcompanhamento(grupo.base); else ui.setView('acompanhamento');
+      }
+    }
+
+    // Avança a próxima etapa pendente do processo, de forma otimista.
+    function avancarEtapaProcesso(id) {
+      if (!canDo('PROCESSOS', 'EDITAR')) { showToast('Seu perfil não permite editar processos.', 'warning'); return; }
+      const p = getById(state.data && state.data.processos, 'ID_PROCESSO', id);
+      if (!p) return;
+      const rank = processRank(p);
+      const next = PROC_STAGES[rank];
+      if (!next) { showToast('Processo já concluído.', 'info'); return; }
+      const motivo = 'Avanço de etapa pela Central de Ação';
+      optimisticPatch({
+        collection: 'processos', idField: 'ID_PROCESSO', id,
+        patch: { [next]: 'SIM' }, normalize: normalizeProcessRow,
+        label: 'Avançando etapa...',
+        successToast: 'Etapa concluída: ' + PROC_STAGE_LABEL[next] + '.',
+        errorToast: 'Não foi possível avançar a etapa; revertido.',
+        call: r => r.atualizarProcesso({ ID_PROCESSO: id, [next]: 'SIM', MOTIVO_ALTERACAO: motivo })
+      });
+    }
+
+    // Move um processo no quadro até a coluna alvo (somente para frente):
+    // completa as etapas anteriores à coluna, tornando-a a etapa corrente.
+    function moveProcessToStage(id, targetIndex) {
+      if (!canDo('PROCESSOS', 'EDITAR')) { showToast('Seu perfil não permite editar processos.', 'warning'); return; }
+      const p = getById(state.data && state.data.processos, 'ID_PROCESSO', id);
+      if (!p) return;
+      const rank = processRank(p);
+      if (targetIndex <= rank) { return; } // arraste para a frente para avançar
+      const patch = {}; const payload = { ID_PROCESSO: id, MOTIVO_ALTERACAO: 'Movido no quadro de processos' };
+      for (let i = rank; i < targetIndex; i++) { patch[PROC_STAGES[i]] = 'SIM'; payload[PROC_STAGES[i]] = 'SIM'; }
+      optimisticPatch({
+        collection: 'processos', idField: 'ID_PROCESSO', id, patch, normalize: normalizeProcessRow,
+        label: 'Atualizando quadro...', successToast: 'Processo avançado no quadro.',
+        errorToast: 'Não foi possível mover o processo; revertido.',
+        call: r => r.atualizarProcesso(payload)
+      });
+    }
+
+    /* ===== Multisseleção + barra de ações em lote ===== */
+    function toggleBulk(id) {
+      if (state.bulkSel[id]) delete state.bulkSel[id]; else state.bulkSel[id] = true;
+      renderCentral();
+    }
+    function clearBulkSelection() { state.bulkSel = {}; renderCentral(); }
+    function selectedBulkIds() { return Object.keys(state.bulkSel); }
+    function updateBulkBar() {
+      const bar = document.getElementById('bulkBar');
+      if (!bar) return;
+      const ids = selectedBulkIds();
+      const cnt = document.getElementById('bulkCount');
+      if (cnt) cnt.textContent = ids.length + ' selecionado' + (ids.length === 1 ? '' : 's');
+      bar.classList.toggle('active', ids.length > 0);
+      bar.setAttribute('aria-hidden', ids.length > 0 ? 'false' : 'true');
+    }
+    function bulkAvancarEtapa() {
+      const ids = selectedBulkIds().filter(id => {
+        const p = getById(state.data && state.data.processos, 'ID_PROCESSO', id);
+        return p && processRank(p) < PROC_STAGES.length;
+      });
+      if (!ids.length) { showToast('Nenhum processo elegível selecionado.', 'warning'); return; }
+      state.bulkSel = {};
+      ids.forEach(avancarEtapaProcesso);
+      updateBulkBar();
+      showToast('Avançando ' + ids.length + ' processo(s)...', 'info');
+    }
+
+    /* ============================================================= */
+    /* Aposta 3 — Quadro Kanban de processos                          */
+    /* ============================================================= */
+    const KANBAN_COLS = [
+      { idx: 0, label: 'A modelar' },
+      { idx: 1, label: 'Validação NUGESP' },
+      { idx: 2, label: 'Validação Direção' },
+      { idx: 3, label: 'Publicação' }
+    ];
+    function setProcessView(mode) {
+      state.processView = mode === 'quadro' ? 'quadro' : 'lista';
+      const q = state.processView === 'quadro';
+      const lista = document.getElementById('pvLista');
+      const quadro = document.getElementById('pvQuadro');
+      if (lista) lista.classList.toggle('active', !q);
+      if (quadro) quadro.classList.toggle('active', q);
+      renderProcessos();
+    }
+    function renderProcessKanban(rows) {
+      const host = document.getElementById('processKanban');
+      if (!host) return;
+      const canEdit = canDo('PROCESSOS', 'EDITAR');
+      const buckets = [[], [], [], []];
+      (rows || []).map(normalizeProcessRow).forEach(p => {
+        const r = processRank(p);
+        buckets[Math.min(r, 3)].push({ p, r });
+      });
+      host.innerHTML = KANBAN_COLS.map(col => {
+        const cards = buckets[col.idx];
+        const body = cards.length ? cards.map(({ p, r }) => {
+          const done = r >= PROC_STAGES.length;
+          const draggable = canEdit && !done;
+          const idEsc = escapeHtml(p.ID_PROCESSO);
+          const advBtn = (canEdit && !done) ? `<button class="btn small" onclick="event.stopPropagation();avancarEtapaProcesso('${idEsc}')">Avançar</button>` : '';
+          const pill = done ? '<span class="pill ok">Publicado</span>' : `<span class="pill ${badgeClass(p.STATUS_GERAL)}">${escapeHtml(p.STATUS_GERAL || 'Sem status')}</span>`;
+          return `<div class="kcard" ${draggable ? `draggable="true" ondragstart="procDragStart(event,'${idEsc}')" ondragend="procDragEnd(event)"` : ''} onclick="withProc('${idEsc}')">
+            <h5>${escapeHtml(p.PROCESSO || 'Processo sem nome')}</h5>
+            <div class="kc-sector">${escapeHtml(p.SETOR || 'Setor não informado')}</div>
+            <div class="kc-foot">${pill}${advBtn}</div>
+          </div>`;
+        }).join('') : '<div class="kcol-empty">Sem processos</div>';
+        return `<div class="kcol" ondragover="procDragOver(event)" ondragenter="procDragEnter(event)" ondragleave="procDragLeave(event)" ondrop="procDrop(event,${col.idx})">
+          <div class="kcol-head">${escapeHtml(col.label)}<span class="kn">${cards.length}</span></div>
+          <div class="kcol-body">${body}</div>
+        </div>`;
+      }).join('');
+    }
+    function withProc(id) {
+      const p = getById(state.data && state.data.processos, 'ID_PROCESSO', id);
+      if (p) showProcesso(normalizeProcessRow(p));
+    }
+    function procDragStart(ev, id) {
+      state._dragProcId = id;
+      if (ev.dataTransfer) { ev.dataTransfer.setData('text/plain', id); ev.dataTransfer.effectAllowed = 'move'; }
+      const el = ev.target && ev.target.closest && ev.target.closest('.kcard');
+      if (el) el.classList.add('dragging');
+    }
+    function procDragEnd(ev) {
+      const el = ev.target && ev.target.closest && ev.target.closest('.kcard');
+      if (el) el.classList.remove('dragging');
+      document.querySelectorAll('.kcol.drag-over').forEach(c => c.classList.remove('drag-over'));
+    }
+    function procDragOver(ev) { ev.preventDefault(); if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'; }
+    function procDragEnter(ev) { if (ev.currentTarget && ev.currentTarget.classList) ev.currentTarget.classList.add('drag-over'); }
+    function procDragLeave(ev) { if (ev.currentTarget && ev.currentTarget.classList) ev.currentTarget.classList.remove('drag-over'); }
+    function procDrop(ev, colIdx) {
+      ev.preventDefault();
+      if (ev.currentTarget && ev.currentTarget.classList) ev.currentTarget.classList.remove('drag-over');
+      const id = (ev.dataTransfer && ev.dataTransfer.getData('text/plain')) || state._dragProcId;
+      state._dragProcId = null;
+      if (id) moveProcessToStage(id, colIdx);
+    }
+
+    /* ============================================================= */
+    /* Aposta 2 — Command Palette (Ctrl/Cmd+K)                        */
+    /* ============================================================= */
+    const commandPalette = {
+      open: false, items: [], filtered: [], active: 0,
+      buildItems() {
+        const items = [];
+        const views = [
+          ['central', 'Central', 'Fila de trabalho priorizada'],
+          ['dashboard', 'Início', 'Resumo executivo'],
+          ['acompanhamento', 'Acompanhamento', 'Unidades e etapas'],
+          ['indicadores', 'Indicadores', 'Carteira de indicadores'],
+          ['processos', 'Processos', 'Modelagem e validações'],
+          ['mapeamento', 'Mapeamento', 'Cadeia de valor'],
+          ['admin', 'Administração', 'Usuários e configurações']
+        ];
+        views.forEach(v => items.push({ grupo: 'Navegar', icon: icons.process, t: v[1], s: v[2], run: () => ui.setView(v[0]) }));
+        const actions = [
+          ['Novo processo', 'Cadastrar processo', () => novoProcesso(), 'PROCESSOS', 'CRIAR'],
+          ['Novo indicador', 'Cadastrar indicador', () => novoIndicador(), 'INDICADORES', 'CRIAR'],
+          ['Novo acompanhamento', 'Agendar acompanhamento', () => novoAcompanhamento(), 'ACOMPANHAMENTO', 'CRIAR'],
+          ['Fila de preenchimento', 'Indicadores sem lançamento', () => abrirFilaPreenchimento(), null, null],
+          ['Ir para críticos', 'Central · apenas itens críticos', () => { ui.setView('central'); setCentralPreset('crit'); }, null, null],
+          ['Atualizar dados', 'Recarregar do Google Sheets', () => loadData(), null, null],
+          ['Alternar tema', 'Claro / escuro', () => { const t = document.getElementById('themeToggle'); if (t) t.click(); }, null, null]
+        ];
+        actions.forEach(a => { if (a[3] && !canDo(a[3], a[4])) return; items.push({ grupo: 'Ações', icon: icons.calendar, t: a[0], s: a[1], run: a[2] }); });
+        const d = state.data || {};
+        (d.processos || []).forEach(p => items.push({ grupo: 'Processos', icon: icons.process, t: p.PROCESSO || 'Processo', s: [p.SETOR, p.STATUS_GERAL].filter(Boolean).join(' · '), run: () => showProcesso(normalizeProcessRow(p)) }));
+        unique((d.acompanhamento || []).map(a => a.UNIDADE)).forEach(u => items.push({ grupo: 'Unidades', icon: icons.unit, t: u, s: 'Abrir acompanhamento', run: () => { const g = getGroupedAcompanhamento().find(x => x.unidade === u); if (g) showAcompanhamento(g.base); else ui.setView('acompanhamento'); } }));
+        (d.indicadores || []).forEach(i => items.push({ grupo: 'Indicadores', icon: icons.chart, t: i.NOME_INDICADOR || 'Indicador', s: i.PROCESSO || '', run: () => showIndicador(i) }));
+        this.items = items;
+      },
+      show() {
+        this.buildItems();
+        this.open = true;
+        const ov = document.getElementById('cmdkOverlay');
+        if (ov) { ov.classList.add('active'); ov.setAttribute('aria-hidden', 'false'); }
+        const inp = document.getElementById('cmdkInput');
+        if (inp) { inp.value = ''; if (typeof setTimeout === 'function') setTimeout(() => inp.focus(), 0); }
+        document.body.style.overflow = 'hidden';
+        this.query('');
+      },
+      hide() {
+        this.open = false;
+        const ov = document.getElementById('cmdkOverlay');
+        if (ov) { ov.classList.remove('active'); ov.setAttribute('aria-hidden', 'true'); }
+        const drawerActive = document.getElementById('drawer') && document.getElementById('drawer').classList.contains('active');
+        document.body.style.overflow = drawerActive ? 'hidden' : '';
+      },
+      query(q) {
+        const nq = normalize(q);
+        this.filtered = !nq ? this.items.slice(0, 50) : this.items.filter(it => normalize(it.t + ' ' + it.s + ' ' + it.grupo).includes(nq)).slice(0, 50);
+        this.active = 0;
+        this.render();
+      },
+      render() {
+        const host = document.getElementById('cmdkResults');
+        if (!host) return;
+        if (!this.filtered.length) { host.innerHTML = '<div class="cmdk-empty">Nada encontrado.</div>'; return; }
+        let html = ''; let lastG = '';
+        this.filtered.forEach((it, i) => {
+          if (it.grupo !== lastG) { html += `<div class="cmdk-group-label">${escapeHtml(it.grupo)}</div>`; lastG = it.grupo; }
+          html += `<div class="cmdk-item ${i === this.active ? 'active' : ''}" data-i="${i}" onmousemove="commandPalette.setActive(${i})" onclick="commandPalette.run(${i})"><span class="cmdk-ico">${it.icon || ''}</span><span><span class="cmdk-t">${escapeHtml(it.t)}</span><br><span class="cmdk-s">${escapeHtml(it.s || '')}</span></span></div>`;
+        });
+        host.innerHTML = html;
+      },
+      setActive(i) {
+        this.active = i;
+        const host = document.getElementById('cmdkResults');
+        if (!host) return;
+        Array.prototype.forEach.call(host.querySelectorAll('.cmdk-item'), el => el.classList.toggle('active', Number(el.dataset.i) === i));
+      },
+      move(delta) {
+        if (!this.filtered.length) return;
+        this.active = (this.active + delta + this.filtered.length) % this.filtered.length;
+        this.setActive(this.active);
+        const host = document.getElementById('cmdkResults');
+        const el = host && host.querySelector('.cmdk-item.active');
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+      },
+      run(i) {
+        const it = this.filtered[typeof i === 'number' ? i : this.active];
+        this.hide();
+        if (it && typeof it.run === 'function') { if (typeof setTimeout === 'function') setTimeout(it.run, 0); else it.run(); }
+      }
+    };
+    if (typeof window !== 'undefined') window.commandPalette = commandPalette;
 
     function loadAdminData() {
       asyncUi.start('Carregando administração...');
@@ -4902,6 +5500,8 @@ Falhas: ${failed}${firstError}`);
       return Array.from(suggestions);
     }
 window.ui = ui;
+    // Handle de depuração/testes (read-only por convenção): expõe o estado e a paleta.
+    if (typeof window !== 'undefined') { window.__sigepState = state; }
     ui.init();
   </script>
 </body>
